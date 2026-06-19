@@ -1,0 +1,21 @@
+{
+  "name": "autorepuestos-mobile",
+  "version": "1.0.0",
+  "main": "expo-router/entry",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web"
+  },
+  "dependencies": {
+    "@react-navigation/native": "^7.3.3",
+    "@react-navigation/native-stack": "^7.17.5",
+    "axios": "^1.18.0",
+    "expo": "^56.0.12",
+    "expo-router": "^56.2.11",
+    "expo-status-bar": "^56.0.4",
+    "react-native-safe-area-context": "^5.8.0",
+    "react-native-screens": "^4.25.2"
+  }
+}
