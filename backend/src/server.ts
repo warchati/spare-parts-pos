@@ -22,8 +22,13 @@ export function createServer(prisma: PrismaClient) {
   app.use('/api/sales', saleRoutes(prisma))
   app.use('/api/purchases', purchaseRoutes(prisma))
 
-  app.get('/api/health', (_req, res) => {
-    res.json({ status: 'ok' })
+  app.get('/api/health', async (_req, res) => {
+    try {
+      await prisma.$queryRaw`SELECT 1`
+      res.json({ status: 'ok', db: 'connected' })
+    } catch (e: any) {
+      res.json({ status: 'ok', db: 'error', message: e.message, dbUrl: process.env.DATABASE_URL?.replace(/:[^:@]+@/, ':****@') })
+    }
   })
 
   app.use(errorHandler)

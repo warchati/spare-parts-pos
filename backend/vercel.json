@@ -1,8 +1,6 @@
 {
   "buildCommand": "npm install && npx prisma generate && npm run build",
   "installCommand": "npm install",
-  "outputDirectory": "dist",
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/api" }
-  ]
+  "framework": "express",
+  "outputDirectory": "dist"
 }
