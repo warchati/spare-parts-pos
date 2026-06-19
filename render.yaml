@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: spare-parts-pos-api
+    env: node
+    region: ohio
+    plan: free
+    buildCommand: cd backend && npm install && npm run build
+    startCommand: cd backend && npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        value: postgresql://postgres:Postventa2024!@db.pzslmfjabfyjzwchaahk.supabase.co:5432/postgres
+      - key: PORT
+        value: "3000"

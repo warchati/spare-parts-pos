@@ -1,0 +1,1 @@
+{"type":"web_service","name":"spare-parts-pos-api","ownerId":"tea-d8qev87lk1mc739rhl70","repo":"https://github.com/warchati/spare-parts-pos.git","branch":"main","serviceDetails":{"env":"node","plan":"free","buildCommand":"echo hello","startCommand":"echo hello","healthCheckPath":"/api/health","envSpecificDetails":{}}}
