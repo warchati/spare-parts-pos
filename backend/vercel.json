@@ -1,6 +1,13 @@
 {
+  "functions": {
+    "api/index.js": {
+      "maxDuration": 30
+    }
+  },
   "buildCommand": "npm install && npx prisma generate && npm run build",
   "installCommand": "npm install",
-  "framework": "express",
-  "outputDirectory": "dist"
+  "outputDirectory": "dist",
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/api" }
+  ]
 }
