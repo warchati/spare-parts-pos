@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import api from '../lib/api'
+import { useAuth } from '../contexts/AuthContext'
+import { can } from '../lib/permissions'
 import { Search, Plus, Pencil, Users } from 'lucide-react'
 
 interface Client {
@@ -13,6 +15,7 @@ interface Client {
 }
 
 export default function Clients() {
+  const { user } = useAuth()
   const [clients, setClients] = useState<Client[]>([])
   const [search, setSearch] = useState('')
   const [showForm, setShowForm] = useState(false)
@@ -40,7 +43,9 @@ export default function Clients() {
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2"><Users className="w-6 h-6" /> Clientes</h1>
-        <button onClick={() => { setEditing(null); setForm({ name: '', phone: '', email: '', address: '', document: '', vehicle: '', notes: '', creditLimit: 0 }); setShowForm(true) }} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"><Plus className="w-4 h-4" /> Nuevo Cliente</button>
+        {can(user?.role, 'clients', 'create') && (
+          <button onClick={() => { setEditing(null); setForm({ name: '', phone: '', email: '', address: '', document: '', vehicle: '', notes: '', creditLimit: 0 }); setShowForm(true) }} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"><Plus className="w-4 h-4" /> Nuevo Cliente</button>
+        )}
       </div>
       <div className="relative mb-4">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -66,10 +71,12 @@ export default function Clients() {
                 <td className="px-4 py-3 text-sm text-gray-500">{c.phone}</td>
                 <td className="px-4 py-3 text-sm text-gray-500">{c.email}</td>
                 <td className="px-4 py-3 text-sm text-gray-500">{c.vehicle}</td>
-                <td className="px-4 py-3 text-right font-mono">${c.creditLimit.toLocaleString('es-AR')}</td>
-                <td className="px-4 py-3 text-right font-mono">${c.currentBalance.toLocaleString('es-AR')}</td>
+                <td className="px-4 py-3 text-right font-mono">$ {c.creditLimit.toLocaleString('es-AR')}</td>
+                <td className="px-4 py-3 text-right font-mono">$ {c.currentBalance.toLocaleString('es-AR')}</td>
                 <td className="px-4 py-3 text-right">
-                  <button onClick={() => { setEditing(c); setForm(c as any); setShowForm(true) }} className="p-1 hover:bg-gray-100 rounded"><Pencil className="w-4 h-4 text-gray-400" /></button>
+                  {can(user?.role, 'clients', 'edit') && (
+                    <button onClick={() => { setEditing(c); setForm(c as any); setShowForm(true) }} className="p-1 hover:bg-gray-100 rounded"><Pencil className="w-4 h-4 text-gray-400" /></button>
+                  )}
                 </td>
               </tr>
             ))}

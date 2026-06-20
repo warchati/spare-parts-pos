@@ -1,0 +1,147 @@
+import { Request, Response, NextFunction } from 'express'
+import { PrismaClient } from '@prisma/client'
+
+export interface AuthRequest extends Request {
+  user?: { id: number; username: string; name: string; role: string }
+}
+
+const ROLE_HIERARCHY: Record<string, number> = { admin: 100, supervisor: 50, cashier: 10, seller: 10 }
+
+export const PERMISSIONS: Record<string, Record<string, string[]>> = {
+  admin: {
+    pos: ['sell'],
+    products: ['view', 'create', 'edit'],
+    clients: ['view', 'create', 'edit'],
+    suppliers: ['view', 'create', 'edit'],
+    sales: ['view'],
+    purchases: ['view', 'create', 'receive'],
+    dashboard: ['view'],
+    cashRegister: ['open', 'close', 'movements'],
+    users: ['view', 'create', 'edit', 'delete'],
+    vehicles: ['view', 'create', 'edit', 'delete'],
+    credit: ['view', 'pay'],
+    exports: ['view'],
+    taxes: ['create', 'edit', 'view'],
+    currencies: ['create', 'edit', 'view'],
+  },
+  supervisor: {
+    pos: ['sell'],
+    products: ['view', 'create', 'edit'],
+    clients: ['view', 'create', 'edit'],
+    suppliers: ['view', 'create', 'edit'],
+    sales: ['view'],
+    purchases: ['view', 'create', 'receive'],
+    dashboard: ['view'],
+    cashRegister: ['open', 'close', 'movements'],
+    users: [],
+    vehicles: ['view', 'create', 'edit', 'delete'],
+    credit: ['view', 'pay'],
+    exports: ['view'],
+    taxes: ['view'],
+    currencies: ['view'],
+  },
+  cashier: {
+    pos: ['sell'],
+    products: ['view'],
+    clients: ['view'],
+    suppliers: [],
+    sales: ['view'],
+    purchases: [],
+    dashboard: [],
+    cashRegister: [],
+    users: [],
+    vehicles: [],
+    credit: [],
+    exports: [],
+    taxes: [],
+    currencies: [],
+  },
+  seller: {
+    pos: ['sell'],
+    products: ['view'],
+    clients: ['view', 'create', 'edit'],
+    suppliers: [],
+    sales: ['view'],
+    purchases: [],
+    dashboard: [],
+    cashRegister: [],
+    users: [],
+    vehicles: [],
+    credit: ['view'],
+    exports: [],
+    taxes: [],
+    currencies: [],
+  },
+}
+
+export async function hasPermission(prisma: PrismaClient, role: string, module: string, action: string, userId?: number): Promise<boolean> {
+  // Check user-specific override first
+  if (userId) {
+    try {
+      const userPerm = await prisma.userPermission.findUnique({
+        where: { userId_module_action: { userId, module, action } },
+      })
+      if (userPerm) return userPerm.granted
+    } catch {}
+  }
+
+  // Fallback to role-based permission
+  try {
+    const perm = await prisma.rolePermission.findUnique({
+      where: { role_module_action: { role, module, action } },
+    })
+    return !!perm
+  } catch {
+    const rolePerms = PERMISSIONS[role]
+    if (!rolePerms) return false
+    const perm = rolePerms[module]
+    if (!perm) return false
+    return perm.includes(action)
+  }
+}
+
+export function requireAuth(prisma: PrismaClient) {
+  return async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      const authHeader = req.headers.authorization
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'No token provided' })
+      }
+
+      const token = authHeader.slice(7)
+      const decoded = Buffer.from(token, 'base64').toString('utf-8')
+      const userId = parseInt(decoded.split(':')[0], 10)
+
+      if (!userId) return res.status(401).json({ error: 'Invalid token' })
+
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, username: true, name: true, role: true, active: true },
+      })
+
+      if (!user || !user.active) {
+        return res.status(401).json({ error: 'User not found or inactive' })
+      }
+
+      req.user = user
+      next()
+    } catch (e) {
+      return res.status(401).json({ error: 'Authentication failed' })
+    }
+  }
+}
+
+export function requirePermission(prisma: PrismaClient, module: string, action: string) {
+  return async (req: AuthRequest, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Not authenticated' })
+    }
+
+    const allowed = await hasPermission(prisma, req.user.role, module, action, req.user.id)
+    if (!allowed) {
+      return res.status(403).json({ error: 'Insufficient permissions' })
+    }
+
+    next()
+  }
+}

@@ -1,10 +1,11 @@
 import { Router } from 'express'
 import { PrismaClient } from '@prisma/client'
+import { requirePermission } from '../middleware/auth'
 
 export function supplierRoutes(prisma: PrismaClient) {
   const router = Router()
 
-  router.get('/', async (req, res, next) => {
+  router.get('/', requirePermission(prisma, 'suppliers', 'view'), async (req, res, next) => {
     try {
       const { q } = req.query
       const where: any = {}
@@ -25,7 +26,7 @@ export function supplierRoutes(prisma: PrismaClient) {
     } catch (e) { next(e) }
   })
 
-  router.get('/:id', async (req, res, next) => {
+  router.get('/:id', requirePermission(prisma, 'suppliers', 'view'), async (req, res, next) => {
     try {
       const supplier = await prisma.supplier.findUnique({
         where: { id: Number(req.params.id) },
@@ -35,14 +36,14 @@ export function supplierRoutes(prisma: PrismaClient) {
     } catch (e) { next(e) }
   })
 
-  router.post('/', async (req, res, next) => {
+  router.post('/', requirePermission(prisma, 'suppliers', 'create'), async (req, res, next) => {
     try {
       const supplier = await prisma.supplier.create({ data: req.body })
       res.status(201).json(supplier)
     } catch (e) { next(e) }
   })
 
-  router.put('/:id', async (req, res, next) => {
+  router.put('/:id', requirePermission(prisma, 'suppliers', 'edit'), async (req, res, next) => {
     try {
       const supplier = await prisma.supplier.update({
         where: { id: Number(req.params.id) },

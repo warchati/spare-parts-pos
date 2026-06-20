@@ -7,57 +7,117 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model RolePermission {
+  id     Int    @id @default(autoincrement())
+  role   String
+  module String
+  action String
+  @@unique([role, module, action])
+}
+
+model UserPermission {
+  id      Int    @id @default(autoincrement())
+  userId  Int
+  user    User   @relation(fields: [userId], references: [id])
+  module  String
+  action  String
+  granted Boolean @default(true)
+  @@unique([userId, module, action])
+}
+
 model User {
-  id       Int      @id @default(autoincrement())
-  username String  @unique
-  name     String
-  password String
-  role     String   @default("cashier")
-  active   Boolean  @default(true)
-  sales    Sale[]
-  purchases PurchaseOrder[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             Int              @id @default(autoincrement())
+  username       String           @unique
+  name           String
+  email          String           @default("")
+  password       String
+  role           String           @default("cashier")
+  active         Boolean          @default(true)
+  sales          Sale[]
+  purchases      PurchaseOrder[]
+  cashRegisters  CashRegister[]
+  userPermissions UserPermission[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+}
+
+model Tax {
+  id         Int       @id @default(autoincrement())
+  name       String
+  percentage Float
+  isDefault  Boolean   @default(false)
+  isActive   Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  products   Product[]
+}
+
+model Currency {
+  id           Int      @id @default(autoincrement())
+  code         String   @unique
+  name         String
+  symbol       String
+  exchangeRate Float    @default(1)
+  isBase       Boolean  @default(false)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  sales        Sale[]
 }
 
 model Product {
-  id           Int            @id @default(autoincrement())
-  code         String         @unique
-  barcode      String         @default("")
-  name         String
-  description  String         @default("")
-  category     String         @default("")
-  brand        String         @default("")
-  vehicleType  String         @default("")
-  oemNumber    String         @default("")
-  buyPrice     Float          @default(0)
-  sellPrice    Float          @default(0)
-  wholesalePrice Float        @default(0)
-  stock        Int            @default(0)
-  minStock     Int            @default(5)
-  location     String         @default("")
-  imageUrl     String         @default("")
-  active       Boolean        @default(true)
-  saleItems    SaleItem[]
-  purchaseItems PurchaseItem[]
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  id             Int            @id @default(autoincrement())
+  code           String         @unique
+  barcode        String         @default("")
+  name           String
+  description    String         @default("")
+  category       String         @default("")
+  brand          String         @default("")
+  vehicleType    String         @default("")
+  oemNumber      String         @default("")
+  buyPrice       Float          @default(0)
+  sellPrice      Float          @default(0)
+  wholesalePrice Float          @default(0)
+  stock          Int            @default(0)
+  minStock       Int            @default(5)
+  location       String         @default("")
+  imageUrl       String         @default("")
+  active         Boolean        @default(true)
+  taxId          Int?
+  tax            Tax?           @relation(fields: [taxId], references: [id])
+  saleItems      SaleItem[]
+  purchaseItems  PurchaseItem[]
+  vehicleLinks   ProductVehicle[]
+  images         ProductImage[]
+  returns        SaleReturnItem[]
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+}
+
+model ProductImage {
+  id        Int     @id @default(autoincrement())
+  productId Int
+  product   Product @relation(fields: [productId], references: [id])
+  url       String
+  altText   String  @default("")
+  sortOrder Int     @default(0)
 }
 
 model Client {
-  id            Int      @id @default(autoincrement())
-  name          String
-  phone         String   @default("")
-  email         String   @default("")
-  address       String   @default("")
-  document      String   @default("")
-  vehicle       String   @default("")
-  notes         String   @default("")
-  creditLimit   Float    @default(0)
-  currentBalance Float   @default(0)
-  sales         Sale[]
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id             Int             @id @default(autoincrement())
+  name           String
+  phone          String          @default("")
+  email          String          @default("")
+  address        String          @default("")
+  document       String          @default("")
+  vehicle        String          @default("")
+  notes          String          @default("")
+  creditLimit    Float           @default(0)
+  currentBalance Float           @default(0)
+  sales          Sale[]
+  creditPayments CreditPayment[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
 }
 
 model Supplier {
@@ -73,58 +133,145 @@ model Supplier {
   updatedAt     DateTime        @updatedAt
 }
 
+model Vehicle {
+  id       Int             @id @default(autoincrement())
+  brand    String
+  model    String
+  year     Int?
+  products ProductVehicle[]
+  createdAt DateTime @default(now())
+}
+
+model ProductVehicle {
+  id        Int     @id @default(autoincrement())
+  productId Int
+  product   Product @relation(fields: [productId], references: [id])
+  vehicleId Int
+  vehicle   Vehicle @relation(fields: [vehicleId], references: [id])
+  @@unique([productId, vehicleId])
+}
+
 model Sale {
-  id             Int        @id @default(autoincrement())
+  id             Int            @id @default(autoincrement())
+  invoiceNumber  String?        @unique
   clientId       Int?
-  client         Client?    @relation(fields: [clientId], references: [id])
+  client         Client?        @relation(fields: [clientId], references: [id])
   userId         Int
-  user           User       @relation(fields: [userId], references: [id])
+  user           User           @relation(fields: [userId], references: [id])
+  cashRegisterId Int?
+  cashRegister   CashRegister?  @relation(fields: [cashRegisterId], references: [id])
+  currencyId     Int?
+  currency       Currency?      @relation(fields: [currencyId], references: [id])
   items          SaleItem[]
-  subtotal       Float      @default(0)
-  discount       Float      @default(0)
-  tax            Float      @default(0)
-  total          Float      @default(0)
-  paymentMethod  String     @default("cash")
-  paymentDetails String     @default("")
-  status         String     @default("completed")
-  createdAt      DateTime   @default(now())
+  creditPayments CreditPayment[]
+  returns        SaleReturn[]
+  subtotal       Float          @default(0)
+  discount       Float          @default(0)
+  tax            Float          @default(0)
+  taxTotal       Float          @default(0)
+  total          Float          @default(0)
+  paymentMethod  String         @default("cash")
+  paymentDetails String         @default("")
+  status         String         @default("completed")
+  cancelledAt    DateTime?
+  cancelReason   String         @default("")
+  createdAt      DateTime       @default(now())
 }
 
 model SaleItem {
-  id         Int      @id @default(autoincrement())
-  saleId     Int
-  sale       Sale     @relation(fields: [saleId], references: [id])
-  productId  Int
-  product    Product  @relation(fields: [productId], references: [id])
+  id          Int      @id @default(autoincrement())
+  saleId      Int
+  sale        Sale     @relation(fields: [saleId], references: [id])
+  productId   Int
+  product     Product  @relation(fields: [productId], references: [id])
   productName String
-  quantity   Int      @default(1)
-  unitPrice  Float
-  totalPrice Float
+  quantity    Int      @default(1)
+  unitPrice   Float
+  totalPrice  Float
+}
+
+model SaleReturn {
+  id        Int              @id @default(autoincrement())
+  saleId    Int
+  sale      Sale             @relation(fields: [saleId], references: [id])
+  reason    String
+  createdAt DateTime         @default(now())
+  items     SaleReturnItem[]
+}
+
+model SaleReturnItem {
+  id           Int        @id @default(autoincrement())
+  saleReturnId Int
+  saleReturn   SaleReturn @relation(fields: [saleReturnId], references: [id])
+  productId    Int
+  product      Product    @relation(fields: [productId], references: [id])
+  productName  String
+  quantity     Int
+  unitPrice    Float
+  subtotal     Float
+}
+
+model CreditPayment {
+  id        Int      @id @default(autoincrement())
+  saleId    Int
+  sale      Sale     @relation(fields: [saleId], references: [id])
+  clientId  Int?
+  client    Client?  @relation(fields: [clientId], references: [id])
+  amount    Float
+  method    String   @default("cash")
+  notes     String   @default("")
+  createdAt DateTime @default(now())
+}
+
+model CashRegister {
+  id             Int             @id @default(autoincrement())
+  userId         Int
+  user           User            @relation(fields: [userId], references: [id])
+  openingBalance Float           @default(0)
+  closingBalance Float?
+  openingDate    DateTime        @default(now())
+  closingDate    DateTime?
+  status         String          @default("open")
+  notes          String          @default("")
+  sales          Sale[]
+  movements      CashMovement[]
+}
+
+model CashMovement {
+  id             Int          @id @default(autoincrement())
+  cashRegisterId Int
+  cashRegister   CashRegister @relation(fields: [cashRegisterId], references: [id])
+  type           String       @default("income")
+  amount         Float
+  description    String
+  reference      String       @default("")
+  createdAt      DateTime     @default(now())
 }
 
 model PurchaseOrder {
-  id         Int            @id @default(autoincrement())
-  supplierId Int
-  supplier   Supplier       @relation(fields: [supplierId], references: [id])
-  userId     Int
-  user       User           @relation(fields: [userId], references: [id])
-  items      PurchaseItem[]
-  subtotal   Float          @default(0)
-  tax        Float          @default(0)
-  total      Float          @default(0)
-  status     String         @default("pending")
-  createdAt  DateTime       @default(now())
-  receivedAt DateTime?
+  id          Int            @id @default(autoincrement())
+  supplierId  Int
+  supplier    Supplier       @relation(fields: [supplierId], references: [id])
+  userId      Int
+  user        User           @relation(fields: [userId], references: [id])
+  items       PurchaseItem[]
+  subtotal    Float          @default(0)
+  tax         Float          @default(0)
+  total       Float          @default(0)
+  status      String         @default("pending")
+  invoiceFile String         @default("")
+  createdAt   DateTime       @default(now())
+  receivedAt  DateTime?
 }
 
 model PurchaseItem {
-  id           Int           @id @default(autoincrement())
-  purchaseId   Int
-  purchase     PurchaseOrder @relation(fields: [purchaseId], references: [id])
-  productId    Int
-  product      Product       @relation(fields: [productId], references: [id])
-  productName  String
-  quantity     Int
-  unitCost     Float
-  totalCost    Float
+  id          Int           @id @default(autoincrement())
+  purchaseId  Int
+  purchase    PurchaseOrder @relation(fields: [purchaseId], references: [id])
+  productId   Int
+  product     Product       @relation(fields: [productId], references: [id])
+  productName String
+  quantity    Int
+  unitCost    Float
+  totalCost   Float
 }

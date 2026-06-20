@@ -1,10 +1,11 @@
 import { Router } from 'express'
 import { PrismaClient } from '@prisma/client'
+import { requirePermission } from '../middleware/auth'
 
 export function purchaseRoutes(prisma: PrismaClient) {
   const router = Router()
 
-  router.get('/', async (req, res, next) => {
+  router.get('/', requirePermission(prisma, 'purchases', 'view'), async (req, res, next) => {
     try {
       const { start, end, supplierId, status } = req.query
       const where: any = {}
@@ -22,22 +23,22 @@ export function purchaseRoutes(prisma: PrismaClient) {
         include: { items: true, supplier: true, user: true },
         orderBy: { createdAt: 'desc' },
       })
-      res.json(purchases)
+      res.json(purchases.map(p => ({ ...p, invoiceFile: p.invoiceFile || undefined })))
     } catch (e) { next(e) }
   })
 
-  router.get('/:id', async (req, res, next) => {
+  router.get('/:id', requirePermission(prisma, 'purchases', 'view'), async (req, res, next) => {
     try {
       const purchase = await prisma.purchaseOrder.findUnique({
         where: { id: Number(req.params.id) },
         include: { items: true, supplier: true, user: true },
       })
       if (!purchase) return res.status(404).json({ error: 'Purchase not found' })
-      res.json(purchase)
+      res.json({ ...purchase, invoiceFile: purchase.invoiceFile || undefined })
     } catch (e) { next(e) }
   })
 
-  router.post('/', async (req, res, next) => {
+  router.post('/', requirePermission(prisma, 'purchases', 'create'), async (req, res, next) => {
     try {
       const { items, supplierId, userId } = req.body
       const result = await prisma.$transaction(async (tx) => {
@@ -79,7 +80,7 @@ export function purchaseRoutes(prisma: PrismaClient) {
     } catch (e) { next(e) }
   })
 
-  router.patch('/:id/receive', async (req, res, next) => {
+  router.patch('/:id/receive', requirePermission(prisma, 'purchases', 'receive'), async (req, res, next) => {
     try {
       const result = await prisma.$transaction(async (tx) => {
         const purchase = await tx.purchaseOrder.findUnique({

@@ -11,9 +11,11 @@ interface User {
 interface AuthContextType {
   user: User | null
   token: string | null
+  permissions: { module: string, action: string }[]
   login: (username: string, password: string) => Promise<void>
   logout: () => void
   isAuthenticated: boolean
+  refreshPermissions: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
@@ -21,6 +23,7 @@ const AuthContext = createContext<AuthContextType | null>(null)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'))
+  const [permissions, setPermissions] = useState<{ module: string, action: string }[]>([])
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user')
@@ -28,6 +31,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(JSON.parse(storedUser))
     }
   }, [])
+
+  useEffect(() => {
+    if (token) {
+      refreshPermissions()
+    }
+  }, [token])
+
+  const refreshPermissions = async () => {
+    try {
+      const res = await api.get('/permissions/mine')
+      setPermissions(res.data)
+    } catch {
+      setPermissions([])
+    }
+  }
 
   const login = async (username: string, password: string) => {
     const res = await api.post('/auth/login', { username, password })
@@ -43,10 +61,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('user')
     setUser(null)
     setToken(null)
+    setPermissions([])
   }
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, isAuthenticated: !!token }}>
+    <AuthContext.Provider value={{ user, token, permissions, login, logout, isAuthenticated: !!token, refreshPermissions }}>
       {children}
     </AuthContext.Provider>
   )

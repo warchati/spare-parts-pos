@@ -70,6 +70,113 @@ async function main() {
     })
   }
 
+  const iva = await prisma.tax.upsert({
+    where: { id: 1 },
+    update: {},
+    create: { name: 'IVA 21%', percentage: 21, isDefault: true },
+  })
+
+  const dh = await prisma.currency.upsert({
+    where: { code: 'DH' },
+    update: {},
+    create: { code: 'DH', name: 'Dírham Marroquí', symbol: 'DH', exchangeRate: 1, isBase: true },
+  })
+  await prisma.currency.upsert({
+    where: { code: 'SAR' },
+    update: {},
+    create: { code: 'SAR', name: 'Riyal Saudí', symbol: '﷼', exchangeRate: 0.37, isBase: false },
+  })
+  await prisma.currency.upsert({
+    where: { code: 'EUR' },
+    update: {},
+    create: { code: 'EUR', name: 'Euro', symbol: '€', exchangeRate: 10.6, isBase: false },
+  })
+  await prisma.currency.upsert({
+    where: { code: 'USD' },
+    update: {},
+    create: { code: 'USD', name: 'Dólar', symbol: '$', exchangeRate: 9.8, isBase: false },
+  })
+
+  const roles = ['admin', 'supervisor', 'cashier', 'seller']
+  const permDefs: Record<string, Record<string, string[]>> = {
+    admin: {
+      pos: ['sell'],
+      products: ['view', 'create', 'edit'],
+      clients: ['view', 'create', 'edit'],
+      suppliers: ['view', 'create', 'edit'],
+      sales: ['view'],
+      purchases: ['view', 'create', 'receive'],
+      dashboard: ['view'],
+      cashRegister: ['open', 'close', 'movements'],
+      users: ['view', 'create', 'edit', 'delete'],
+      vehicles: ['view', 'create', 'edit', 'delete'],
+      credit: ['view', 'pay'],
+      exports: ['view'],
+      taxes: ['create', 'edit', 'view'],
+      currencies: ['create', 'edit', 'view'],
+    },
+    supervisor: {
+      pos: ['sell'],
+      products: ['view', 'create', 'edit'],
+      clients: ['view', 'create', 'edit'],
+      suppliers: ['view', 'create', 'edit'],
+      sales: ['view'],
+      purchases: ['view', 'create', 'receive'],
+      dashboard: ['view'],
+      cashRegister: ['open', 'close', 'movements'],
+      users: [],
+      vehicles: ['view', 'create', 'edit', 'delete'],
+      credit: ['view', 'pay'],
+      exports: ['view'],
+      taxes: ['view'],
+      currencies: ['view'],
+    },
+    cashier: {
+      pos: ['sell'],
+      products: ['view'],
+      clients: ['view'],
+      suppliers: [],
+      sales: ['view'],
+      purchases: [],
+      dashboard: [],
+      cashRegister: [],
+      users: [],
+      vehicles: [],
+      credit: [],
+      exports: [],
+      taxes: [],
+      currencies: [],
+    },
+    seller: {
+      pos: ['sell'],
+      products: ['view'],
+      clients: ['view', 'create', 'edit'],
+      suppliers: [],
+      sales: ['view'],
+      purchases: [],
+      dashboard: [],
+      cashRegister: [],
+      users: [],
+      vehicles: [],
+      credit: ['view'],
+      exports: [],
+      taxes: [],
+      currencies: [],
+    },
+  }
+
+  for (const [role, modules] of Object.entries(permDefs)) {
+    for (const [module, actions] of Object.entries(modules)) {
+      for (const action of actions) {
+        await prisma.rolePermission.upsert({
+          where: { role_module_action: { role, module, action } },
+          update: {},
+          create: { role, module, action },
+        })
+      }
+    }
+  }
+
   console.log('Seed completed!')
   console.log(`Admin: admin / admin123`)
   console.log(`Cajero: cajero / cajero123`)

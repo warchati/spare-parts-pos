@@ -1,19 +1,39 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { ShoppingCart, Package, Users, Truck, Receipt, ClipboardList, LogOut, Store } from 'lucide-react'
+import { ShoppingCart, Package, Users, Truck, Receipt, ClipboardList, LogOut, Store, LayoutDashboard, DollarSign, UserCog, Car, CreditCard, Percent, Shield, BarChart3 } from 'lucide-react'
+import { can, setPermissions } from '../lib/permissions'
+import { useEffect } from 'react'
 
 const navItems = [
-  { to: '/pos', label: 'POS', icon: ShoppingCart },
-  { to: '/products', label: 'Productos', icon: Package },
-  { to: '/clients', label: 'Clientes', icon: Users },
-  { to: '/suppliers', label: 'Proveedores', icon: Truck },
-  { to: '/sales', label: 'Ventas', icon: Receipt },
-  { to: '/purchases', label: 'Compras', icon: ClipboardList },
+  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, module: 'dashboard', action: 'view' },
+  { to: '/pos', label: 'POS', icon: ShoppingCart, module: 'pos', action: 'sell' },
+  { to: '/products', label: 'Productos', icon: Package, module: 'products', action: 'view' },
+  { to: '/clients', label: 'Clientes', icon: Users, module: 'clients', action: 'view' },
+  { to: '/suppliers', label: 'Proveedores', icon: Truck, module: 'suppliers', action: 'view' },
+  { to: '/sales', label: 'Ventas', icon: Receipt, module: 'sales', action: 'view' },
+  { to: '/purchases', label: 'Compras', icon: ClipboardList, module: 'purchases', action: 'view' },
+  { to: '/cash-register', label: 'Caja', icon: DollarSign, module: 'cashRegister', action: 'movements' },
+  { to: '/users', label: 'Usuarios', icon: UserCog, module: 'users', action: 'view' },
+  { to: '/permissions', label: 'Permisos', icon: Shield, module: 'permissions', action: 'edit' },
+  { to: '/vehicles', label: 'Vehículos', icon: Car, module: 'vehicles', action: 'view' },
+  { to: '/credit', label: 'Crédito', icon: CreditCard, module: 'credit', action: 'view' },
+  { to: '/tax-report', label: 'Reporte IVA', icon: BarChart3, module: 'dashboard', action: 'view' },
+  { to: '/taxes', label: 'Impuestos', icon: Percent, module: 'taxes', action: 'view' },
+  { to: '/currencies', label: 'Monedas', icon: DollarSign, module: 'currencies', action: 'view' },
 ]
 
 export default function Layout() {
-  const { user, logout } = useAuth()
+  const { user, logout, permissions } = useAuth()
   const navigate = useNavigate()
+  const userRole = user?.role
+
+  useEffect(() => {
+    if (permissions && permissions.length > 0) {
+      setPermissions(permissions)
+    }
+  }, [permissions])
+
+  const visibleItems = navItems.filter(item => can(userRole, item.module, item.action))
 
   const handleLogout = () => {
     logout()
@@ -31,8 +51,8 @@ export default function Layout() {
           <p className="text-xs text-gray-500 mt-1">Sistema de Postventa</p>
         </div>
 
-        <nav className="flex-1 p-2 space-y-1">
-          {navItems.map(({ to, label, icon: Icon }) => (
+        <nav className="flex-1 p-2 space-y-1 overflow-auto">
+          {visibleItems.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
               to={to}
