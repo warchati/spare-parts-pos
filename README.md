@@ -211,27 +211,64 @@ npx expo start
 
 ## Cómo Hacer Cambios y Desplegar
 
-### Backend
-1. Haz cambios en `backend/src/`
-2. Compila: `cd backend && npm run build`
-3. Despliega a Vercel:
-   ```
-   npx vercel deploy --prod
-   ```
+### 1. Hacer commits y push a GitHub
+```bash
+cd "C:\Users\admin\Desktop\postventa\spare-parts-pos-v2"
+git add -A
+git commit -m "descripción de los cambios"
+git push origin main
+```
 
-### Frontend
-1. Haz cambios en `web/src/`
-2. Despliega a Vercel:
-   ```
-   cd web && npx vercel deploy --prod
-   ```
+### 2. Desplegar Backend en Vercel
+Opción A — API (recomendado):
+```bash
+curl -s -X POST "https://api.vercel.com/v13/deployments?teamId=team_emFEjso4w4GpBnHXldl4bWMm" ^
+  -H "Authorization: Bearer <TOKEN_VERCEL>" ^
+  -H "Content-Type: application/json" ^
+  -d "{\"name\":\"backend\",\"project\":\"backend\",\"target\":\"production\",\"gitSource\":{\"type\":\"github\",\"repoId\":1274132236,\"ref\":\"main\"}}"
+```
 
-### Base de datos (cambios en schema)
-1. Edita `backend/prisma/schema.prisma`
-2. Aplica cambios:
-   ```
-   cd backend && npx prisma db push
-   ```
+Opción B — CLI (requiere .vercel/project.json):
+```bash
+cd backend
+npx vercel deploy --prod --token <TOKEN_VERCEL>
+```
+
+### 3. Desplegar Frontend en Vercel
+```bash
+curl -s -X POST "https://api.vercel.com/v13/deployments?teamId=team_emFEjso4w4GpBnHXldl4bWMm" ^
+  -H "Authorization: Bearer <TOKEN_VERCEL>" ^
+  -H "Content-Type: application/json" ^
+  -d "{\"name\":\"web\",\"project\":\"web\",\"target\":\"production\",\"gitSource\":{\"type\":\"github\",\"repoId\":1274132236,\"ref\":\"main\"}}"
+```
+
+### 4. Verificar estado del deploy
+```bash
+# Ver últimos deployments
+curl -s "https://api.vercel.com/v6/deployments?teamId=team_emFEjso4w4GpBnHXldl4bWMm&limit=5" ^
+  -H "Authorization: Bearer <TOKEN_VERCEL>"
+```
+
+### Tokens y claves
+Están en `C:\Users\admin\Desktop\postventa\token.xlsx`:
+| Servicio | Token |
+|----------|-------|
+| GitHub | `ghp_...` |
+| Vercel | `vcp_...` |
+| Supabase | `sbp_...` |
+| Render | `rnd_...` |
+
+### URLs de producción
+- **Frontend (Web POS):** https://web-postventa.vercel.app
+- **Backend (API):** https://backend-postventa.vercel.app
+- **Health Check:** https://backend-postventa.vercel.app/api/health
+- **Repositorio:** https://github.com/warchati/spare-parts-pos
+
+### Notas importantes
+- Siempre hacer `git push origin main` primero antes de desplegar
+- Los tokens NO deben incluirse en commits o archivos públicos
+- Si cambia el schema de Prisma, ejecutar `cd backend && npx prisma db push` antes de desplegar
+- El VITE_API_URL del frontend apunta a `https://backend-postventa.vercel.app/api`
 
 ---
 
