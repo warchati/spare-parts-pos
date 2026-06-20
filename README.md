@@ -259,7 +259,7 @@ Están en `C:\Users\admin\Desktop\postventa\token.xlsx`:
 | Render | `rnd_...` |
 
 ### URLs de producción
-- **Frontend (Web POS):** https://web-postventa.vercel.app
+- **Frontend (Web POS):** https://web-swart-seven-22.vercel.app
 - **Backend (API):** https://backend-postventa.vercel.app
 - **Health Check:** https://backend-postventa.vercel.app/api/health
 - **Repositorio:** https://github.com/warchati/spare-parts-pos
