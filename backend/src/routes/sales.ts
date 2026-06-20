@@ -132,14 +132,13 @@ export function saleRoutes(prisma: PrismaClient) {
 
         // fallback to default tax if no per-product taxes
         if (taxTotal === 0) {
-          const defaultTax = await tx.tax.findFirst({ where: { isDefault: true } })
+          const defaultTax = await tx.tax.findFirst({ where: { isDefault: true, isActive: true } })
           if (defaultTax) {
             taxTotal = subtotal * defaultTax.percentage / 100
           }
         }
 
-        const tax = taxTotal
-        const total = subtotal - (discount || 0) + tax
+        const total = subtotal - (discount || 0) + taxTotal
 
         let resolvedCurrencyId = currencyId || null
         if (!resolvedCurrencyId) {
@@ -175,7 +174,6 @@ export function saleRoutes(prisma: PrismaClient) {
             invoiceNumber,
             subtotal,
             discount: discount || 0,
-            tax,
             taxTotal,
             total,
             paymentMethod: paymentMethod || 'cash',

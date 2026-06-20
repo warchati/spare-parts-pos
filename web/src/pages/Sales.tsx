@@ -100,7 +100,7 @@ export default function Sales() {
                     {s.paymentMethod === 'credit' && <CreditCard className="w-3.5 h-3.5 text-orange-500" />}
                   </div>
                 </td>
-                <td className="px-4 py-3 text-right font-bold">{formatCurrency(s.total)}</td>
+                <td className="px-4 py-3 text-right font-bold">{formatCurrency(s.total, s.currency?.symbol)}</td>
                 <td className="px-4 py-3">
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${s.status === 'completed' ? 'bg-green-100 text-green-700' : s.status === 'cancelled' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
                     {s.status === 'completed' ? 'Completada' : s.status === 'cancelled' ? 'Cancelada' : 'Pendiente'}
@@ -128,7 +128,7 @@ export default function Sales() {
                 <p className="text-sm text-gray-500">IVA Total: <span className="font-medium text-gray-800">{formatCurrency(selectedSale.taxTotal, selectedSale.currency?.symbol)}</span></p>
               )}
               {selectedSale.paymentMethod === 'credit' && selectedSale.creditPayment && (
-                <p className="text-sm text-orange-600">Crédito: $ {selectedSale.creditPayment.amount?.toLocaleString('es-AR')}</p>
+                <p className="text-sm text-orange-600">Crédito: {formatCurrency(selectedSale.creditPayment.amount, selectedSale.currency?.symbol)}</p>
               )}
             </div>
             <div className="border-t pt-3 space-y-2">

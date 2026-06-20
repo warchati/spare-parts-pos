@@ -226,7 +226,7 @@ export default function Purchases() {
                 {filteredProducts.map(p => (
                   <button key={p.id} onClick={() => addItem(p)} className="w-full text-left px-3 py-2 hover:bg-blue-50 text-sm border-b last:border-0">
                     <span className="font-medium">{p.name}</span>
-                    <span className="text-gray-500 ml-2">Stock: {p.stock} | $ {p.buyPrice}</span>
+                    <span className="text-gray-500 ml-2">Stock: {p.stock} | {formatCurrency(p.buyPrice)}</span>
                     {p.barcode && <span className="text-gray-400 ml-2 text-xs">Código de Barras: {p.barcode}</span>}
                   </button>
                 ))}
