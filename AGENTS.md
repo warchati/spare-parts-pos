@@ -1,0 +1,41 @@
+# Project: Spare Parts POS v2
+
+## Location
+C:\Users\admin\Desktop\postventa\spare-parts-pos-v2
+
+## Repositorio GitHub
+https://github.com/warchati/spare-parts-pos
+- Rama: main
+- Token en token.xlsx
+
+## Tokens (ver token.xlsx)
+C:\Users\admin\Desktop\postventa\token.xlsx
+
+## Vercel (producción)
+- Team ID: team_emFEjso4w4GpBnHXldl4bWMm
+- Backend project: backend
+- Frontend project: web
+- Repo ID: 1274132236
+- URLs:
+  - Frontend: https://web-postventa.vercel.app
+  - Backend: https://backend-postventa.vercel.app
+  - Health: https://backend-postventa.vercel.app/api/health
+
+## Deploy commands
+Ver README.md sección "Cómo Hacer Cambios y Desplegar"
+
+## Flujo para subir cambios
+1. git add -A && git commit -m "mensaje" && git push origin main
+2. Llamar API de Vercel para backend (con target=production)
+3. Llamar API de Vercel para frontend (con target=production)
+
+## Base de datos
+- Neon PostgreSQL (producción)
+- Supabase (secundaria)
+- Prisma ORM
+
+## Estructura
+- backend/ - API Express + TypeScript
+- web/ - Frontend React + Vite + Tailwind
+- mobile/ - App Expo React Native
+- shared/ - Tipos compartidos
