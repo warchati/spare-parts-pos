@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react'
 import api from '../lib/api'
+import { useAuth } from '../contexts/AuthContext'
+import { can } from '../lib/permissions'
 import { Search, Plus, Pencil, Truck } from 'lucide-react'
 
 export default function Suppliers() {
+  const { user } = useAuth()
   const [suppliers, setSuppliers] = useState<any[]>([])
   const [search, setSearch] = useState('')
   const [showForm, setShowForm] = useState(false)
@@ -30,7 +33,9 @@ export default function Suppliers() {
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2"><Truck className="w-6 h-6" /> Proveedores</h1>
-        <button onClick={() => { setEditing(null); setForm({ name: '', contact: '', phone: '', email: '', address: '', notes: '' }); setShowForm(true) }} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"><Plus className="w-4 h-4" /> Nuevo Proveedor</button>
+        {can(user?.role, 'suppliers', 'create') && (
+          <button onClick={() => { setEditing(null); setForm({ name: '', contact: '', phone: '', email: '', address: '', notes: '' }); setShowForm(true) }} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"><Plus className="w-4 h-4" /> Nuevo Proveedor</button>
+        )}
       </div>
       <div className="relative mb-4">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -55,7 +60,9 @@ export default function Suppliers() {
                 <td className="px-4 py-3 text-sm text-gray-500">{s.phone}</td>
                 <td className="px-4 py-3 text-sm text-gray-500">{s.email}</td>
                 <td className="px-4 py-3 text-right">
-                  <button onClick={() => { setEditing(s); setForm(s); setShowForm(true) }} className="p-1 hover:bg-gray-100 rounded"><Pencil className="w-4 h-4 text-gray-400" /></button>
+                  {can(user?.role, 'suppliers', 'edit') && (
+                    <button onClick={() => { setEditing(s); setForm(s); setShowForm(true) }} className="p-1 hover:bg-gray-100 rounded"><Pencil className="w-4 h-4 text-gray-400" /></button>
+                  )}
                 </td>
               </tr>
             ))}

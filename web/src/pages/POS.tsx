@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import api from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
+import { can } from '../lib/permissions'
 import { Search, Plus, Minus, Trash2, X, User, CreditCard, DollarSign, Building2 } from 'lucide-react'
 
 interface Product {
@@ -9,6 +10,16 @@ interface Product {
   name: string
   sellPrice: number
   stock: number
+}
+
+interface Currency {
+  id: number
+  code: string
+  name: string
+  symbol: string
+  exchangeRate: number
+  isBase: boolean
+  isActive: boolean
 }
 
 interface CartItem {
@@ -38,12 +49,36 @@ export default function POS() {
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [currencies, setCurrencies] = useState<Currency[]>([])
+  const [selectedCurrency, setSelectedCurrency] = useState<Currency | null>(null)
+  const [defaultTax, setDefaultTax] = useState<any>(null)
   const searchRef = useRef<HTMLInputElement>(null)
   const searchTimeout = useRef<ReturnType<typeof setTimeout>>()
 
   useEffect(() => {
     searchRef.current?.focus()
+    loadCurrencies()
+    loadDefaultTax()
   }, [])
+
+  const loadDefaultTax = async () => {
+    try {
+      const res = await api.get('/taxes')
+      const def = res.data.find((t: any) => t.isDefault)
+      if (def) setDefaultTax(def)
+    } catch {}
+  }
+
+  const loadCurrencies = async () => {
+    try {
+      const res = await api.get('/currencies')
+      const active = res.data.filter((c: Currency) => c.isActive)
+      setCurrencies(active)
+      const base = active.find((c: Currency) => c.isBase)
+      if (base) setSelectedCurrency(base)
+      else if (active.length > 0) setSelectedCurrency(active[0])
+    } catch { setCurrencies([]) }
+  }
 
   useEffect(() => {
     if (!search.trim()) { setResults([]); return }
@@ -101,6 +136,9 @@ export default function POS() {
   }
 
   const subtotal = cart.reduce((sum, i) => sum + i.totalPrice, 0)
+  const taxRate = defaultTax?.percentage || 0
+  const taxAmount = subtotal * taxRate / 100
+  const total = subtotal + taxAmount
 
   const handlePayment = async () => {
     if (cart.length === 0) return
@@ -111,6 +149,7 @@ export default function POS() {
         clientId: client?.id || null,
         userId: user!.id,
         paymentMethod,
+        currencyId: selectedCurrency?.id || null,
       })
       setSuccess(true)
       setCart([])
@@ -124,7 +163,7 @@ export default function POS() {
     }
   }
 
-  const formatCurrency = (n: number) => `$${n.toLocaleString('es-AR')}`
+  const formatCurrency = (n: number) => `${selectedCurrency?.symbol || '$'} ${n.toLocaleString('es-AR')}`
 
   return (
     <div className="h-full flex">
@@ -203,7 +242,7 @@ export default function POS() {
           </div>
         )}
 
-        <div className="mb-4">
+        <div className="mb-4 space-y-2">
           <button
             onClick={() => setShowClientModal(true)}
             className="w-full flex items-center gap-2 px-3 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 text-left"
@@ -214,6 +253,24 @@ export default function POS() {
             </span>
             {client && <X className="w-4 h-4 ml-auto text-gray-400" onClick={(e) => { e.stopPropagation(); setClient(null) }} />}
           </button>
+
+          {currencies.length > 0 && (
+            <div className="flex items-center gap-2 px-3 py-2.5 border border-gray-300 rounded-lg">
+              <DollarSign className="w-4 h-4 text-gray-400" />
+              <select
+                value={selectedCurrency?.id || ''}
+                onChange={(e) => {
+                  const curr = currencies.find(c => c.id === Number(e.target.value))
+                  if (curr) setSelectedCurrency(curr)
+                }}
+                className="flex-1 bg-transparent outline-none text-sm text-gray-700"
+              >
+                {currencies.map(c => (
+                  <option key={c.id} value={c.id}>{c.code} - {c.symbol}</option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         <div className="flex-1" />
@@ -223,9 +280,15 @@ export default function POS() {
             <span>Subtotal</span>
             <span>{formatCurrency(subtotal)}</span>
           </div>
+          {defaultTax && (
+            <div className="flex justify-between text-sm text-gray-500">
+              <span>IVA ({defaultTax.percentage}%)</span>
+              <span>{formatCurrency(taxAmount)}</span>
+            </div>
+          )}
           <div className="flex justify-between text-xl font-bold text-gray-800">
             <span>Total</span>
-            <span>{formatCurrency(subtotal)}</span>
+            <span>{formatCurrency(total)}</span>
           </div>
 
           <div className="grid grid-cols-3 gap-2">
@@ -249,13 +312,15 @@ export default function POS() {
             ))}
           </div>
 
-          <button
-            onClick={() => setShowPaymentModal(true)}
-            disabled={cart.length === 0}
-            className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold text-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {cart.length === 0 ? 'Agrega productos' : `Cobrar ${formatCurrency(subtotal)}`}
-          </button>
+          {can(user?.role, 'pos', 'sell') && (
+            <button
+              onClick={() => setShowPaymentModal(true)}
+              disabled={cart.length === 0}
+              className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold text-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {cart.length === 0 ? 'Agrega productos' : `Cobrar ${formatCurrency(total)}`}
+            </button>
+          )}
         </div>
       </div>
 
@@ -305,9 +370,19 @@ export default function POS() {
               ))}
             </div>
             <div className="border-t pt-3 mb-4">
+              <div className="flex justify-between text-sm text-gray-500">
+                <span>Subtotal</span>
+                <span>{formatCurrency(subtotal)}</span>
+              </div>
+              {defaultTax && (
+                <div className="flex justify-between text-sm text-gray-500">
+                  <span>IVA ({defaultTax.percentage}%)</span>
+                  <span>{formatCurrency(taxAmount)}</span>
+                </div>
+              )}
               <div className="flex justify-between font-bold text-lg">
                 <span>Total</span>
-                <span>{formatCurrency(subtotal)}</span>
+                <span>{formatCurrency(total)}</span>
               </div>
               <p className="text-sm text-gray-500 mt-1 capitalize">Pago: {paymentMethod === 'cash' ? 'Efectivo' : paymentMethod === 'card' ? 'Tarjeta' : 'Transferencia'}</p>
             </div>

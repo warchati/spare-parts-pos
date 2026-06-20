@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { PrismaClient } from '@prisma/client'
+import { requirePermission } from '../middleware/auth'
 
 export function clientRoutes(prisma: PrismaClient) {
   const router = Router()
@@ -21,6 +22,22 @@ export function clientRoutes(prisma: PrismaClient) {
       const clients = await prisma.client.findMany({
         where,
         orderBy: { name: 'asc' },
+        include: { _count: { select: { sales: true } } },
+      })
+      res.json(clients)
+    } catch (e) { next(e) }
+  })
+
+  router.get('/credit/summary', async (req, res, next) => {
+    try {
+      const clients = await prisma.client.findMany({
+        where: {
+          OR: [
+            { creditLimit: { gt: 0 } },
+            { currentBalance: { gt: 0 } },
+          ],
+        },
+        orderBy: { currentBalance: 'desc' },
       })
       res.json(clients)
     } catch (e) { next(e) }
@@ -30,21 +47,24 @@ export function clientRoutes(prisma: PrismaClient) {
     try {
       const client = await prisma.client.findUnique({
         where: { id: Number(req.params.id) },
-        include: { sales: { take: 20, orderBy: { createdAt: 'desc' } } },
+        include: {
+          sales: { take: 20, orderBy: { createdAt: 'desc' } },
+          creditPayments: { orderBy: { createdAt: 'desc' } },
+        },
       })
       if (!client) return res.status(404).json({ error: 'Client not found' })
       res.json(client)
     } catch (e) { next(e) }
   })
 
-  router.post('/', async (req, res, next) => {
+  router.post('/', requirePermission(prisma, 'clients', 'create'), async (req, res, next) => {
     try {
       const client = await prisma.client.create({ data: req.body })
       res.status(201).json(client)
     } catch (e) { next(e) }
   })
 
-  router.put('/:id', async (req, res, next) => {
+  router.put('/:id', requirePermission(prisma, 'clients', 'edit'), async (req, res, next) => {
     try {
       const client = await prisma.client.update({
         where: { id: Number(req.params.id) },

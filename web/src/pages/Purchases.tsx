@@ -1,8 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import api from '../lib/api'
-import { ClipboardList, Plus, Search, Package } from 'lucide-react'
+import { useAuth } from '../contexts/AuthContext'
+import { can } from '../lib/permissions'
+import { ClipboardList, Plus, Search, Package, Download, Upload, FileText, Trash2 } from 'lucide-react'
 
 export default function Purchases() {
+  const { user } = useAuth()
   const [purchases, setPurchases] = useState<any[]>([])
   const [products, setProducts] = useState<any[]>([])
   const [suppliers, setSuppliers] = useState<any[]>([])
@@ -10,11 +13,19 @@ export default function Purchases() {
   const [selectedItems, setSelectedItems] = useState<any[]>([])
   const [selectedSupplier, setSelectedSupplier] = useState('')
   const [productSearch, setProductSearch] = useState('')
+  const [receivedDateFilter, setReceivedDateFilter] = useState('')
+  const invoiceFileRef = useRef<HTMLInputElement>(null)
+  const [uploadingInvoice, setUploadingInvoice] = useState<number | null>(null)
 
   useEffect(() => { loadPurchases(); loadProducts(); loadSuppliers() }, [])
 
   const loadPurchases = async () => {
-    try { const res = await api.get('/purchases'); setPurchases(res.data) } catch {}
+    try {
+      const params: any = {}
+      if (receivedDateFilter) params.receivedDate = receivedDateFilter
+      const res = await api.get('/purchases', { params })
+      setPurchases(res.data)
+    } catch (e) { console.error(e) }
   }
   const loadProducts = async () => {
     try { const res = await api.get('/products'); setProducts(res.data) } catch {}
@@ -25,7 +36,8 @@ export default function Purchases() {
 
   const filteredProducts = products.filter(p =>
     p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
-    p.code.toLowerCase().includes(productSearch.toLowerCase())
+    p.code.toLowerCase().includes(productSearch.toLowerCase()) ||
+    (p.barcode && p.barcode.toLowerCase().includes(productSearch.toLowerCase()))
   )
 
   const addItem = (product: any) => {
@@ -59,13 +71,57 @@ export default function Purchases() {
     } catch (e: any) { alert(e.response?.data?.error || 'Error') }
   }
 
-  const formatCurrency = (n: number) => `$${n.toLocaleString('es-AR')}`
+  const handleInvoiceUpload = async (e: React.ChangeEvent<HTMLInputElement>, purchaseId: number) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = async () => {
+      try {
+        setUploadingInvoice(purchaseId)
+        await api.post(`/uploads/purchase-invoice/${purchaseId}`, { dataUrl: reader.result })
+        loadPurchases()
+      } catch (err: any) {
+        alert(err.response?.data?.error || 'Error al subir factura')
+      } finally {
+        setUploadingInvoice(null)
+      }
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const deleteInvoice = async (purchaseId: number) => {
+    try {
+      await api.delete(`/uploads/purchase-invoice/${purchaseId}`)
+      loadPurchases()
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Error al eliminar factura')
+    }
+  }
+
+  const formatCurrency = (n: number) => `$ ${n.toLocaleString('es-AR')}`
+  const formatDate = (d: string) => new Date(d).toLocaleString('es-AR')
 
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2"><ClipboardList className="w-6 h-6" /> Órdenes de Compra</h1>
-        <button onClick={() => { setShowForm(true); setSelectedItems([]); setSelectedSupplier('') }} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"><Plus className="w-4 h-4" /> Nueva Compra</button>
+        <div className="flex items-center gap-2">
+          <a
+            href={`${import.meta.env.VITE_API_URL || '/api'}/exports/stock/csv`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm"
+          >
+            <Download className="w-4 h-4" /> Exportar Stock
+          </a>
+          {can(user?.role, 'purchases', 'create') && (
+            <button onClick={() => { setShowForm(true); setSelectedItems([]); setSelectedSupplier('') }} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"><Plus className="w-4 h-4" /> Nueva Compra</button>
+          )}
+        </div>
+      </div>
+
+      <div className="flex gap-3 mb-4">
+        <input type="date" value={receivedDateFilter} onChange={(e) => { setReceivedDateFilter(e.target.value); setTimeout(loadPurchases, 0) }} className="px-3 py-2.5 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm" />
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -75,8 +131,10 @@ export default function Purchases() {
               <th className="text-left px-4 py-3">#</th>
               <th className="text-left px-4 py-3">Proveedor</th>
               <th className="text-left px-4 py-3">Fecha</th>
+              <th className="text-left px-4 py-3">Creado por</th>
               <th className="text-right px-4 py-3">Total</th>
               <th className="text-left px-4 py-3">Estado</th>
+              <th className="text-center px-4 py-3">Factura</th>
               <th className="text-right px-4 py-3"></th>
             </tr>
           </thead>
@@ -85,20 +143,62 @@ export default function Purchases() {
               <tr key={p.id} className="border-t border-gray-100 hover:bg-gray-50">
                 <td className="px-4 py-3 font-mono text-sm text-gray-500">#{p.id}</td>
                 <td className="px-4 py-3 font-medium">{p.supplier?.name}</td>
-                <td className="px-4 py-3 text-sm text-gray-500">{new Date(p.createdAt).toLocaleString('es-AR')}</td>
+                <td className="px-4 py-3 text-sm text-gray-500">{formatDate(p.createdAt)}</td>
+                <td className="px-4 py-3 text-sm text-gray-500">{p.user?.name || '-'}</td>
                 <td className="px-4 py-3 text-right font-bold">{formatCurrency(p.total)}</td>
                 <td className="px-4 py-3">
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${p.status === 'received' ? 'bg-green-100 text-green-700' : p.status === 'cancelled' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
                     {p.status === 'received' ? 'Recibida' : p.status === 'cancelled' ? 'Cancelada' : 'Pendiente'}
                   </span>
                 </td>
+                <td className="px-4 py-3 text-center">
+                  <div className="flex items-center justify-center gap-1">
+                    {p.invoiceFile ? (
+                      <>
+                        <a href={p.invoiceFile} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800" title="Ver factura">
+                          <FileText className="w-4 h-4" />
+                        </a>
+                        {can(user?.role, 'purchases', 'edit') && (
+                          <button onClick={() => deleteInvoice(p.id)} className="text-red-400 hover:text-red-600" title="Eliminar factura">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </>
+                    ) : (
+                      <span className="text-gray-300 text-xs">-</span>
+                    )}
+                    {can(user?.role, 'purchases', 'edit') && (
+                      <>
+                        <input
+                          type="file"
+                          ref={invoiceFileRef}
+                          onChange={(e) => handleInvoiceUpload(e, p.id)}
+                          accept="image/*,.pdf"
+                          className="hidden"
+                          id={`invoice-upload-${p.id}`}
+                        />
+                        <button
+                          onClick={() => document.getElementById(`invoice-upload-${p.id}`)?.click()}
+                          disabled={uploadingInvoice === p.id}
+                          className="text-gray-400 hover:text-blue-600"
+                          title="Subir factura"
+                        >
+                          <Upload className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </td>
                 <td className="px-4 py-3 text-right">
-                  {p.status === 'pending' && (
+                  {p.status === 'pending' && can(user?.role, 'purchases', 'receive') && (
                     <button onClick={() => receivePurchase(p.id)} className="text-sm text-blue-600 hover:underline">Recibir</button>
                   )}
                 </td>
               </tr>
             ))}
+            {purchases.length === 0 && (
+              <tr><td colSpan={8} className="text-center py-8 text-gray-400">No hay compras</td></tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -126,7 +226,8 @@ export default function Purchases() {
                 {filteredProducts.map(p => (
                   <button key={p.id} onClick={() => addItem(p)} className="w-full text-left px-3 py-2 hover:bg-blue-50 text-sm border-b last:border-0">
                     <span className="font-medium">{p.name}</span>
-                    <span className="text-gray-500 ml-2">Stock: {p.stock} | ${p.buyPrice}</span>
+                    <span className="text-gray-500 ml-2">Stock: {p.stock} | {formatCurrency(p.buyPrice)}</span>
+                    {p.barcode && <span className="text-gray-400 ml-2 text-xs">Código de Barras: {p.barcode}</span>}
                   </button>
                 ))}
               </div>

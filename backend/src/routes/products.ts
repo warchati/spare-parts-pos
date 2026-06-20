@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { PrismaClient } from '@prisma/client'
+import { requirePermission } from '../middleware/auth'
 
 export function productRoutes(prisma: PrismaClient) {
   const router = Router()
@@ -23,47 +24,10 @@ export function productRoutes(prisma: PrismaClient) {
 
       const products = await prisma.product.findMany({
         where,
+        include: { images: true },
         orderBy: { name: 'asc' },
       })
       res.json(products)
-    } catch (e) { next(e) }
-  })
-
-  router.get('/:id', async (req, res, next) => {
-    try {
-      const product = await prisma.product.findUnique({
-        where: { id: Number(req.params.id) },
-      })
-      if (!product) return res.status(404).json({ error: 'Product not found' })
-      res.json(product)
-    } catch (e) { next(e) }
-  })
-
-  router.post('/', async (req, res, next) => {
-    try {
-      const product = await prisma.product.create({ data: req.body })
-      res.status(201).json(product)
-    } catch (e) { next(e) }
-  })
-
-  router.put('/:id', async (req, res, next) => {
-    try {
-      const product = await prisma.product.update({
-        where: { id: Number(req.params.id) },
-        data: req.body,
-      })
-      res.json(product)
-    } catch (e) { next(e) }
-  })
-
-  router.patch('/:id/stock', async (req, res, next) => {
-    try {
-      const { stock } = req.body
-      const product = await prisma.product.update({
-        where: { id: Number(req.params.id) },
-        data: { stock },
-      })
-      res.json(product)
     } catch (e) { next(e) }
   })
 
@@ -88,6 +52,45 @@ export function productRoutes(prisma: PrismaClient) {
         orderBy: { brand: 'asc' },
       })
       res.json(brands.map(b => b.brand))
+    } catch (e) { next(e) }
+  })
+
+  router.get('/:id', async (req, res, next) => {
+    try {
+      const product = await prisma.product.findUnique({
+        where: { id: Number(req.params.id) },
+        include: { images: true },
+      })
+      if (!product) return res.status(404).json({ error: 'Product not found' })
+      res.json(product)
+    } catch (e) { next(e) }
+  })
+
+  router.post('/', requirePermission(prisma, 'products', 'create'), async (req, res, next) => {
+    try {
+      const product = await prisma.product.create({ data: req.body })
+      res.status(201).json(product)
+    } catch (e) { next(e) }
+  })
+
+  router.put('/:id', requirePermission(prisma, 'products', 'edit'), async (req, res, next) => {
+    try {
+      const product = await prisma.product.update({
+        where: { id: Number(req.params.id) },
+        data: req.body,
+      })
+      res.json(product)
+    } catch (e) { next(e) }
+  })
+
+  router.patch('/:id/stock', requirePermission(prisma, 'products', 'edit'), async (req, res, next) => {
+    try {
+      const { stock } = req.body
+      const product = await prisma.product.update({
+        where: { id: Number(req.params.id) },
+        data: { stock },
+      })
+      res.json(product)
     } catch (e) { next(e) }
   })
 
