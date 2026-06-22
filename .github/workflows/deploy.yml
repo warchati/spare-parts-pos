@@ -1,0 +1,23 @@
+name: Deploy to Vercel
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy Backend
+        run: |
+          curl -s -X POST "https://api.vercel.com/v13/deployments?teamId=${{ secrets.VERCEL_TEAM_ID }}" \
+            -H "Authorization: Bearer ${{ secrets.VERCEL_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"name":"backend","project":"backend","target":"production","gitSource":{"type":"github","repoId":${{ secrets.REPO_ID }},"ref":"main"}}'
+
+      - name: Deploy Frontend
+        run: |
+          curl -s -X POST "https://api.vercel.com/v13/deployments?teamId=${{ secrets.VERCEL_TEAM_ID }}" \
+            -H "Authorization: Bearer ${{ secrets.VERCEL_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"name":"web","project":"web","target":"production","gitSource":{"type":"github","repoId":${{ secrets.REPO_ID }},"ref":"main"}}'
