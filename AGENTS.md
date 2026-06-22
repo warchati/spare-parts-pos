@@ -24,10 +24,9 @@ C:\Users\admin\Desktop\postventa\token.xlsx
 ## Deploy commands
 Ver README.md sección "Cómo Hacer Cambios y Desplegar"
 
-## Flujo para subir cambios
+## Flujo para subir cambios (auto-deploy)
 1. git add -A && git commit -m "mensaje" && git push origin main
-2. Llamar API de Vercel para backend (con target=production)
-3. Llamar API de Vercel para frontend (con target=production)
+2. ✅ GitHub Actions despliega automáticamente backend y frontend en Vercel
 
 ## Base de datos
 - Neon PostgreSQL (producción)
