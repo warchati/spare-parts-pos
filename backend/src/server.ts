@@ -27,7 +27,7 @@ export function createServer(prisma: PrismaClient) {
 
   app.use(helmet())
   app.use(cors({
-    origin: process.env.CORS_ORIGIN || ['https://web-postventa.vercel.app', 'https://web-swart-seven-22.vercel.app', 'http://localhost:5173'],
+    origin: process.env.CORS_ORIGIN || ['https://pos-spare-parts.vercel.app', 'http://localhost:5173'],
     credentials: true,
   }))
   app.use(express.json({ limit: '5mb' }))

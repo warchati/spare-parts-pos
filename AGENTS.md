@@ -17,9 +17,13 @@ C:\Users\admin\Desktop\postventa\token.xlsx
 - Frontend project ID: prj_ASGlwTyyBu8eADafetUURi6JIK1B
 - Repo ID: 1274132236
 - URLs:
-  - Frontend: pendiente (próximo deploy generará URL nueva)
+  - Frontend: https://pos-spare-parts.vercel.app
   - Backend: https://backend-postventa.vercel.app
   - Health: https://backend-postventa.vercel.app/api/health
+- Notas:
+  - Antes: `vercel build` + `vercel deploy --prebuilt` → DB caída (env vars no se vinculan con prebuilt)
+  - Ahora: `vercel deploy --prod` (sin --prebuilt) → Vercel rebuilds online → env vars funcionan correctamente
+  - Frontend renombrado de spare-parts-pos-web a pos-spare-parts para alias más limpio
 
 ## Deploy commands
 Ver README.md sección "Cómo Hacer Cambios y Desplegar"
