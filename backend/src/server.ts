@@ -36,9 +36,15 @@ export function createServer(prisma: PrismaClient) {
   app.get('/api/health', async (_req, res) => {
     try {
       await prisma.$queryRaw`SELECT 1`
-      res.json({ status: 'ok', db: 'connected' })
-    } catch {
-      res.json({ status: 'ok', db: 'error', message: 'Database connection failed' })
+      res.json({ status: 'ok', db: 'connected', env: process.env.NODE_ENV || 'not set' })
+    } catch (err) {
+      res.json({
+        status: 'ok',
+        db: 'error',
+        message: err instanceof Error ? err.message : String(err),
+        hasDbUrl: !!process.env.DATABASE_URL,
+        env: process.env.NODE_ENV || 'not set',
+      })
     }
   })
 
