@@ -13,11 +13,11 @@ C:\Users\admin\Desktop\postventa\token.xlsx
 
 ## Vercel (producción)
 - Team ID: team_emFEjso4w4GpBnHXldl4bWMm
-- Backend project: backend
-- Frontend project: web
+- Backend project ID: prj_kuuRyUPyElTAEN7xjj0aC8zrbJ7e
+- Frontend project ID: prj_ASGlwTyyBu8eADafetUURi6JIK1B
 - Repo ID: 1274132236
 - URLs:
-  - Frontend: https://web-postventa.vercel.app
+  - Frontend: pendiente (próximo deploy generará URL nueva)
   - Backend: https://backend-postventa.vercel.app
   - Health: https://backend-postventa.vercel.app/api/health
 

@@ -5,7 +5,7 @@ on:
     branches: [main]
 
 jobs:
-  deploy:
+  deploy-backend:
     runs-on: ubuntu-latest
     steps:
       - name: Deploy Backend
@@ -13,11 +13,14 @@ jobs:
           curl -s -X POST "https://api.vercel.com/v13/deployments?teamId=${{ secrets.VERCEL_TEAM_ID }}" \
             -H "Authorization: Bearer ${{ secrets.VERCEL_TOKEN }}" \
             -H "Content-Type: application/json" \
-            -d '{"name":"backend","project":"backend","target":"production","gitSource":{"type":"github","repoId":${{ secrets.REPO_ID }},"ref":"main"}}'
+            -d '{"name":"backend","project":"prj_kuuRyUPyElTAEN7xjj0aC8zrbJ7e","target":"production","gitSource":{"type":"github","repoId":${{ secrets.REPO_ID }},"ref":"main"}}'
 
+  deploy-frontend:
+    runs-on: ubuntu-latest
+    steps:
       - name: Deploy Frontend
         run: |
           curl -s -X POST "https://api.vercel.com/v13/deployments?teamId=${{ secrets.VERCEL_TEAM_ID }}" \
             -H "Authorization: Bearer ${{ secrets.VERCEL_TOKEN }}" \
             -H "Content-Type: application/json" \
-            -d '{"name":"web","project":"web","target":"production","gitSource":{"type":"github","repoId":${{ secrets.REPO_ID }},"ref":"main"}}'
+            -d '{"name":"spare-parts-pos-web","project":"prj_ASGlwTyyBu8eADafetUURi6JIK1B","target":"production","gitSource":{"type":"github","repoId":${{ secrets.REPO_ID }},"ref":"main"}}'
