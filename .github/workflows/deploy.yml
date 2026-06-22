@@ -4,23 +4,42 @@ on:
   push:
     branches: [main]
 
+env:
+  VERCEL_ORG_ID: team_emFEjso4w4GpBnHXldl4bWMm
+  VERCEL_BACKEND_PROJECT_ID: prj_kuuRyUPyElTAEN7xjj0aC8zrbJ7e
+  VERCEL_FRONTEND_PROJECT_ID: prj_ASGlwTyyBu8eADafetUURi6JIK1B
+
 jobs:
   deploy-backend:
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy Backend
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Link project
         run: |
-          curl -s -X POST "https://api.vercel.com/v13/deployments?teamId=${{ secrets.VERCEL_TEAM_ID }}" \
-            -H "Authorization: Bearer ${{ secrets.VERCEL_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            -d '{"name":"backend","project":"prj_kuuRyUPyElTAEN7xjj0aC8zrbJ7e","target":"production","gitSource":{"type":"github","repoId":${{ secrets.REPO_ID }},"ref":"main"}}'
+          mkdir -p backend/.vercel
+          echo "{\"projectId\":\"$VERCEL_BACKEND_PROJECT_ID\",\"orgId\":\"$VERCEL_ORG_ID\"}" > backend/.vercel/project.json
+      - name: Deploy
+        run: |
+          npx vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }} --cwd=backend
+          npx vercel build --prod --token=${{ secrets.VERCEL_TOKEN }} --cwd=backend
+          npx vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }} --cwd=backend
 
   deploy-frontend:
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy Frontend
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Link project
         run: |
-          curl -s -X POST "https://api.vercel.com/v13/deployments?teamId=${{ secrets.VERCEL_TEAM_ID }}" \
-            -H "Authorization: Bearer ${{ secrets.VERCEL_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            -d '{"name":"spare-parts-pos-web","project":"prj_ASGlwTyyBu8eADafetUURi6JIK1B","target":"production","gitSource":{"type":"github","repoId":${{ secrets.REPO_ID }},"ref":"main"}}'
+          mkdir -p web/.vercel
+          echo "{\"projectId\":\"$VERCEL_FRONTEND_PROJECT_ID\",\"orgId\":\"$VERCEL_ORG_ID\"}" > web/.vercel/project.json
+      - name: Deploy
+        run: |
+          npx vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }} --cwd=web
+          npx vercel build --prod --token=${{ secrets.VERCEL_TOKEN }} --cwd=web
+          npx vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }} --cwd=web
