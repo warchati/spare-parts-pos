@@ -55,7 +55,7 @@ export default function Purchases() {
   const createPurchase = async () => {
     if (!selectedSupplier || selectedItems.length === 0) return
     try {
-      const userId = JSON.parse(localStorage.getItem('user') || '{}').id
+      const userId = user!.id
       await api.post('/purchases', { supplierId: Number(selectedSupplier), userId, items: selectedItems.map(i => ({ productId: i.productId, quantity: i.quantity, unitCost: i.unitCost })) })
       setShowForm(false)
       setSelectedItems([])

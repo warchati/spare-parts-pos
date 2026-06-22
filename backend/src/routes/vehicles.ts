@@ -50,6 +50,7 @@ export function vehicleRoutes(prisma: PrismaClient) {
   router.post('/', requirePermission(prisma, 'vehicles', 'create'), async (req, res, next) => {
     try {
       const { brand, model, year } = req.body
+      if (!brand || !model) return res.status(400).json({ error: 'Brand and model are required' })
       const vehicle = await prisma.vehicle.create({ data: { brand, model, year: year || null } })
       res.status(201).json(vehicle)
     } catch (e) { next(e) }
@@ -84,7 +85,7 @@ export function vehicleRoutes(prisma: PrismaClient) {
     } catch (e) { next(e) }
   })
 
-  router.delete('/:id/products/:productId', async (req, res, next) => {
+  router.delete('/:id/products/:productId', requirePermission(prisma, 'vehicles', 'edit'), async (req, res, next) => {
     try {
       const { id, productId } = req.params
       await prisma.productVehicle.deleteMany({

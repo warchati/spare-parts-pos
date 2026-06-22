@@ -1,5 +1,8 @@
 import { Request, Response, NextFunction } from 'express'
 import { PrismaClient } from '@prisma/client'
+import jwt from 'jsonwebtoken'
+
+const JWT_SECRET = process.env.JWT_SECRET || (() => { throw new Error('JWT_SECRET is required') })()
 
 export interface AuthRequest extends Request {
   user?: { id: number; username: string; name: string; role: string }
@@ -23,6 +26,7 @@ export const PERMISSIONS: Record<string, Record<string, string[]>> = {
     exports: ['view'],
     taxes: ['create', 'edit', 'view'],
     currencies: ['create', 'edit', 'view'],
+    permissions: ['edit'],
   },
   supervisor: {
     pos: ['sell'],
@@ -39,6 +43,7 @@ export const PERMISSIONS: Record<string, Record<string, string[]>> = {
     exports: ['view'],
     taxes: ['view'],
     currencies: ['view'],
+    permissions: [],
   },
   cashier: {
     pos: ['sell'],
@@ -55,6 +60,7 @@ export const PERMISSIONS: Record<string, Record<string, string[]>> = {
     exports: [],
     taxes: [],
     currencies: [],
+    permissions: [],
   },
   seller: {
     pos: ['sell'],
@@ -71,33 +77,36 @@ export const PERMISSIONS: Record<string, Record<string, string[]>> = {
     exports: [],
     taxes: [],
     currencies: [],
+    permissions: [],
   },
 }
 
 export async function hasPermission(prisma: PrismaClient, role: string, module: string, action: string, userId?: number): Promise<boolean> {
-  // Check user-specific override first
   if (userId) {
     try {
       const userPerm = await prisma.userPermission.findUnique({
         where: { userId_module_action: { userId, module, action } },
       })
       if (userPerm) return userPerm.granted
-    } catch {}
+    } catch {
+      // ignore DB error, fall through to role check
+    }
   }
 
-  // Fallback to role-based permission
   try {
     const perm = await prisma.rolePermission.findUnique({
       where: { role_module_action: { role, module, action } },
     })
-    return !!perm
+    if (perm) return true
   } catch {
-    const rolePerms = PERMISSIONS[role]
-    if (!rolePerms) return false
-    const perm = rolePerms[module]
-    if (!perm) return false
-    return perm.includes(action)
+    // ignore DB error, fall through to hardcoded map
   }
+
+  const rolePerms = PERMISSIONS[role]
+  if (!rolePerms) return false
+  const perm = rolePerms[module]
+  if (!perm) return false
+  return perm.includes(action)
 }
 
 export function requireAuth(prisma: PrismaClient) {
@@ -109,13 +118,16 @@ export function requireAuth(prisma: PrismaClient) {
       }
 
       const token = authHeader.slice(7)
-      const decoded = Buffer.from(token, 'base64').toString('utf-8')
-      const userId = parseInt(decoded.split(':')[0], 10)
 
-      if (!userId) return res.status(401).json({ error: 'Invalid token' })
+      let decoded: any
+      try {
+        decoded = jwt.verify(token, JWT_SECRET)
+      } catch {
+        return res.status(401).json({ error: 'Invalid or expired token' })
+      }
 
       const user = await prisma.user.findUnique({
-        where: { id: userId },
+        where: { id: decoded.id },
         select: { id: true, username: true, name: true, role: true, active: true },
       })
 
@@ -125,7 +137,7 @@ export function requireAuth(prisma: PrismaClient) {
 
       req.user = user
       next()
-    } catch (e) {
+    } catch {
       return res.status(401).json({ error: 'Authentication failed' })
     }
   }

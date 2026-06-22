@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { PrismaClient } from '@prisma/client'
-import { requirePermission } from '../middleware/auth'
+import { requirePermission, AuthRequest } from '../middleware/auth'
 
 export function userRoutes(prisma: PrismaClient) {
   const router = Router()
@@ -41,7 +41,7 @@ export function userRoutes(prisma: PrismaClient) {
     } catch (e) { next(e) }
   })
 
-  router.put('/:id', requirePermission(prisma, 'users', 'edit'), async (req, res, next) => {
+  router.put('/:id', requirePermission(prisma, 'users', 'edit'), async (req: AuthRequest, res, next) => {
     try {
       const { username, name, email, password, role } = req.body
       const data: any = {}
@@ -49,7 +49,16 @@ export function userRoutes(prisma: PrismaClient) {
       if (name !== undefined) data.name = name
       if (email !== undefined) data.email = email
       if (password !== undefined) data.password = password
-      if (role !== undefined) data.role = role
+      if (role !== undefined) {
+        // Only admins can change roles, prevent self-escalation
+        if (req.user!.role !== 'admin') {
+          return res.status(403).json({ error: 'Only admins can change roles' })
+        }
+        if (req.user!.id === Number(req.params.id)) {
+          return res.status(400).json({ error: 'Cannot change your own role' })
+        }
+        data.role = role
+      }
 
       const user = await prisma.user.update({
         where: { id: Number(req.params.id) },
@@ -139,9 +148,14 @@ export function userRoutes(prisma: PrismaClient) {
     } catch (e) { next(e) }
   })
 
-  router.delete('/:id', requirePermission(prisma, 'users', 'delete'), async (req, res, next) => {
+  router.delete('/:id', requirePermission(prisma, 'users', 'delete'), async (req: AuthRequest, res, next) => {
     try {
       const id = Number(req.params.id)
+
+      // Prevent self-deletion
+      if (req.user!.id === id) {
+        return res.status(400).json({ error: 'Cannot delete your own account' })
+      }
 
       const [salesCount, purchasesCount] = await Promise.all([
         prisma.sale.count({ where: { userId: id } }),

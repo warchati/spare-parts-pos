@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { PrismaClient } from '@prisma/client'
-import { requirePermission } from '../middleware/auth'
+import { requirePermission, AuthRequest } from '../middleware/auth'
 
 export function cashRegisterRoutes(prisma: PrismaClient) {
   const router = Router()
@@ -36,16 +36,22 @@ export function cashRegisterRoutes(prisma: PrismaClient) {
     } catch (e) { next(e) }
   })
 
-  router.post('/', requirePermission(prisma, 'cashRegister', 'open'), async (req, res, next) => {
+  router.post('/', requirePermission(prisma, 'cashRegister', 'open'), async (req: AuthRequest, res, next) => {
     try {
-      const { userId, openingBalance, notes } = req.body
+      const { openingBalance, notes } = req.body
+      const userId = req.user!.id
 
-      const openRegister = await prisma.cashRegister.findFirst({ where: { status: 'open' } })
-      if (openRegister) return res.status(400).json({ error: 'An open register already exists' })
+      // Atomic check-and-create: try to create with a unique constraint on open status
+      // Use a transaction to prevent race condition
+      const register = await prisma.$transaction(async (tx) => {
+        const openRegister = await tx.cashRegister.findFirst({ where: { status: 'open' } })
+        if (openRegister) throw new Error('Already an open register exists')
 
-      const register = await prisma.cashRegister.create({
-        data: { userId, openingBalance: openingBalance || 0, notes: notes || '' },
+        return tx.cashRegister.create({
+          data: { userId, openingBalance: openingBalance || 0, notes: notes || '' },
+        })
       })
+
       res.status(201).json(register)
     } catch (e) { next(e) }
   })
@@ -53,6 +59,9 @@ export function cashRegisterRoutes(prisma: PrismaClient) {
   router.patch('/:id/close', requirePermission(prisma, 'cashRegister', 'close'), async (req, res, next) => {
     try {
       const { closingBalance, notes } = req.body
+      const existing = await prisma.cashRegister.findUnique({ where: { id: Number(req.params.id) } })
+      if (!existing) return res.status(404).json({ error: 'Cash register not found' })
+
       const register = await prisma.cashRegister.update({
         where: { id: Number(req.params.id) },
         data: { closingBalance, notes: notes || '', closingDate: new Date(), status: 'closed' },

@@ -1,5 +1,9 @@
 import { Router } from 'express'
 import { PrismaClient } from '@prisma/client'
+import bcrypt from 'bcryptjs'
+import jwt from 'jsonwebtoken'
+
+const JWT_SECRET = process.env.JWT_SECRET || (() => { throw new Error('JWT_SECRET is required') })()
 
 export function authRoutes(prisma: PrismaClient) {
   const router = Router()
@@ -7,26 +11,28 @@ export function authRoutes(prisma: PrismaClient) {
   router.post('/login', async (req, res, next) => {
     try {
       const { username, password } = req.body
+      if (!username || !password) {
+        return res.status(400).json({ error: 'Username and password are required' })
+      }
+
       const user = await prisma.user.findUnique({ where: { username } })
 
-      if (!user || user.password !== password || !user.active) {
+      if (!user || !user.active) {
         return res.status(401).json({ error: 'Invalid credentials' })
       }
 
-      res.json({
-        user: { id: user.id, username: user.username, name: user.name, role: user.role },
-        token: Buffer.from(`${user.id}:${Date.now()}`).toString('base64'),
-      })
-    } catch (e) { next(e) }
-  })
+      const valid = await bcrypt.compare(password, user.password)
+      if (!valid) {
+        return res.status(401).json({ error: 'Invalid credentials' })
+      }
 
-  router.post('/register', async (req, res, next) => {
-    try {
-      const { username, password, name, role } = req.body
-      const user = await prisma.user.create({
-        data: { username, password, name, role: role || 'cashier' },
+      const payload = { id: user.id, username: user.username, name: user.name, role: user.role }
+      const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '24h' })
+
+      res.json({
+        user: payload,
+        token,
       })
-      res.status(201).json({ id: user.id, username: user.username, name: user.name, role: user.role })
     } catch (e) { next(e) }
   })
 

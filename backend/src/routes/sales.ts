@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { PrismaClient } from '@prisma/client'
-import { requirePermission } from '../middleware/auth'
+import { requirePermission, AuthRequest } from '../middleware/auth'
 
 export function saleRoutes(prisma: PrismaClient) {
   const router = Router()
@@ -12,8 +12,16 @@ export function saleRoutes(prisma: PrismaClient) {
 
       if (start || end) {
         where.createdAt = {}
-        if (start) where.createdAt.gte = new Date(start as string)
-        if (end) where.createdAt.lte = new Date(end as string)
+        if (start) {
+          const d = new Date(start as string)
+          if (isNaN(d.getTime())) return res.status(400).json({ error: 'Invalid start date' })
+          where.createdAt.gte = d
+        }
+        if (end) {
+          const d = new Date(end as string)
+          if (isNaN(d.getTime())) return res.status(400).json({ error: 'Invalid end date' })
+          where.createdAt.lte = d
+        }
       }
       if (clientId) where.clientId = Number(clientId)
       if (status) where.status = status
@@ -90,9 +98,10 @@ export function saleRoutes(prisma: PrismaClient) {
     } catch (e) { next(e) }
   })
 
-  router.post('/', requirePermission(prisma, 'pos', 'sell'), async (req, res, next) => {
+  router.post('/', requirePermission(prisma, 'pos', 'sell'), async (req: AuthRequest, res, next) => {
     try {
-      const { items, clientId, userId, discount, paymentMethod, paymentDetails, cashRegisterId, currencyId } = req.body
+      const { items, clientId, discount, paymentMethod, paymentDetails, cashRegisterId, currencyId } = req.body
+      const userId = req.user!.id
 
       const result = await prisma.$transaction(async (tx) => {
         let subtotal = 0
@@ -105,7 +114,12 @@ export function saleRoutes(prisma: PrismaClient) {
             include: { tax: true },
           })
 
-          if (product.stock < item.quantity) {
+          // Atomic stock check + decrement using conditional update
+          const updated = await tx.product.updateMany({
+            where: { id: product.id, stock: { gte: item.quantity } },
+            data: { stock: { decrement: item.quantity } },
+          })
+          if (updated.count === 0) {
             throw new Error(`Insufficient stock for ${product.name}`)
           }
 
@@ -123,14 +137,8 @@ export function saleRoutes(prisma: PrismaClient) {
             unitPrice: product.sellPrice,
             totalPrice,
           })
-
-          await tx.product.update({
-            where: { id: product.id },
-            data: { stock: { decrement: item.quantity } },
-          })
         }
 
-        // fallback to default tax if no per-product taxes
         if (taxTotal === 0) {
           const defaultTax = await tx.tax.findFirst({ where: { isDefault: true, isActive: true } })
           if (defaultTax) {
@@ -146,9 +154,18 @@ export function saleRoutes(prisma: PrismaClient) {
           if (baseCurrency) resolvedCurrencyId = baseCurrency.id
         }
 
+        // Credit limit check before creating sale
+        if (paymentMethod === 'credit' && clientId) {
+          const client = await tx.client.findUnique({ where: { id: clientId } })
+          if (client && (client.currentBalance + total) > (client.creditLimit || 0)) {
+            throw new Error('Credit limit exceeded')
+          }
+        }
+
+        // Generate invoice number using atomic sequence
         const lastSale = await tx.sale.findFirst({
           where: { invoiceNumber: { startsWith: `INV-${new Date().getFullYear()}-` } },
-          orderBy: { invoiceNumber: 'desc' },
+          orderBy: { id: 'desc' },
         })
         const year = new Date().getFullYear()
         let seq = 1
@@ -190,7 +207,7 @@ export function saleRoutes(prisma: PrismaClient) {
     } catch (e) { next(e) }
   })
 
-  router.patch('/:id/status', async (req, res, next) => {
+  router.patch('/:id/status', requirePermission(prisma, 'sales', 'edit'), async (req, res, next) => {
     try {
       const { status } = req.body
       const sale = await prisma.sale.update({

@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext'
+import { can } from './lib/permissions'
 import Layout from './components/Layout'
 import Login from './pages/Login'
 import POS from './pages/POS'
@@ -24,6 +25,14 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
+function PermissionGuard({ module, action, children }: { module: string; action: string; children: React.ReactNode }) {
+  const { user } = useAuth()
+  if (!can(user?.role, module, action)) {
+    return <Navigate to="/dashboard" replace />
+  }
+  return <>{children}</>
+}
+
 export default function App() {
   return (
     <Routes>
@@ -34,17 +43,17 @@ export default function App() {
         <Route path="pos" element={<POS />} />
         <Route path="products" element={<Products />} />
         <Route path="clients" element={<Clients />} />
-        <Route path="suppliers" element={<Suppliers />} />
+        <Route path="suppliers" element={<PermissionGuard module="suppliers" action="view"><Suppliers /></PermissionGuard>} />
         <Route path="sales" element={<Sales />} />
-        <Route path="purchases" element={<Purchases />} />
-        <Route path="users" element={<Users />} />
-        <Route path="cash-register" element={<CashRegister />} />
-        <Route path="vehicles" element={<Vehicles />} />
-        <Route path="credit" element={<CreditPayments />} />
-        <Route path="tax-report" element={<TaxReport />} />
-        <Route path="taxes" element={<Taxes />} />
-        <Route path="currencies" element={<Currencies />} />
-        <Route path="permissions" element={<Permissions />} />
+        <Route path="purchases" element={<PermissionGuard module="purchases" action="view"><Purchases /></PermissionGuard>} />
+        <Route path="users" element={<PermissionGuard module="users" action="view"><Users /></PermissionGuard>} />
+        <Route path="cash-register" element={<PermissionGuard module="cashRegister" action="movements"><CashRegister /></PermissionGuard>} />
+        <Route path="vehicles" element={<PermissionGuard module="vehicles" action="view"><Vehicles /></PermissionGuard>} />
+        <Route path="credit" element={<PermissionGuard module="credit" action="view"><CreditPayments /></PermissionGuard>} />
+        <Route path="tax-report" element={<PermissionGuard module="dashboard" action="view"><TaxReport /></PermissionGuard>} />
+        <Route path="taxes" element={<PermissionGuard module="taxes" action="view"><Taxes /></PermissionGuard>} />
+        <Route path="currencies" element={<PermissionGuard module="currencies" action="view"><Currencies /></PermissionGuard>} />
+        <Route path="permissions" element={<PermissionGuard module="permissions" action="edit"><Permissions /></PermissionGuard>} />
       </Route>
     </Routes>
   )

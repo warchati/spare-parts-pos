@@ -1,5 +1,6 @@
 import express from 'express'
 import cors from 'cors'
+import helmet from 'helmet'
 import { PrismaClient } from '@prisma/client'
 import { productRoutes } from './routes/products'
 import { clientRoutes } from './routes/clients'
@@ -23,16 +24,21 @@ import { requireAuth } from './middleware/auth'
 
 export function createServer(prisma: PrismaClient) {
   const app = express()
-  app.use(cors())
-  app.use(express.json())
+
+  app.use(helmet())
+  app.use(cors({
+    origin: process.env.CORS_ORIGIN || ['https://web-postventa.vercel.app', 'https://web-swart-seven-22.vercel.app', 'http://localhost:5173'],
+    credentials: true,
+  }))
+  app.use(express.json({ limit: '5mb' }))
 
   app.use('/api/auth', authRoutes(prisma))
   app.get('/api/health', async (_req, res) => {
     try {
       await prisma.$queryRaw`SELECT 1`
       res.json({ status: 'ok', db: 'connected' })
-    } catch (e: any) {
-      res.json({ status: 'ok', db: 'error', message: e.message })
+    } catch {
+      res.json({ status: 'ok', db: 'error', message: 'Database connection failed' })
     }
   })
 

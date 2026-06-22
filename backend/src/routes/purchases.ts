@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { PrismaClient } from '@prisma/client'
-import { requirePermission } from '../middleware/auth'
+import { requirePermission, AuthRequest } from '../middleware/auth'
 
 export function purchaseRoutes(prisma: PrismaClient) {
   const router = Router()
@@ -12,8 +12,16 @@ export function purchaseRoutes(prisma: PrismaClient) {
 
       if (start || end) {
         where.createdAt = {}
-        if (start) where.createdAt.gte = new Date(start as string)
-        if (end) where.createdAt.lte = new Date(end as string)
+        if (start) {
+          const d = new Date(start as string)
+          if (isNaN(d.getTime())) return res.status(400).json({ error: 'Invalid start date' })
+          where.createdAt.gte = d
+        }
+        if (end) {
+          const d = new Date(end as string)
+          if (isNaN(d.getTime())) return res.status(400).json({ error: 'Invalid end date' })
+          where.createdAt.lte = d
+        }
       }
       if (supplierId) where.supplierId = Number(supplierId)
       if (status) where.status = status
@@ -38,9 +46,10 @@ export function purchaseRoutes(prisma: PrismaClient) {
     } catch (e) { next(e) }
   })
 
-  router.post('/', requirePermission(prisma, 'purchases', 'create'), async (req, res, next) => {
+  router.post('/', requirePermission(prisma, 'purchases', 'create'), async (req: AuthRequest, res, next) => {
     try {
-      const { items, supplierId, userId } = req.body
+      const { items, supplierId } = req.body
+      const userId = req.user!.id
       const result = await prisma.$transaction(async (tx) => {
         let subtotal = 0
         const purchaseItems = []

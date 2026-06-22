@@ -38,16 +38,27 @@ export function supplierRoutes(prisma: PrismaClient) {
 
   router.post('/', requirePermission(prisma, 'suppliers', 'create'), async (req, res, next) => {
     try {
-      const supplier = await prisma.supplier.create({ data: req.body })
+      const { name, contact, phone, email, address } = req.body
+      if (!name) return res.status(400).json({ error: 'Name is required' })
+      const supplier = await prisma.supplier.create({
+        data: { name, contact, phone, email, address },
+      })
       res.status(201).json(supplier)
     } catch (e) { next(e) }
   })
 
   router.put('/:id', requirePermission(prisma, 'suppliers', 'edit'), async (req, res, next) => {
     try {
+      const { name, contact, phone, email, address } = req.body
+      const data: any = {}
+      if (name !== undefined) data.name = name
+      if (contact !== undefined) data.contact = contact
+      if (phone !== undefined) data.phone = phone
+      if (email !== undefined) data.email = email
+      if (address !== undefined) data.address = address
       const supplier = await prisma.supplier.update({
         where: { id: Number(req.params.id) },
-        data: req.body,
+        data,
       })
       res.json(supplier)
     } catch (e) { next(e) }

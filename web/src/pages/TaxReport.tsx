@@ -1,13 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
-import { can } from '../lib/permissions'
 import { BarChart3, DollarSign, Receipt, TrendingUp, TrendingDown, Percent, Package } from 'lucide-react'
 
 const methodLabel: Record<string, string> = { cash: 'Efectivo', card: 'Tarjeta', transfer: 'Transferencia', credit: 'Crédito' }
 
 export default function TaxReport() {
-  const { user } = useAuth()
+  useAuth()
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const today = new Date()
@@ -15,20 +14,19 @@ export default function TaxReport() {
   const [startDate, setStartDate] = useState(firstDay.toISOString().slice(0, 10))
   const [endDate, setEndDate] = useState(today.toISOString().slice(0, 10))
 
-  useEffect(() => { loadReport() }, [])
-
-  const loadReport = async () => {
+  const loadReport = useCallback(async () => {
     setLoading(true)
     try {
       const res = await api.get('/reports/tax-summary', { params: { startDate, endDate } })
       setData(res.data)
     } catch { alert('Error al cargar reporte') }
     finally { setLoading(false) }
-  }
+  }, [startDate, endDate])
+
+  useEffect(() => { loadReport() }, [loadReport])
 
   const formatCurrency = (n: number) => {
-    const userLocale = navigator.language || 'es-ES'
-    return `${n.toLocaleString(userLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DH`
+    return `${n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DH`
   }
 
   const SummaryCard = ({ title, value, icon: Icon, color }: any) => (

@@ -59,16 +59,29 @@ export function clientRoutes(prisma: PrismaClient) {
 
   router.post('/', requirePermission(prisma, 'clients', 'create'), async (req, res, next) => {
     try {
-      const client = await prisma.client.create({ data: req.body })
+      const { name, phone, email, document, address, vehicle, creditLimit } = req.body
+      if (!name) return res.status(400).json({ error: 'Name is required' })
+      const client = await prisma.client.create({
+        data: { name, phone, email, document, address, vehicle, creditLimit: creditLimit || 0 },
+      })
       res.status(201).json(client)
     } catch (e) { next(e) }
   })
 
   router.put('/:id', requirePermission(prisma, 'clients', 'edit'), async (req, res, next) => {
     try {
+      const { name, phone, email, document, address, vehicle, creditLimit } = req.body
+      const data: any = {}
+      if (name !== undefined) data.name = name
+      if (phone !== undefined) data.phone = phone
+      if (email !== undefined) data.email = email
+      if (document !== undefined) data.document = document
+      if (address !== undefined) data.address = address
+      if (vehicle !== undefined) data.vehicle = vehicle
+      if (creditLimit !== undefined) data.creditLimit = creditLimit
       const client = await prisma.client.update({
         where: { id: Number(req.params.id) },
-        data: req.body,
+        data,
       })
       res.json(client)
     } catch (e) { next(e) }

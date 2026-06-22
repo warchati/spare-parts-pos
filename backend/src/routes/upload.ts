@@ -2,6 +2,8 @@ import { Router } from 'express'
 import { PrismaClient } from '@prisma/client'
 import { requirePermission } from '../middleware/auth'
 
+const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
+
 export function uploadRoutes(prisma: PrismaClient) {
   const router = Router()
 
@@ -10,6 +12,11 @@ export function uploadRoutes(prisma: PrismaClient) {
       const { dataUrl } = req.body
       if (!dataUrl || !dataUrl.startsWith('data:image')) {
         return res.status(400).json({ error: 'Invalid image data' })
+      }
+
+      const size = Buffer.byteLength(dataUrl, 'utf-8')
+      if (size > MAX_FILE_SIZE) {
+        return res.status(400).json({ error: 'Image too large (max 5MB)' })
       }
 
       const image = await prisma.productImage.create({
@@ -28,6 +35,11 @@ export function uploadRoutes(prisma: PrismaClient) {
     try {
       const { dataUrl } = req.body
       if (!dataUrl) return res.status(400).json({ error: 'No file data' })
+
+      const size = Buffer.byteLength(dataUrl, 'utf-8')
+      if (size > MAX_FILE_SIZE) {
+        return res.status(400).json({ error: 'File too large (max 5MB)' })
+      }
 
       const purchase = await prisma.purchaseOrder.update({
         where: { id: Number(req.params.purchaseId) },

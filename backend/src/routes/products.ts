@@ -68,16 +68,39 @@ export function productRoutes(prisma: PrismaClient) {
 
   router.post('/', requirePermission(prisma, 'products', 'create'), async (req, res, next) => {
     try {
-      const product = await prisma.product.create({ data: req.body })
+      const { code, barcode, name, description, category, brand, vehicleType, oemNumber, buyPrice, sellPrice, wholesalePrice, minStock, location, taxId, active } = req.body
+      if (!code || !name) return res.status(400).json({ error: 'Code and name are required' })
+
+      const product = await prisma.product.create({
+        data: { code, barcode, name, description, category, brand, vehicleType, oemNumber, buyPrice, sellPrice, wholesalePrice, minStock: minStock ?? 0, location, taxId: taxId || null, active: active ?? true },
+      })
       res.status(201).json(product)
     } catch (e) { next(e) }
   })
 
   router.put('/:id', requirePermission(prisma, 'products', 'edit'), async (req, res, next) => {
     try {
+      const { code, barcode, name, description, category, brand, vehicleType, oemNumber, buyPrice, sellPrice, wholesalePrice, minStock, location, taxId, active } = req.body
+      const data: any = {}
+      if (code !== undefined) data.code = code
+      if (barcode !== undefined) data.barcode = barcode
+      if (name !== undefined) data.name = name
+      if (description !== undefined) data.description = description
+      if (category !== undefined) data.category = category
+      if (brand !== undefined) data.brand = brand
+      if (vehicleType !== undefined) data.vehicleType = vehicleType
+      if (oemNumber !== undefined) data.oemNumber = oemNumber
+      if (buyPrice !== undefined) data.buyPrice = buyPrice
+      if (sellPrice !== undefined) data.sellPrice = sellPrice
+      if (wholesalePrice !== undefined) data.wholesalePrice = wholesalePrice
+      if (minStock !== undefined) data.minStock = minStock
+      if (location !== undefined) data.location = location
+      if (taxId !== undefined) data.taxId = taxId
+      if (active !== undefined) data.active = active
+
       const product = await prisma.product.update({
         where: { id: Number(req.params.id) },
-        data: req.body,
+        data,
       })
       res.json(product)
     } catch (e) { next(e) }
