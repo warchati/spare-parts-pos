@@ -53,7 +53,7 @@ export default function POS() {
   const [selectedCurrency, setSelectedCurrency] = useState<Currency | null>(null)
   const [defaultTax, setDefaultTax] = useState<any>(null)
   const searchRef = useRef<HTMLInputElement>(null)
-  const searchTimeout = useRef<ReturnType<typeof setTimeout>>()
+  const searchTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   useEffect(() => {
     searchRef.current?.focus()

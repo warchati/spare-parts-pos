@@ -85,8 +85,6 @@ export default function Users() {
   // Determine if a specific toggle is checked based on role perms + user overrides
   const isPermChecked = (module: string, action: string) => {
     const hasRole = rolePerms[module]?.includes(action)
-    const hasOverride = userPerms[module]?.includes(action)
-    const isOverrideRemoved = userPerms[module]?.includes(action) === false
     // If the user has an override list, check it there. Otherwise fallback to role.
     if (userPerms[module] !== undefined) {
       return userPerms[module].includes(action)
