@@ -79,25 +79,10 @@ async function main() {
     create: { name: 'IVA 21%', percentage: 21, isDefault: true },
   })
 
-  const dh = await prisma.currency.upsert({
+  await prisma.currency.upsert({
     where: { code: 'DH' },
     update: {},
     create: { code: 'DH', name: 'Dírham Marroquí', symbol: 'DH', exchangeRate: 1, isBase: true },
-  })
-  await prisma.currency.upsert({
-    where: { code: 'SAR' },
-    update: {},
-    create: { code: 'SAR', name: 'Riyal Saudí', symbol: '﷼', exchangeRate: 0.37, isBase: false },
-  })
-  await prisma.currency.upsert({
-    where: { code: 'EUR' },
-    update: {},
-    create: { code: 'EUR', name: 'Euro', symbol: '€', exchangeRate: 10.6, isBase: false },
-  })
-  await prisma.currency.upsert({
-    where: { code: 'USD' },
-    update: {},
-    create: { code: 'USD', name: 'Dólar', symbol: '$', exchangeRate: 9.8, isBase: false },
   })
 
   const roles = ['admin', 'supervisor', 'cashier', 'seller']
