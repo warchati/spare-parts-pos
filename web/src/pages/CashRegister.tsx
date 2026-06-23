@@ -208,8 +208,8 @@ export default function CashRegister() {
                     <td className="py-2 text-sm">{h.closingDate ? formatDate(h.closingDate) : '-'}</td>
                     <td className="py-2">{h.user?.name}</td>
                     <td className="py-2 text-right font-mono">{formatCurrency(h.closingBalance)}</td>
-                    <td className={`py-2 text-right font-mono ${(h.difference || 0) !== 0 ? 'text-red-600' : 'text-green-600'}`}>
-                      {h.difference !== undefined ? formatCurrency(h.difference) : '-'}
+                    <td className={`py-2 text-right font-mono ${((h.closingBalance ?? 0) - h.openingBalance) !== 0 ? 'text-red-600' : 'text-green-600'}`}>
+                      {h.closingBalance != null ? formatCurrency(h.closingBalance - h.openingBalance) : '-'}
                     </td>
                   </tr>
                 ))}
