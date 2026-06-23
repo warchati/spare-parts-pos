@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
 import api from '../lib/api'
+import { setPermissions as setCachedPermissions } from '../lib/permissions'
 
 interface User {
   id: number
@@ -66,6 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
     setToken(null)
     setPermissions([])
+    setCachedPermissions([])
   }
 
   return (
