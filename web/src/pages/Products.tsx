@@ -112,7 +112,7 @@ export default function Products() {
         </h1>
         <div className="flex items-center gap-2">
           <a
-            href={`${import.meta.env.VITE_API_URL || '/api'}/exports/products/csv`}
+            href={`${import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api'}/exports/products/csv`}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm"

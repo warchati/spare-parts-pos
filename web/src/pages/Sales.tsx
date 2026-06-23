@@ -45,7 +45,7 @@ export default function Sales() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2"><Receipt className="w-6 h-6" /> Ventas</h1>
         <a
-          href={`${import.meta.env.VITE_API_URL || '/api'}/exports/sales/csv`}
+          href={`${import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api'}/exports/sales/csv`}
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm"

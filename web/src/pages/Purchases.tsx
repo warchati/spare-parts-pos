@@ -108,7 +108,7 @@ export default function Purchases() {
         <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2"><ClipboardList className="w-6 h-6" /> Órdenes de Compra</h1>
         <div className="flex items-center gap-2">
           <a
-            href={`${import.meta.env.VITE_API_URL || '/api'}/exports/stock/csv`}
+            href={`${import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api'}/exports/stock/csv`}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm"
