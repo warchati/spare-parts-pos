@@ -112,7 +112,7 @@ export default function Products() {
           <Package className="w-6 h-6" /> Productos
         </h1>
         <div className="flex items-center gap-2">
-            <button onClick={() => downloadExport('/exports/products/csv', 'productos.csv')} className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm">
+            <button onClick={() => downloadExport('/exports/products/csv', 'productos.xlsx')} className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm">
               Exportar CSV
             </button>
           {can(user?.role, 'products', 'create') && (

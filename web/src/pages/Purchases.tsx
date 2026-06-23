@@ -108,7 +108,7 @@ export default function Purchases() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2"><ClipboardList className="w-6 h-6" /> Órdenes de Compra</h1>
         <div className="flex items-center gap-2">
-            <button onClick={() => downloadExport('/exports/stock/csv', 'stock.csv')} className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm">
+            <button onClick={() => downloadExport('/exports/stock/csv', 'stock.xlsx')} className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm">
               Exportar Stock CSV
             </button>
           {can(user?.role, 'purchases', 'create') && (

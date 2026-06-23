@@ -1,20 +1,31 @@
 import { Router } from 'express'
 import { PrismaClient } from '@prisma/client'
 import { requirePermission } from '../middleware/auth'
+import ExcelJS from 'exceljs'
 
-function toCsv(rows: Record<string, any>[]): string {
-  if (rows.length === 0) return ''
-  const headers = Object.keys(rows[0])
-  const lines = rows.map(row => headers.map(h => {
-    const val = row[h]
-    if (val === null || val === undefined) return ''
-    const str = String(val)
-    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-      return `"${str.replace(/"/g, '""')}"`
+async function sendXlsx(res: any, rows: any[][], filename: string) {
+  const wb = new ExcelJS.Workbook()
+  const ws = wb.addWorksheet('Datos')
+
+  for (let ri = 0; ri < rows.length; ri++) {
+    const row = rows[ri]
+    const xlRow = ws.addRow(row.map(cell => cell ?? ''))
+    if (ri === 0) {
+      xlRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF3B82F6' } }
+      xlRow.font = { bold: true, color: { argb: 'FFFFFFFF' } }
     }
-    return str
-  }).join(','))
-  return [headers.join(','), ...lines].join('\n')
+  }
+
+  ws.columns.forEach((col: any) => {
+    let maxLen = 10
+    col.eachCell?.((cell: any) => { if (cell.value) maxLen = Math.max(maxLen, String(cell.value).length) })
+    col.width = Math.min(maxLen + 3, 40)
+  })
+
+  const buf = await wb.xlsx.writeBuffer()
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+  res.setHeader('Content-Disposition', `attachment; filename=${filename}`)
+  res.send(Buffer.from(buf))
 }
 
 export function exportRoutes(prisma: PrismaClient) {
@@ -23,29 +34,11 @@ export function exportRoutes(prisma: PrismaClient) {
   router.get('/products/csv', requirePermission(prisma, 'exports', 'view'), async (req, res, next) => {
     try {
       const products = await prisma.product.findMany({ orderBy: { name: 'asc' } })
-      const data = products.map(p => ({
-        code: p.code, barcode: p.barcode, name: p.name, description: p.description,
-        category: p.category, brand: p.brand, vehicleType: p.vehicleType, oemNumber: p.oemNumber,
-        buyPrice: p.buyPrice, sellPrice: p.sellPrice, wholesalePrice: p.wholesalePrice,
-        stock: p.stock, minStock: p.minStock, location: p.location, active: p.active,
-      }))
-      res.setHeader('Content-Type', 'text/csv')
-      res.setHeader('Content-Disposition', 'attachment; filename=products.csv')
-      res.send(toCsv(data))
-    } catch (e) { next(e) }
-  })
-
-  router.get('/clients/csv', requirePermission(prisma, 'exports', 'view'), async (req, res, next) => {
-    try {
-      const clients = await prisma.client.findMany({ orderBy: { name: 'asc' } })
-      const data = clients.map(c => ({
-        name: c.name, phone: c.phone, email: c.email, address: c.address,
-        document: c.document, vehicle: c.vehicle, notes: c.notes,
-        creditLimit: c.creditLimit, currentBalance: c.currentBalance,
-      }))
-      res.setHeader('Content-Type', 'text/csv')
-      res.setHeader('Content-Disposition', 'attachment; filename=clients.csv')
-      res.send(toCsv(data))
+      const rows = [
+        ['Código', 'Código Barras', 'Nombre', 'Descripción', 'Categoría', 'Marca', 'Tipo Vehículo', 'Nº OEM', 'Precio Compra', 'Precio Venta', 'Precio Mayorista', 'Stock', 'Stock Mínimo', 'Ubicación', 'Activo'],
+        ...products.map(p => [p.code, p.barcode, p.name, p.description, p.category, p.brand, p.vehicleType, p.oemNumber, p.buyPrice, p.sellPrice, p.wholesalePrice, p.stock, p.minStock, p.location, p.active ? 'Sí' : 'No']),
+      ]
+      await sendXlsx(res, rows, 'productos.xlsx')
     } catch (e) { next(e) }
   })
 
@@ -65,19 +58,20 @@ export function exportRoutes(prisma: PrismaClient) {
         orderBy: { createdAt: 'desc' },
       })
 
-      const data = sales.flatMap(s =>
-        s.items.map(item => ({
-          saleId: s.id, date: s.createdAt.toISOString(),
-          client: s.client?.name || 'Walk-in',
-          product: item.productName, quantity: item.quantity,
-          unitPrice: item.unitPrice, totalPrice: item.totalPrice,
-          subtotal: s.subtotal, discount: s.discount, total: s.total,
-          paymentMethod: s.paymentMethod, status: s.status,
-        }))
-      )
-      res.setHeader('Content-Type', 'text/csv')
-      res.setHeader('Content-Disposition', 'attachment; filename=sales.csv')
-      res.send(toCsv(data))
+      const rows = [
+        ['Venta Nº', 'Fecha', 'Cliente', 'Producto', 'Cantidad', 'Precio Unitario', 'Total', 'Subtotal', 'Descuento', 'Total Venta', 'Método Pago', 'Estado'],
+        ...sales.flatMap(s =>
+          s.items.map(item => [
+            s.id, new Date(s.createdAt).toLocaleDateString('es-ES'),
+            s.client?.name || 'Consumidor Final',
+            item.productName, item.quantity, item.unitPrice, item.totalPrice,
+            s.subtotal, s.discount, s.total,
+            s.paymentMethod === 'cash' ? 'Efectivo' : s.paymentMethod === 'card' ? 'Tarjeta' : s.paymentMethod === 'transfer' ? 'Transferencia' : 'Crédito',
+            s.status === 'completed' ? 'Completada' : s.status === 'cancelled' ? 'Cancelada' : 'Pendiente',
+          ])
+        ),
+      ]
+      await sendXlsx(res, rows, 'ventas.xlsx')
     } catch (e) { next(e) }
   })
 
@@ -87,15 +81,16 @@ export function exportRoutes(prisma: PrismaClient) {
         where: { active: true },
         orderBy: { name: 'asc' },
       })
-      const data = products.map(p => ({
-        code: p.code, name: p.name, category: p.category, brand: p.brand,
-        stock: p.stock, minStock: p.minStock,
-        status: p.stock <= p.minStock ? 'Low Stock' : p.stock === 0 ? 'Out of Stock' : 'OK',
-        location: p.location, sellPrice: p.sellPrice,
-      }))
-      res.setHeader('Content-Type', 'text/csv')
-      res.setHeader('Content-Disposition', 'attachment; filename=stock.csv')
-      res.send(toCsv(data))
+
+      const rows = [
+        ['Código', 'Nombre', 'Categoría', 'Marca', 'Stock', 'Stock Mínimo', 'Estado', 'Ubicación', 'Precio Venta'],
+        ...products.map(p => [
+          p.code, p.name, p.category, p.brand, p.stock, p.minStock,
+          p.stock <= p.minStock ? 'Stock Bajo' : p.stock === 0 ? 'Sin Stock' : 'OK',
+          p.location, p.sellPrice,
+        ]),
+      ]
+      await sendXlsx(res, rows, 'stock.xlsx')
     } catch (e) { next(e) }
   })
 

@@ -45,7 +45,7 @@ export default function Sales() {
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2"><Receipt className="w-6 h-6" /> Ventas</h1>
-          <button onClick={() => downloadExport('/exports/sales/csv', 'ventas.csv')} className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm">
+          <button onClick={() => downloadExport('/exports/sales/csv', 'ventas.xlsx')} className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm">
             <Download className="w-4 h-4" /> Exportar CSV
           </button>
       </div>

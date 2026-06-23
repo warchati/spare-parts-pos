@@ -3,7 +3,7 @@ import api from './api'
 export async function downloadExport(url: string, filename: string) {
   try {
     const res = await api.get(url, { responseType: 'blob' })
-    const blob = new Blob([res.data], { type: 'text/csv' })
+    const blob = new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
     const link = document.createElement('a')
     link.href = URL.createObjectURL(blob)
     link.download = filename
