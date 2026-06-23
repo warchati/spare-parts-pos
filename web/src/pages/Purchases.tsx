@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import api from '../lib/api'
 import { formatCurrency } from '../lib/currency'
+import { downloadExport } from '../lib/download'
 import { useAuth } from '../contexts/AuthContext'
 import { can } from '../lib/permissions'
 import { ClipboardList, Plus, Search, Package, Download, Upload, FileText, Trash2 } from 'lucide-react'
@@ -107,14 +108,9 @@ export default function Purchases() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2"><ClipboardList className="w-6 h-6" /> Órdenes de Compra</h1>
         <div className="flex items-center gap-2">
-          <a
-            href={`${import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api'}/exports/stock/csv`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm"
-          >
-            <Download className="w-4 h-4" /> Exportar Stock
-          </a>
+            <button onClick={() => downloadExport('/exports/stock/csv', 'stock.csv')} className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm">
+              Exportar Stock CSV
+            </button>
           {can(user?.role, 'purchases', 'create') && (
             <button onClick={() => { setShowForm(true); setSelectedItems([]); setSelectedSupplier('') }} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"><Plus className="w-4 h-4" /> Nueva Compra</button>
           )}

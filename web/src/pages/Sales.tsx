@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import api from '../lib/api'
 import { formatCurrency } from '../lib/currency'
+import { downloadExport } from '../lib/download'
 import { useAuth } from '../contexts/AuthContext'
 import { can } from '../lib/permissions'
 import { Receipt, Search, Download, CreditCard, X, AlertCircle, Printer } from 'lucide-react'
@@ -44,14 +45,9 @@ export default function Sales() {
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2"><Receipt className="w-6 h-6" /> Ventas</h1>
-        <a
-          href={`${import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api'}/exports/sales/csv`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm"
-        >
-          <Download className="w-4 h-4" /> Exportar CSV
-        </a>
+          <button onClick={() => downloadExport('/exports/sales/csv', 'ventas.csv')} className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm">
+            <Download className="w-4 h-4" /> Exportar CSV
+          </button>
       </div>
 
       <div className="flex flex-wrap gap-3 mb-4">

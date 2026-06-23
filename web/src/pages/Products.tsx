@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import api from '../lib/api'
 import { formatCurrency } from '../lib/currency'
+import { downloadExport } from '../lib/download'
 import { useAuth } from '../contexts/AuthContext'
 import { can } from '../lib/permissions'
 import { Search, Plus, Pencil, Package, Download, Image, Car, Upload, Trash2 } from 'lucide-react'
@@ -111,14 +112,9 @@ export default function Products() {
           <Package className="w-6 h-6" /> Productos
         </h1>
         <div className="flex items-center gap-2">
-          <a
-            href={`${import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api'}/exports/products/csv`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm"
-          >
-            <Download className="w-4 h-4" /> Exportar CSV
-          </a>
+            <button onClick={() => downloadExport('/exports/products/csv', 'productos.csv')} className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm">
+              Exportar CSV
+            </button>
           {can(user?.role, 'products', 'create') && (
             <button onClick={() => { setEditing(null); resetForm(); setShowForm(true) }} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
               <Plus className="w-4 h-4" /> Nuevo Producto
