@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import api from '../lib/api'
+import { formatCurrency } from '../lib/currency'
 import { useAuth } from '../contexts/AuthContext'
 import { can } from '../lib/permissions'
 import { Search, Plus, Pencil, Users } from 'lucide-react'
@@ -71,8 +72,8 @@ export default function Clients() {
                 <td className="px-4 py-3 text-sm text-gray-500">{c.phone}</td>
                 <td className="px-4 py-3 text-sm text-gray-500">{c.email}</td>
                 <td className="px-4 py-3 text-sm text-gray-500">{c.vehicle}</td>
-                <td className="px-4 py-3 text-right font-mono">$ {c.creditLimit.toLocaleString('es-AR')}</td>
-                <td className="px-4 py-3 text-right font-mono">$ {c.currentBalance.toLocaleString('es-AR')}</td>
+                <td className="px-4 py-3 text-right font-mono">{formatCurrency(c.creditLimit)}</td>
+                <td className="px-4 py-3 text-right font-mono">{formatCurrency(c.currentBalance)}</td>
                 <td className="px-4 py-3 text-right">
                   {can(user?.role, 'clients', 'edit') && (
                     <button onClick={() => { setEditing(c); setForm(c as any); setShowForm(true) }} className="p-1 hover:bg-gray-100 rounded"><Pencil className="w-4 h-4 text-gray-400" /></button>

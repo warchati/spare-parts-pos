@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import api from '../lib/api'
+import { formatCurrency } from '../lib/currency'
 import { useAuth } from '../contexts/AuthContext'
 import { can } from '../lib/permissions'
 import { Search, Plus, Pencil, Package, Download, Image, Car, Upload, Trash2 } from 'lucide-react'
@@ -28,17 +29,11 @@ export default function Products() {
   const [editing, setEditing] = useState<Product | null>(null)
   const [form, setForm] = useState({ code: '', barcode: '', name: '', description: '', category: '', brand: '', vehicleType: '', oemNumber: '', buyPrice: 0, sellPrice: 0, wholesalePrice: 0, stock: 0, minStock: 5, location: '' })
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
-  const [baseCurrency, setBaseCurrency] = useState<{ symbol: string }>({ symbol: '$' })
+
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploadingImage, setUploadingImage] = useState(false)
 
   useEffect(() => { loadProducts() }, [search])
-  useEffect(() => {
-    api.get('/currencies').then(res => {
-      const base = res.data.find((c: any) => c.isBase)
-      if (base) setBaseCurrency({ symbol: base.symbol })
-    }).catch(() => {})
-  }, [])
 
   const loadProducts = async () => {
     try {
@@ -107,7 +102,7 @@ export default function Products() {
     return 'bg-green-500'
   }
 
-  const formatCurrency = (n: number) => `${baseCurrency.symbol} ${n.toLocaleString('es-AR')}`
+
 
   return (
     <div className="p-6">

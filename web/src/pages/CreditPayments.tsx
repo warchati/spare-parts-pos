@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import api from '../lib/api'
+import { formatCurrency } from '../lib/currency'
 import { useAuth } from '../contexts/AuthContext'
 import { can } from '../lib/permissions'
 import { Search, CreditCard, DollarSign, Users, X, History } from 'lucide-react'
@@ -46,7 +47,7 @@ export default function CreditPayments() {
     } catch (e: any) { alert(e.response?.data?.error || 'Error al registrar pago') }
   }
 
-  const formatCurrency = (n: number) => `$ ${(n || 0).toLocaleString('es-AR')}`
+
   const formatDate = (d: string) => new Date(d).toLocaleString('es-AR')
 
   const filtered = clients.filter((c: any) =>

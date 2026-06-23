@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import api from '../lib/api'
+import { formatCurrency } from '../lib/currency'
 import { useAuth } from '../contexts/AuthContext'
 import { can } from '../lib/permissions'
 import { Search, Plus, Minus, Trash2, X, User, CreditCard, DollarSign, Building2 } from 'lucide-react'
@@ -163,7 +164,7 @@ export default function POS() {
     }
   }
 
-  const formatCurrency = (n: number) => `${selectedCurrency?.symbol || '$'} ${n.toLocaleString('es-AR')}`
+
 
   return (
     <div className="h-full flex">

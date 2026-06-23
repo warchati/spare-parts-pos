@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import api from '../lib/api'
+import { formatCurrency } from '../lib/currency'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { can } from '../lib/permissions'
@@ -31,7 +32,7 @@ export default function Dashboard() {
     finally { setLoading(false) }
   }
 
-  const formatCurrency = (n: number) => `$ ${n.toLocaleString('es-AR')}`
+
   const formatDate = (d: string) => new Date(d).toLocaleString('es-AR')
   const formatDay = (d: string) => new Date(d + 'T00:00:00').toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short' })
 
@@ -58,7 +59,7 @@ export default function Dashboard() {
             <div>
               <p className="font-medium text-blue-800">Caja abierta</p>
               <p className="text-sm text-blue-600">
-                Apertura: {activeRegister.openingBalance ? formatCurrency(activeRegister.openingBalance) : '$ 0'}
+                Apertura: {formatCurrency(activeRegister.openingBalance)}
               </p>
             </div>
           </div>

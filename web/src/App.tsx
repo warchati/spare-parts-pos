@@ -1,6 +1,8 @@
+import { useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext'
 import { can } from './lib/permissions'
+import { loadCurrency } from './lib/currency'
 import Layout from './components/Layout'
 import Login from './pages/Login'
 import POS from './pages/POS'
@@ -34,6 +36,8 @@ function PermissionGuard({ module, action, children }: { module: string; action:
 }
 
 export default function App() {
+  useEffect(() => { loadCurrency() }, [])
+
   return (
     <Routes>
       <Route path="/login" element={<Login />} />

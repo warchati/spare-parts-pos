@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import api from '../lib/api'
+import { formatCurrency } from '../lib/currency'
 import { useAuth } from '../contexts/AuthContext'
 import { can } from '../lib/permissions'
 import { ClipboardList, Plus, Search, Package, Download, Upload, FileText, Trash2 } from 'lucide-react'
@@ -98,7 +99,7 @@ export default function Purchases() {
     }
   }
 
-  const formatCurrency = (n: number) => `$ ${n.toLocaleString('es-AR')}`
+
   const formatDate = (d: string) => new Date(d).toLocaleString('es-AR')
 
   return (

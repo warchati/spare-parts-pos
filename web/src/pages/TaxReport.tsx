@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
+import { formatCurrency } from '../lib/currency'
 import { useAuth } from '../contexts/AuthContext'
 import { BarChart3, DollarSign, Receipt, TrendingUp, TrendingDown, Percent, Package } from 'lucide-react'
 
@@ -25,9 +26,7 @@ export default function TaxReport() {
 
   useEffect(() => { loadReport() }, [loadReport])
 
-  const formatCurrency = (n: number) => {
-    return `${n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DH`
-  }
+
 
   const SummaryCard = ({ title, value, icon: Icon, color }: any) => (
     <div className="bg-white rounded-xl border border-gray-200 p-5">

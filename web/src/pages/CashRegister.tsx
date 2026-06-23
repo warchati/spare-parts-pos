@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import api from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import { can } from '../lib/permissions'
+import { formatCurrency } from '../lib/currency'
 import { DollarSign, Plus, X, History, Receipt, ArrowUpRight, ArrowDownRight } from 'lucide-react'
 
 export default function CashRegister() {
@@ -59,7 +60,6 @@ export default function CashRegister() {
     } catch (e: any) { alert(e.response?.data?.error || 'Error al cerrar caja') }
   }
 
-  const formatCurrency = (n: number) => `$ ${(n || 0).toLocaleString('es-AR')}`
   const formatDate = (d: string) => new Date(d).toLocaleString('es-AR')
 
   if (loading) return <div className="p-6 text-center text-gray-400">Cargando...</div>
