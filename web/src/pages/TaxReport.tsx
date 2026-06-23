@@ -1,8 +1,10 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import api from '../lib/api'
-import { formatCurrency } from '../lib/currency'
+import { formatCurrency, getSymbol } from '../lib/currency'
 import { useAuth } from '../contexts/AuthContext'
-import { BarChart3, DollarSign, Receipt, TrendingUp, TrendingDown, Percent, Package } from 'lucide-react'
+import { BarChart3, DollarSign, Receipt, TrendingUp, TrendingDown, Percent, Package, Download } from 'lucide-react'
+import { jsPDF } from 'jspdf'
+import autoTable from 'jspdf-autotable'
 
 const methodLabel: Record<string, string> = { cash: 'Efectivo', card: 'Tarjeta', transfer: 'Transferencia', credit: 'Crédito' }
 
@@ -26,7 +28,80 @@ export default function TaxReport() {
 
   useEffect(() => { loadReport() }, [loadReport])
 
+  const downloadPDF = () => {
+    if (!data) return
+    const sym = getSymbol()
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+    const pageW = 190
+    let y = 20
 
+    doc.setFontSize(18)
+    doc.text('Declaración de TVA', pageW / 2, y, { align: 'center' })
+    y += 8
+    doc.setFontSize(10)
+    doc.text(`Período: ${startDate} al ${endDate}`, pageW / 2, y, { align: 'center' })
+    y += 6
+    doc.text(`Fecha de emisión: ${new Date().toLocaleDateString('es-ES')}`, pageW / 2, y, { align: 'center' })
+    y += 10
+
+    doc.setDrawColor(200)
+    doc.line(10, y, 200, y)
+    y += 8
+
+    doc.setFontSize(12)
+    doc.text('Resumen', 10, y)
+    y += 7
+
+    const summary = data.summary
+    const summaryRows = [
+      ['Ingresos Totales', `${sym} ${summary.totalRevenue.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`],
+      ['Costo de Ventas', `${sym} ${summary.totalCost.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`],
+      ['Ganancia Bruta', `${sym} ${summary.grossProfit.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`],
+      ['Margen', `${summary.profitMargin.toFixed(1)}%`],
+      ['TVA a Pagar (Hacienda)', `${sym} ${summary.totalTax.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`],
+      ['Ventas Realizadas', String(summary.salesCount)],
+      ['Artículos Vendidos', String(summary.itemsSold)],
+    ]
+
+    autoTable(doc, {
+      startY: y,
+      head: [['Concepto', 'Valor']],
+      body: summaryRows,
+      theme: 'grid',
+      headStyles: { fillColor: [59, 130, 246], textColor: 255, fontStyle: 'bold' },
+      styles: { fontSize: 10 },
+      columnStyles: { 0: { cellWidth: 100 }, 1: { cellWidth: 80, halign: 'right' } },
+    })
+    y = (doc as any).lastAutoTable.finalY + 10
+
+    if (data.byPaymentMethod?.length) {
+      doc.setFontSize(12)
+      doc.text('Desglose por Método de Pago', 10, y)
+      y += 7
+
+      const payRows = data.byPaymentMethod.map((pm: any) => [
+        methodLabel[pm.method] || pm.method,
+        `${sym} ${pm.total.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`,
+        `${((pm.total / summary.totalRevenue) * 100).toFixed(1)}%`,
+      ])
+
+      autoTable(doc, {
+        startY: y,
+        head: [['Método', 'Total', '%']],
+        body: payRows,
+        theme: 'grid',
+        headStyles: { fillColor: [59, 130, 246], textColor: 255, fontStyle: 'bold' },
+        styles: { fontSize: 10 },
+        columnStyles: { 0: { cellWidth: 80 }, 1: { cellWidth: 60, halign: 'right' }, 2: { cellWidth: 40, halign: 'right' } },
+      })
+      y = (doc as any).lastAutoTable.finalY + 10
+    }
+
+    doc.setFontSize(8)
+    doc.text('Documento generado automáticamente por AutoRepuestos - POS', pageW / 2, 285, { align: 'center' })
+
+    doc.save(`declaracion-tva-${startDate}-a-${endDate}.pdf`)
+  }
 
   const SummaryCard = ({ title, value, icon: Icon, color }: any) => (
     <div className="bg-white rounded-xl border border-gray-200 p-5">
@@ -58,6 +133,11 @@ export default function TaxReport() {
         <button onClick={loadReport} disabled={loading} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm disabled:opacity-50">
           {loading ? 'Cargando...' : 'Generar Reporte'}
         </button>
+        {data && (
+          <button onClick={downloadPDF} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm flex items-center gap-2">
+            <Download className="w-4 h-4" /> Descargar PDF
+          </button>
+        )}
       </div>
 
       {data && (
