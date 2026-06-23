@@ -12,10 +12,15 @@ export function reportRoutes(prisma: PrismaClient) {
       const tomorrow = new Date(today)
       tomorrow.setDate(tomorrow.getDate() + 1)
 
-      const [todaySales, lowStock, recentSales, activeRegister] = await Promise.all([
+      const [todaySales, allSales, lowStock, recentSales, activeRegister] = await Promise.all([
         prisma.sale.findMany({
           where: { createdAt: { gte: today, lt: tomorrow }, status: 'completed' },
           include: { items: true },
+        }),
+        prisma.sale.findMany({
+          where: { status: 'completed' },
+          include: { items: true },
+          orderBy: { createdAt: 'desc' },
         }),
         prisma.product.findMany({
           where: { active: true },
@@ -49,6 +54,23 @@ export function reportRoutes(prisma: PrismaClient) {
         .slice(0, 10)
         .map(([productId, data]) => ({ productId, ...data }))
 
+      const allTimeMap = new Map<number, { productName: string; totalQuantity: number }>()
+      for (const sale of allSales) {
+        for (const item of sale.items) {
+          const existing = allTimeMap.get(item.productId)
+          if (existing) {
+            existing.totalQuantity += item.quantity
+          } else {
+            allTimeMap.set(item.productId, { productName: item.productName, totalQuantity: item.quantity })
+          }
+        }
+      }
+
+      const topAllTime = Array.from(allTimeMap.entries())
+        .sort((a, b) => b[1].totalQuantity - a[1].totalQuantity)
+        .slice(0, 10)
+        .map(([productId, data]) => ({ productId, ...data }))
+
       const byPaymentMethod: Record<string, number> = {}
       for (const sale of todaySales) {
         byPaymentMethod[sale.paymentMethod] = (byPaymentMethod[sale.paymentMethod] || 0) + sale.total
@@ -62,6 +84,7 @@ export function reportRoutes(prisma: PrismaClient) {
           byPaymentMethod,
         },
         topProducts: sorted,
+        topAllTime,
         lowStock,
         recentSales,
         activeRegister,

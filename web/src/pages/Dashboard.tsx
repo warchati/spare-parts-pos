@@ -148,24 +148,26 @@ export default function Dashboard() {
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h2 className="text-lg font-bold text-gray-800 mb-4">Productos Más Vendidos</h2>
+          <h2 className="text-lg font-bold text-gray-800 mb-4">Top 10 Más Vendidos (Histórico)</h2>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-gray-500 border-b border-gray-100">
+                  <th className="text-left pb-2">#</th>
                   <th className="text-left pb-2">Producto</th>
-                  <th className="text-right pb-2">Cant.</th>
+                  <th className="text-right pb-2">Cantidad</th>
                 </tr>
               </thead>
               <tbody>
-                {data.topProducts?.slice(0, 10).map((p: any, i: number) => (
+                {data.topAllTime?.slice(0, 10).map((p: any, i: number) => (
                   <tr key={i} className="border-b border-gray-50">
+                    <td className="py-2 text-gray-400 w-8">{i + 1}</td>
                     <td className="py-2 font-medium">{p.productName}</td>
-                    <td className="py-2 text-right">{p.totalQuantity}</td>
+                    <td className="py-2 text-right font-bold">{p.totalQuantity}</td>
                   </tr>
                 ))}
-                {(!data.topProducts || data.topProducts.length === 0) && (
-                  <tr><td colSpan={2} className="text-center py-4 text-gray-400">No hay datos</td></tr>
+                {(!data.topAllTime || data.topAllTime.length === 0) && (
+                  <tr><td colSpan={3} className="text-center py-4 text-gray-400">No hay datos</td></tr>
                 )}
               </tbody>
             </table>
