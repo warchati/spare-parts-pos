@@ -76,7 +76,7 @@ async function main() {
   const iva = await prisma.tax.upsert({
     where: { id: 1 },
     update: {},
-    create: { name: 'IVA 21%', percentage: 21, isDefault: true },
+    create: { name: 'TVA 21%', percentage: 21, isDefault: true },
   })
 
   await prisma.currency.upsert({

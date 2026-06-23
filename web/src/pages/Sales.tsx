@@ -126,7 +126,7 @@ export default function Sales() {
               <p className="text-sm text-gray-500">Fecha: <span className="font-medium text-gray-800">{formatDate(selectedSale.createdAt)}</span></p>
               <p className="text-sm text-gray-500">Pago: <span className="font-medium text-gray-800 capitalize">{methodLabel[selectedSale.paymentMethod]}</span></p>
               {selectedSale.taxTotal > 0 && (
-                <p className="text-sm text-gray-500">IVA Total: <span className="font-medium text-gray-800">{formatCurrency(selectedSale.taxTotal)}</span></p>
+                <p className="text-sm text-gray-500">TVA Total: <span className="font-medium text-gray-800">{formatCurrency(selectedSale.taxTotal)}</span></p>
               )}
               {selectedSale.paymentMethod === 'credit' && selectedSale.creditPayment && (
                 <p className="text-sm text-orange-600">Crédito: {formatCurrency(selectedSale.creditPayment.amount)}</p>
@@ -147,7 +147,7 @@ export default function Sales() {
               </div>
               {(selectedSale.taxTotal > 0) && (
                 <div className="flex justify-between text-sm text-gray-500">
-                  <span>IVA</span>
+                  <span>TVA</span>
                   <span>{formatCurrency(selectedSale.taxTotal)}</span>
                 </div>
               )}

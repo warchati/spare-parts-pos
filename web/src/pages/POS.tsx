@@ -283,7 +283,7 @@ export default function POS() {
           </div>
           {defaultTax && (
             <div className="flex justify-between text-sm text-gray-500">
-              <span>IVA ({defaultTax.percentage}%)</span>
+              <span>TVA ({defaultTax.percentage}%)</span>
               <span>{formatCurrency(taxAmount)}</span>
             </div>
           )}
@@ -377,7 +377,7 @@ export default function POS() {
               </div>
               {defaultTax && (
                 <div className="flex justify-between text-sm text-gray-500">
-                  <span>IVA ({defaultTax.percentage}%)</span>
+                  <span>TVA ({defaultTax.percentage}%)</span>
                   <span>{formatCurrency(taxAmount)}</span>
                 </div>
               )}

@@ -72,7 +72,7 @@ export default function TaxReport() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <SummaryCard title="Ventas" value={data.summary.salesCount} icon={Receipt} color="text-gray-500" />
             <SummaryCard title="Artículos Vendidos" value={data.summary.itemsSold} icon={Package} color="text-gray-500" />
-            <SummaryCard title="IVA a Pagar (Hacienda)" value={formatCurrency(data.summary.totalTax)} icon={Percent} color="text-orange-500" />
+            <SummaryCard title="TVA a Pagar (Hacienda)" value={formatCurrency(data.summary.totalTax)} icon={Percent} color="text-orange-500" />
           </div>
 
           <div className="bg-white rounded-xl border border-gray-200 p-5">

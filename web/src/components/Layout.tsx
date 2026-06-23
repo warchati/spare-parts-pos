@@ -17,7 +17,7 @@ const navItems = [
   { to: '/permissions', label: 'Permisos', icon: Shield, module: 'permissions', action: 'edit' },
   { to: '/vehicles', label: 'Vehículos', icon: Car, module: 'vehicles', action: 'view' },
   { to: '/credit', label: 'Crédito', icon: CreditCard, module: 'credit', action: 'view' },
-  { to: '/tax-report', label: 'Reporte IVA', icon: BarChart3, module: 'dashboard', action: 'view' },
+  { to: '/tax-report', label: 'Reporte TVA', icon: BarChart3, module: 'dashboard', action: 'view' },
   { to: '/taxes', label: 'Impuestos', icon: Percent, module: 'taxes', action: 'view' },
   { to: '/currencies', label: 'Monedas', icon: DollarSign, module: 'currencies', action: 'view' },
 ]
