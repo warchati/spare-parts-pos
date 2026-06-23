@@ -113,7 +113,7 @@ export default function CashRegister() {
               </div>
             </div>
             <div className="mt-3 text-sm text-gray-500">
-              Abierto por: {current.user?.name} | {formatDate(current.openedAt)}
+              Abierto por: {current.user?.name} | {formatDate(current.openingDate)}
             </div>
           </div>
 
@@ -204,8 +204,8 @@ export default function CashRegister() {
               <tbody>
                 {history.map((h: any) => (
                   <tr key={h.id} className="border-b border-gray-50">
-                    <td className="py-2 text-sm">{formatDate(h.openedAt)}</td>
-                    <td className="py-2 text-sm">{h.closedAt ? formatDate(h.closedAt) : '-'}</td>
+                    <td className="py-2 text-sm">{formatDate(h.openingDate)}</td>
+                    <td className="py-2 text-sm">{h.closingDate ? formatDate(h.closingDate) : '-'}</td>
                     <td className="py-2">{h.user?.name}</td>
                     <td className="py-2 text-right font-mono">{formatCurrency(h.closingBalance)}</td>
                     <td className={`py-2 text-right font-mono ${(h.difference || 0) !== 0 ? 'text-red-600' : 'text-green-600'}`}>
