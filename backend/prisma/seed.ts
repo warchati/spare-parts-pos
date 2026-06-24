@@ -85,6 +85,19 @@ async function main() {
     create: { code: 'DH', name: 'Dírham Marroquí', symbol: 'DH', exchangeRate: 1, isBase: true },
   })
 
+  const loyaltyConfigs = [
+    { key: 'EARN_RATE', value: '10' },
+    { key: 'REDEEM_RATE', value: '0.05' },
+    { key: 'EXPIRE_MONTHS', value: '12' },
+  ]
+  for (const config of loyaltyConfigs) {
+    await prisma.loyaltyConfig.upsert({
+      where: { key: config.key },
+      update: { value: config.value },
+      create: config,
+    })
+  }
+
   const roles = ['admin', 'supervisor', 'cashier', 'seller']
   const permDefs: Record<string, Record<string, string[]>> = {
     admin: {
@@ -102,6 +115,7 @@ async function main() {
       exports: ['view'],
       taxes: ['create', 'edit', 'view'],
       currencies: ['create', 'edit', 'view'],
+      loyalty: ['view', 'edit', 'redeem'],
     },
     supervisor: {
       pos: ['sell'],
@@ -118,6 +132,7 @@ async function main() {
       exports: ['view'],
       taxes: ['view'],
       currencies: ['view'],
+      loyalty: ['view', 'redeem'],
     },
     cashier: {
       pos: ['sell'],
@@ -134,6 +149,7 @@ async function main() {
       exports: [],
       taxes: [],
       currencies: [],
+      loyalty: ['redeem'],
     },
     seller: {
       pos: ['sell'],
@@ -150,6 +166,7 @@ async function main() {
       exports: [],
       taxes: [],
       currencies: [],
+      loyalty: ['view', 'redeem'],
     },
   }
 

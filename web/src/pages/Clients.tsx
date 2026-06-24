@@ -3,7 +3,7 @@ import api from '../lib/api'
 import { formatCurrency } from '../lib/currency'
 import { useAuth } from '../contexts/AuthContext'
 import { can } from '../lib/permissions'
-import { Search, Plus, Pencil, Users } from 'lucide-react'
+import { Search, Plus, Pencil, Users, Award } from 'lucide-react'
 
 interface Client {
   id: number
@@ -13,6 +13,7 @@ interface Client {
   vehicle: string
   creditLimit: number
   currentBalance: number
+  pointsBalance: number
 }
 
 export default function Clients() {
@@ -60,6 +61,7 @@ export default function Clients() {
               <th className="text-left px-4 py-3">Teléfono</th>
               <th className="text-left px-4 py-3">Email</th>
               <th className="text-left px-4 py-3">Vehículo</th>
+              <th className="text-right px-4 py-3">Puntos</th>
               <th className="text-right px-4 py-3">Límite Crédito</th>
               <th className="text-right px-4 py-3">Saldo</th>
               <th className="text-right px-4 py-3"></th>
@@ -72,6 +74,11 @@ export default function Clients() {
                 <td className="px-4 py-3 text-sm text-gray-500">{c.phone}</td>
                 <td className="px-4 py-3 text-sm text-gray-500">{c.email}</td>
                 <td className="px-4 py-3 text-sm text-gray-500">{c.vehicle}</td>
+                <td className="px-4 py-3 text-right">
+                  <span className="inline-flex items-center gap-1 text-yellow-700 font-medium text-sm">
+                    <Award className="w-3.5 h-3.5" /> {c.pointsBalance?.toLocaleString() || '0'}
+                  </span>
+                </td>
                 <td className="px-4 py-3 text-right font-mono">{formatCurrency(c.creditLimit)}</td>
                 <td className="px-4 py-3 text-right font-mono">{formatCurrency(c.currentBalance)}</td>
                 <td className="px-4 py-3 text-right">

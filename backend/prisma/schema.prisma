@@ -36,9 +36,10 @@ model User {
   sales          Sale[]
   purchases      PurchaseOrder[]
   cashRegisters  CashRegister[]
-  userPermissions UserPermission[]
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
+  userPermissions    UserPermission[]
+  loyaltyTransactions LoyaltyTransaction[]
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
 }
 
 model Tax {
@@ -104,20 +105,22 @@ model ProductImage {
 }
 
 model Client {
-  id             Int             @id @default(autoincrement())
-  name           String
-  phone          String          @default("")
-  email          String          @default("")
-  address        String          @default("")
-  document       String          @default("")
-  vehicle        String          @default("")
-  notes          String          @default("")
-  creditLimit    Float           @default(0)
-  currentBalance Float           @default(0)
-  sales          Sale[]
-  creditPayments CreditPayment[]
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  id                 Int                  @id @default(autoincrement())
+  name               String
+  phone              String               @default("")
+  email              String               @default("")
+  address            String               @default("")
+  document           String               @default("")
+  vehicle            String               @default("")
+  notes              String               @default("")
+  creditLimit        Float                @default(0)
+  currentBalance     Float                @default(0)
+  pointsBalance      Int                  @default(0)
+  sales              Sale[]
+  creditPayments     CreditPayment[]
+  loyaltyTransactions LoyaltyTransaction[]
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
 }
 
 model Supplier {
@@ -175,6 +178,8 @@ model Sale {
   status         String         @default("completed")
   cancelledAt    DateTime?
   cancelReason   String         @default("")
+  pointsEarned   Int            @default(0)
+  pointsRedeemed Int            @default(0)
   createdAt      DateTime       @default(now())
 }
 
@@ -274,4 +279,30 @@ model PurchaseItem {
   quantity    Int
   unitCost    Float
   totalCost   Float
+}
+
+model LoyaltyConfig {
+  id    Int    @id @default(autoincrement())
+  key   String @unique
+  value String
+}
+
+model LoyaltyTransaction {
+  id            Int      @id @default(autoincrement())
+  clientId      Int
+  client        Client   @relation(fields: [clientId], references: [id])
+  type          String
+  points        Int
+  balanceBefore Int
+  balanceAfter  Int
+  referenceType String
+  referenceId   String   @default("")
+  description   String   @default("")
+  createdById   Int
+  createdBy     User     @relation(fields: [createdById], references: [id])
+  createdAt     DateTime @default(now())
+  expiresAt     DateTime?
+
+  @@index([clientId])
+  @@index([createdAt])
 }

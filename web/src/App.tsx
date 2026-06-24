@@ -20,6 +20,7 @@ import TaxReport from './pages/TaxReport'
 import Taxes from './pages/Taxes'
 import Currencies from './pages/Currencies'
 import Permissions from './pages/Permissions'
+import Loyalty from './pages/Loyalty'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth()
@@ -58,6 +59,7 @@ export default function App() {
         <Route path="taxes" element={<PermissionGuard module="taxes" action="view"><Taxes /></PermissionGuard>} />
         <Route path="currencies" element={<PermissionGuard module="currencies" action="view"><Currencies /></PermissionGuard>} />
         <Route path="permissions" element={<PermissionGuard module="permissions" action="edit"><Permissions /></PermissionGuard>} />
+        <Route path="loyalty" element={<PermissionGuard module="loyalty" action="view"><Loyalty /></PermissionGuard>} />
       </Route>
     </Routes>
   )

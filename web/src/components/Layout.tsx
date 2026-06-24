@@ -1,6 +1,6 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { ShoppingCart, Package, Users, Truck, Receipt, ClipboardList, LogOut, Store, LayoutDashboard, DollarSign, UserCog, Car, CreditCard, Percent, Shield, BarChart3 } from 'lucide-react'
+import { ShoppingCart, Package, Users, Truck, Receipt, ClipboardList, LogOut, Store, LayoutDashboard, DollarSign, UserCog, Car, CreditCard, Percent, Shield, BarChart3, Award } from 'lucide-react'
 import { can, setPermissions } from '../lib/permissions'
 import { useEffect, useRef } from 'react'
 
@@ -20,6 +20,7 @@ const navItems = [
   { to: '/tax-report', label: 'Reporte TVA', icon: BarChart3, module: 'dashboard', action: 'view' },
   { to: '/taxes', label: 'Impuestos', icon: Percent, module: 'taxes', action: 'view' },
   { to: '/currencies', label: 'Monedas', icon: DollarSign, module: 'currencies', action: 'view' },
+  { to: '/loyalty', label: 'Lealtad', icon: Award, module: 'loyalty', action: 'view' },
 ]
 
 export default function Layout() {

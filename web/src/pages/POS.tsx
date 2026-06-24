@@ -3,7 +3,7 @@ import api from '../lib/api'
 import { formatCurrency } from '../lib/currency'
 import { useAuth } from '../contexts/AuthContext'
 import { can } from '../lib/permissions'
-import { Search, Plus, Minus, Trash2, X, User, CreditCard, DollarSign, Building2 } from 'lucide-react'
+import { Search, Plus, Minus, Trash2, X, User, CreditCard, DollarSign, Building2, Award, Gift } from 'lucide-react'
 
 interface Product {
   id: number
@@ -53,6 +53,10 @@ export default function POS() {
   const [currencies, setCurrencies] = useState<Currency[]>([])
   const [selectedCurrency, setSelectedCurrency] = useState<Currency | null>(null)
   const [defaultTax, setDefaultTax] = useState<any>(null)
+  const [loyaltyConfig, setLoyaltyConfig] = useState({ earnRate: 10, redeemRate: 0.05, expireMonths: 12 })
+  const [clientPoints, setClientPoints] = useState<{ balance: number; value: number } | null>(null)
+  const [pointsToRedeem, setPointsToRedeem] = useState(0)
+  const [showPointsInput, setShowPointsInput] = useState(false)
   const searchRef = useRef<HTMLInputElement>(null)
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
@@ -60,6 +64,7 @@ export default function POS() {
     searchRef.current?.focus()
     loadCurrencies()
     loadDefaultTax()
+    loadLoyaltyConfig()
   }, [])
 
   const loadDefaultTax = async () => {
@@ -68,6 +73,23 @@ export default function POS() {
       const def = res.data.find((t: any) => t.isDefault)
       if (def) setDefaultTax(def)
     } catch {}
+  }
+
+  const loadLoyaltyConfig = async () => {
+    try {
+      const res = await api.get('/loyalty/config')
+      setLoyaltyConfig(res.data)
+    } catch {}
+  }
+
+  const loadClientPoints = async (clientId: number) => {
+    try {
+      const res = await api.get(`/loyalty/clients/${clientId}`)
+      const value = Math.round(res.data.pointsBalance * loyaltyConfig.redeemRate * 100) / 100
+      setClientPoints({ balance: res.data.pointsBalance, value })
+    } catch {
+      setClientPoints(null)
+    }
   }
 
   const loadCurrencies = async () => {
@@ -139,7 +161,9 @@ export default function POS() {
   const subtotal = cart.reduce((sum, i) => sum + i.totalPrice, 0)
   const taxRate = defaultTax?.percentage || 0
   const taxAmount = subtotal * taxRate / 100
-  const total = subtotal + taxAmount
+  const pointsDiscount = Math.round(pointsToRedeem * loyaltyConfig.redeemRate * 100) / 100
+  const total = subtotal + taxAmount - pointsDiscount
+  const pointsEarned = Math.floor(total / loyaltyConfig.earnRate)
 
   const handlePayment = async () => {
     if (cart.length === 0) return
@@ -151,10 +175,14 @@ export default function POS() {
         userId: user!.id,
         paymentMethod,
         currencyId: selectedCurrency?.id || null,
+        pointsToRedeem: pointsToRedeem || 0,
       })
       setSuccess(true)
       setCart([])
       setClient(null)
+      setClientPoints(null)
+      setPointsToRedeem(0)
+      setShowPointsInput(false)
       setTimeout(() => setSuccess(false), 3000)
     } catch (e: any) {
       alert(e.response?.data?.error || 'Error al procesar venta')
@@ -162,6 +190,14 @@ export default function POS() {
       setLoading(false)
       setShowPaymentModal(false)
     }
+  }
+
+  const handleSelectClient = (c: Client) => {
+    setClient(c)
+    setShowClientModal(false)
+    setClientSearch('')
+    setClientResults([])
+    loadClientPoints(c.id)
   }
 
 
@@ -252,7 +288,7 @@ export default function POS() {
             <span className={client ? 'text-gray-800' : 'text-gray-400'}>
               {client ? client.name : 'Cliente general'}
             </span>
-            {client && <X className="w-4 h-4 ml-auto text-gray-400" onClick={(e) => { e.stopPropagation(); setClient(null) }} />}
+            {client && <X className="w-4 h-4 ml-auto text-gray-400" onClick={(e) => { e.stopPropagation(); setClient(null); setClientPoints(null); setPointsToRedeem(0); setShowPointsInput(false) }} />}
           </button>
 
           {currencies.length > 0 && (
@@ -274,23 +310,85 @@ export default function POS() {
           )}
         </div>
 
+        {client && clientPoints && (
+          <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1.5 text-sm font-medium text-yellow-700">
+                <Award className="w-4 h-4" /> Puntos del cliente
+              </div>
+              <span className="text-sm font-bold text-yellow-700">{clientPoints.balance.toLocaleString()} pts</span>
+            </div>
+            <p className="text-xs text-yellow-600 mb-2">Valor: {formatCurrency(clientPoints.value)}</p>
+            {clientPoints.balance > 0 && can(user?.role, 'loyalty', 'redeem') && (
+              <button
+                onClick={() => setShowPointsInput(!showPointsInput)}
+                className="flex items-center gap-1.5 text-xs font-medium text-yellow-700 hover:text-yellow-800"
+              >
+                <Gift className="w-3.5 h-3.5" /> {showPointsInput ? 'Cancelar canje' : 'Canjear puntos'}
+              </button>
+            )}
+            {showPointsInput && (
+              <div className="mt-2 space-y-2">
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    min={0}
+                    max={clientPoints.balance}
+                    value={pointsToRedeem || ''}
+                    onChange={(e) => {
+                      const val = Math.min(Number(e.target.value) || 0, clientPoints.balance)
+                      setPointsToRedeem(val)
+                    }}
+                    placeholder="Puntos a canjear"
+                    className="flex-1 px-2 py-1.5 text-sm border border-yellow-300 rounded-lg outline-none focus:ring-2 focus:ring-yellow-500 bg-white"
+                  />
+                </div>
+                {pointsToRedeem > 0 && (
+                  <div className="text-xs text-gray-600 space-y-1">
+                    <p className="flex justify-between">
+                      <span>Descuento:</span>
+                      <span className="font-bold text-green-600">-{formatCurrency(pointsDiscount)}</span>
+                    </p>
+                    <p className="flex justify-between">
+                      <span>Puntos restantes:</span>
+                      <span>{clientPoints.balance - pointsToRedeem} pts</span>
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="flex-1" />
 
-        <div className="space-y-3 border-t border-gray-200 pt-4">
-          <div className="flex justify-between text-sm text-gray-500">
-            <span>Subtotal</span>
-            <span>{formatCurrency(subtotal)}</span>
-          </div>
-          {defaultTax && (
+          <div className="space-y-3 border-t border-gray-200 pt-4">
             <div className="flex justify-between text-sm text-gray-500">
-              <span>TVA ({defaultTax.percentage}%)</span>
-              <span>{formatCurrency(taxAmount)}</span>
+              <span>Subtotal</span>
+              <span>{formatCurrency(subtotal)}</span>
             </div>
-          )}
-          <div className="flex justify-between text-xl font-bold text-gray-800">
-            <span>Total</span>
-            <span>{formatCurrency(total)}</span>
-          </div>
+            {defaultTax && (
+              <div className="flex justify-between text-sm text-gray-500">
+                <span>TVA ({defaultTax.percentage}%)</span>
+                <span>{formatCurrency(taxAmount)}</span>
+              </div>
+            )}
+            {pointsDiscount > 0 && (
+              <div className="flex justify-between text-sm text-green-600">
+                <span>Desc. puntos</span>
+                <span>-{formatCurrency(pointsDiscount)}</span>
+              </div>
+            )}
+            <div className="flex justify-between text-xl font-bold text-gray-800">
+              <span>Total</span>
+              <span>{formatCurrency(total)}</span>
+            </div>
+            {client && pointsEarned > 0 && (
+              <div className="flex justify-between text-xs text-yellow-600">
+                <span>Puntos a ganar</span>
+                <span className="font-bold">{pointsEarned} pts</span>
+              </div>
+            )}
 
           <div className="grid grid-cols-3 gap-2">
             {[
@@ -343,7 +441,7 @@ export default function POS() {
               {clientResults.map(c => (
                 <button
                   key={c.id}
-                  onClick={() => { setClient(c); setShowClientModal(false); setClientSearch(''); setClientResults([]) }}
+                  onClick={() => handleSelectClient(c)}
                   className="w-full text-left px-3 py-2 hover:bg-blue-50 rounded-lg"
                 >
                   <p className="font-medium">{c.name}</p>
@@ -379,6 +477,12 @@ export default function POS() {
                 <div className="flex justify-between text-sm text-gray-500">
                   <span>TVA ({defaultTax.percentage}%)</span>
                   <span>{formatCurrency(taxAmount)}</span>
+                </div>
+              )}
+              {pointsDiscount > 0 && (
+                <div className="flex justify-between text-sm text-green-600">
+                  <span>Desc. puntos</span>
+                  <span>-{formatCurrency(pointsDiscount)}</span>
                 </div>
               )}
               <div className="flex justify-between font-bold text-lg">

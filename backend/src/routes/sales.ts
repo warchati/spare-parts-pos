@@ -98,10 +98,22 @@ export function saleRoutes(prisma: PrismaClient) {
     } catch (e) { next(e) }
   })
 
+  const getLoyaltyConfig = async () => {
+    const configs = await prisma.loyaltyConfig.findMany()
+    const map: Record<string, string> = {}
+    for (const c of configs) map[c.key] = c.value
+    return {
+      earnRate: Number(map.EARN_RATE || '10'),
+      redeemRate: Number(map.REDEEM_RATE || '0.05'),
+      expireMonths: Number(map.EXPIRE_MONTHS || '12'),
+    }
+  }
+
   router.post('/', requirePermission(prisma, 'pos', 'sell'), async (req: AuthRequest, res, next) => {
     try {
-      const { items, clientId, discount, paymentMethod, paymentDetails, cashRegisterId, currencyId } = req.body
+      const { items, clientId, discount, paymentMethod, paymentDetails, cashRegisterId, currencyId, pointsToRedeem } = req.body
       const userId = req.user!.id
+      const loyaltyConfig = await getLoyaltyConfig()
 
       const result = await prisma.$transaction(async (tx) => {
         let subtotal = 0
@@ -114,7 +126,6 @@ export function saleRoutes(prisma: PrismaClient) {
             include: { tax: true },
           })
 
-          // Atomic stock check + decrement using conditional update
           const updated = await tx.product.updateMany({
             where: { id: product.id, stock: { gte: item.quantity } },
             data: { stock: { decrement: item.quantity } },
@@ -146,7 +157,21 @@ export function saleRoutes(prisma: PrismaClient) {
           }
         }
 
-        const total = subtotal - (discount || 0) + taxTotal
+        let pointsDiscount = 0
+        let redeemPoints = 0
+        if (pointsToRedeem > 0 && clientId) {
+          redeemPoints = pointsToRedeem
+          pointsDiscount = Math.round(redeemPoints * loyaltyConfig.redeemRate * 100) / 100
+          const client = await tx.client.findUnique({
+            where: { id: clientId },
+            select: { pointsBalance: true },
+          })
+          if (!client || client.pointsBalance < redeemPoints) {
+            throw new Error('Insufficient loyalty points')
+          }
+        }
+
+        const total = subtotal - (discount || 0) - pointsDiscount + taxTotal
 
         let resolvedCurrencyId = currencyId || null
         if (!resolvedCurrencyId) {
@@ -154,7 +179,6 @@ export function saleRoutes(prisma: PrismaClient) {
           if (baseCurrency) resolvedCurrencyId = baseCurrency.id
         }
 
-        // Credit limit check before creating sale
         if (paymentMethod === 'credit' && clientId) {
           const client = await tx.client.findUnique({ where: { id: clientId } })
           if (client && (client.currentBalance + total) > (client.creditLimit || 0)) {
@@ -162,7 +186,6 @@ export function saleRoutes(prisma: PrismaClient) {
           }
         }
 
-        // Generate invoice number using atomic sequence
         const lastSale = await tx.sale.findFirst({
           where: { invoiceNumber: { startsWith: `INV-${new Date().getFullYear()}-` } },
           orderBy: { id: 'desc' },
@@ -193,6 +216,7 @@ export function saleRoutes(prisma: PrismaClient) {
             discount: discount || 0,
             taxTotal,
             total,
+            pointsRedeemed: redeemPoints,
             paymentMethod: paymentMethod || 'cash',
             paymentDetails: paymentDetails || '',
             items: { create: saleItems },
@@ -200,7 +224,68 @@ export function saleRoutes(prisma: PrismaClient) {
           include: { items: true, client: true, creditPayments: true, currency: true },
         })
 
-        return sale
+        if (clientId) {
+          const client = await tx.client.findUnique({
+            where: { id: clientId },
+            select: { pointsBalance: true },
+          })
+          const oldBalance = client?.pointsBalance ?? 0
+          const pointsEarned = Math.floor(total / loyaltyConfig.earnRate)
+          let runningBalance = oldBalance
+
+          if (pointsEarned > 0) {
+            runningBalance += pointsEarned
+            const expiresAt = new Date()
+            expiresAt.setMonth(expiresAt.getMonth() + loyaltyConfig.expireMonths)
+            await tx.loyaltyTransaction.create({
+              data: {
+                clientId,
+                type: 'EARN',
+                points: pointsEarned,
+                balanceBefore: runningBalance - pointsEarned,
+                balanceAfter: runningBalance,
+                referenceType: 'SALE',
+                referenceId: invoiceNumber,
+                description: `Puntos ganados en venta ${invoiceNumber}`,
+                createdById: userId,
+                expiresAt,
+              },
+            })
+          }
+
+          if (redeemPoints > 0) {
+            const redeemBalanceBefore = runningBalance
+            runningBalance -= redeemPoints
+            await tx.loyaltyTransaction.create({
+              data: {
+                clientId,
+                type: 'REDEEM',
+                points: redeemPoints,
+                balanceBefore: redeemBalanceBefore,
+                balanceAfter: runningBalance,
+                referenceType: 'SALE',
+                referenceId: invoiceNumber,
+                description: `Puntos canjeados: ${pointsDiscount.toFixed(2)} descuento en ${invoiceNumber}`,
+                createdById: userId,
+              },
+            })
+          }
+
+          await tx.client.update({
+            where: { id: clientId },
+            data: { pointsBalance: runningBalance },
+          })
+
+          await tx.sale.update({
+            where: { id: sale.id },
+            data: { pointsEarned },
+          })
+        }
+
+        return await tx.sale.findUnique({
+          where: { id: sale.id },
+          include: { items: true, client: true, creditPayments: true, currency: true },
+        })
       })
 
       res.status(201).json(result)
@@ -218,9 +303,10 @@ export function saleRoutes(prisma: PrismaClient) {
     } catch (e) { next(e) }
   })
 
-  router.patch('/:id/cancel', requirePermission(prisma, 'sales', 'edit'), async (req, res, next) => {
+  router.patch('/:id/cancel', requirePermission(prisma, 'sales', 'edit'), async (req: AuthRequest, res, next) => {
     try {
       const { cancelReason } = req.body
+      const userId = req.user!.id
       const sale = await prisma.sale.findUnique({
         where: { id: Number(req.params.id) },
         include: { items: true },
@@ -243,6 +329,57 @@ export function saleRoutes(prisma: PrismaClient) {
           })
         }
 
+        // Reverse loyalty points
+        if (sale.clientId && (sale.pointsEarned > 0 || sale.pointsRedeemed > 0)) {
+          const client = await tx.client.findUnique({
+            where: { id: sale.clientId },
+            select: { pointsBalance: true },
+          })
+          const oldBalance = client?.pointsBalance ?? 0
+          let runningBalance = oldBalance
+
+          // Reverse earned points: decrement balance
+          if (sale.pointsEarned > 0) {
+            runningBalance -= sale.pointsEarned
+            await tx.loyaltyTransaction.create({
+              data: {
+                clientId: sale.clientId,
+                type: 'REVERSE',
+                points: sale.pointsEarned,
+                balanceBefore: runningBalance + sale.pointsEarned,
+                balanceAfter: runningBalance,
+                referenceType: 'CANCELLATION',
+                referenceId: sale.invoiceNumber || String(sale.id),
+                description: `Reversión de puntos por cancelación de ${sale.invoiceNumber}`,
+                createdById: userId,
+              },
+            })
+          }
+
+          // Restore redeemed points: increment balance
+          if (sale.pointsRedeemed > 0) {
+            runningBalance += sale.pointsRedeemed
+            await tx.loyaltyTransaction.create({
+              data: {
+                clientId: sale.clientId,
+                type: 'REVERSE',
+                points: sale.pointsRedeemed,
+                balanceBefore: runningBalance - sale.pointsRedeemed,
+                balanceAfter: runningBalance,
+                referenceType: 'CANCELLATION',
+                referenceId: sale.invoiceNumber || String(sale.id),
+                description: `Restauración de puntos canjeados por cancelación de ${sale.invoiceNumber}`,
+                createdById: userId,
+              },
+            })
+          }
+
+          await tx.client.update({
+            where: { id: sale.clientId },
+            data: { pointsBalance: runningBalance },
+          })
+        }
+
         const updated = await tx.sale.update({
           where: { id: sale.id },
           data: {
@@ -259,9 +396,10 @@ export function saleRoutes(prisma: PrismaClient) {
     } catch (e) { next(e) }
   })
 
-  router.post('/:id/returns', requirePermission(prisma, 'sales', 'edit'), async (req, res, next) => {
+  router.post('/:id/returns', requirePermission(prisma, 'sales', 'edit'), async (req: AuthRequest, res, next) => {
     try {
       const { items: returnItems, reason } = req.body
+      const userId = req.user!.id
       const sale = await prisma.sale.findUnique({
         where: { id: Number(req.params.id) },
         include: { items: true },
@@ -297,6 +435,40 @@ export function saleRoutes(prisma: PrismaClient) {
             where: { id: sale.clientId },
             data: { currentBalance: { decrement: returnSubtotal } },
           })
+        }
+
+        // Reverse points proportionally
+        if (sale.clientId && sale.pointsEarned > 0 && sale.subtotal > 0) {
+          const ratio = returnSubtotal / sale.subtotal
+          const pointsToReverse = Math.floor(sale.pointsEarned * ratio)
+
+          if (pointsToReverse > 0) {
+            const client = await tx.client.findUnique({
+              where: { id: sale.clientId },
+              select: { pointsBalance: true },
+            })
+            const oldBalance = client?.pointsBalance ?? 0
+            const newBalance = Math.max(0, oldBalance - pointsToReverse)
+
+            await tx.loyaltyTransaction.create({
+              data: {
+                clientId: sale.clientId,
+                type: 'REVERSE',
+                points: pointsToReverse,
+                balanceBefore: oldBalance,
+                balanceAfter: newBalance,
+                referenceType: 'RETURN',
+                referenceId: sale.invoiceNumber || String(sale.id),
+                description: `Reversión de ${pointsToReverse} puntos por devolución parcial de ${sale.invoiceNumber}`,
+                createdById: userId,
+              },
+            })
+
+            await tx.client.update({
+              where: { id: sale.clientId },
+              data: { pointsBalance: newBalance },
+            })
+          }
         }
 
         const saleReturn = await tx.saleReturn.create({

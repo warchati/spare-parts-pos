@@ -19,6 +19,7 @@ import { exportRoutes } from './routes/exports'
 import { imageRoutes } from './routes/images'
 import { uploadRoutes } from './routes/upload'
 import { permissionRoutes } from './routes/permissions'
+import { loyaltyRoutes } from './routes/loyalty'
 import { errorHandler } from './middleware/errorHandler'
 import { requireAuth } from './middleware/auth'
 
@@ -65,6 +66,7 @@ export function createServer(prisma: PrismaClient) {
   app.use('/api/images', imageRoutes(prisma))
   app.use('/api/uploads', uploadRoutes(prisma))
   app.use('/api/permissions', permissionRoutes(prisma))
+  app.use('/api/loyalty', loyaltyRoutes(prisma))
 
   app.use(errorHandler)
   return app
