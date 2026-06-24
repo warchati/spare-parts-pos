@@ -157,10 +157,11 @@ export function saleRoutes(prisma: PrismaClient) {
           }
         }
 
+        const pointsToRedeemNum = Number(pointsToRedeem) || 0
         let pointsDiscount = 0
         let redeemPoints = 0
-        if (pointsToRedeem > 0 && clientId) {
-          redeemPoints = pointsToRedeem
+        if (pointsToRedeemNum > 0 && clientId) {
+          redeemPoints = pointsToRedeemNum
           pointsDiscount = Math.round(redeemPoints * loyaltyConfig.redeemRate * 100) / 100
           const client = await tx.client.findUnique({
             where: { id: clientId },
@@ -230,7 +231,7 @@ export function saleRoutes(prisma: PrismaClient) {
             select: { pointsBalance: true },
           })
           const oldBalance = client?.pointsBalance ?? 0
-          const pointsEarned = Math.floor(total / loyaltyConfig.earnRate)
+          const pointsEarned = Math.max(0, Math.floor(total / loyaltyConfig.earnRate))
           let runningBalance = oldBalance
 
           if (pointsEarned > 0) {

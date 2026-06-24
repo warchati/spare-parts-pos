@@ -127,7 +127,7 @@ export function loyaltyRoutes(prisma: PrismaClient) {
   router.post('/calculate', requirePermission(prisma, 'loyalty', 'redeem'), async (req, res, next) => {
     try {
       const { clientId, points } = req.body
-      if (!clientId || !points || points <= 0) {
+      if (!clientId || typeof points !== 'number' || points <= 0) {
         return res.status(400).json({ error: 'clientId and points are required' })
       }
 
