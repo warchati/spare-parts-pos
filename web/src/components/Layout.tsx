@@ -1,8 +1,7 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { ShoppingCart, Package, Users, Truck, Receipt, ClipboardList, LogOut, Store, LayoutDashboard, DollarSign, UserCog, Car, CreditCard, Percent, Shield, BarChart3, Award, RotateCcw } from 'lucide-react'
-import { can, setPermissions } from '../lib/permissions'
-import { useEffect, useRef } from 'react'
+import { can } from '../lib/permissions'
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, module: 'dashboard', action: 'view' },
@@ -28,19 +27,13 @@ export default function Layout() {
   const { user, logout, permissions } = useAuth()
   const navigate = useNavigate()
   const userRole = user?.role
-  const prevUserId = useRef(user?.id)
 
-  useEffect(() => {
-    if (prevUserId.current !== user?.id) {
-      setPermissions([])
-      prevUserId.current = user?.id
+  const visibleItems = navItems.filter(item => {
+    if (permissions.length > 0) {
+      return permissions.some(p => p.module === item.module && p.action === item.action)
     }
-    if (permissions && permissions.length > 0) {
-      setPermissions(permissions)
-    }
-  }, [permissions, user?.id])
-
-  const visibleItems = navItems.filter(item => can(userRole, item.module, item.action))
+    return can(userRole, item.module, item.action)
+  })
 
   const handleLogout = () => {
     logout()

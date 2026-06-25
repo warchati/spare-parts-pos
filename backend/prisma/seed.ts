@@ -115,6 +115,7 @@ async function main() {
       exports: ['view'],
       taxes: ['create', 'edit', 'view'],
       currencies: ['create', 'edit', 'view'],
+      permissions: ['edit'],
       returns: ['view', 'edit'],
       loyalty: ['view', 'edit', 'redeem'],
     },

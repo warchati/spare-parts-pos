@@ -30,10 +30,11 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function PermissionGuard({ module, action, children }: { module: string; action: string; children: React.ReactNode }) {
-  const { user } = useAuth()
-  if (!can(user?.role, module, action)) {
-    return <Navigate to="/dashboard" replace />
-  }
+  const { user, permissions } = useAuth()
+  const hasAccess = permissions.length > 0
+    ? permissions.some(p => p.module === module && p.action === action)
+    : can(user?.role, module, action)
+  if (!hasAccess) return <Navigate to="/dashboard" replace />
   return <>{children}</>
 }
 
