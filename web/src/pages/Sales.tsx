@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import api from '../lib/api'
 import { formatCurrency } from '../lib/currency'
 import { downloadExport } from '../lib/download'
 import { useAuth } from '../contexts/AuthContext'
 import { can } from '../lib/permissions'
-import { Receipt, Search, Download, CreditCard, X, AlertCircle, Printer } from 'lucide-react'
+import { Receipt, Search, Download, CreditCard, X, AlertCircle, Printer, RotateCcw } from 'lucide-react'
 
 export default function Sales() {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [sales, setSales] = useState<any[]>([])
   const [search, setSearch] = useState('')
   const [selectedSale, setSelectedSale] = useState<any>(null)
@@ -166,12 +168,20 @@ export default function Sales() {
                 <Printer className="w-4 h-4" /> Imprimir
               </button>
               {selectedSale.status === 'completed' && can(user?.role, 'sales', 'edit') && (
-                <button
-                  onClick={() => { setCancelReason(''); setShowCancelModal(true) }}
-                  className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm"
-                >
-                  Cancelar
-                </button>
+                <>
+                  <button
+                    onClick={() => { setCancelReason(''); setShowCancelModal(true) }}
+                    className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={() => navigate('/returns')}
+                    className="flex-1 px-4 py-2.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 text-sm flex items-center justify-center gap-1"
+                  >
+                    <RotateCcw className="w-4 h-4" /> Devolver
+                  </button>
+                </>
               )}
             </div>
           </div>

@@ -196,12 +196,14 @@ model SaleItem {
 }
 
 model SaleReturn {
-  id        Int              @id @default(autoincrement())
-  saleId    Int
-  sale      Sale             @relation(fields: [saleId], references: [id])
-  reason    String
-  createdAt DateTime         @default(now())
-  items     SaleReturnItem[]
+  id               Int              @id @default(autoincrement())
+  saleId           Int
+  sale             Sale             @relation(fields: [saleId], references: [id])
+  reason           String
+  totalRefund      Float            @default(0)
+  creditNoteNumber String           @default("")
+  createdAt        DateTime         @default(now())
+  items            SaleReturnItem[]
 }
 
 model SaleReturnItem {

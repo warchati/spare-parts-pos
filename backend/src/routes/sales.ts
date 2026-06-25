@@ -87,6 +87,30 @@ export function saleRoutes(prisma: PrismaClient) {
     } catch (e) { next(e) }
   })
 
+  router.get('/by-barcode/:barcode', requirePermission(prisma, 'sales', 'view'), async (req, res, next) => {
+    try {
+      const { barcode } = req.params
+      const product = await prisma.product.findFirst({ where: { barcode } })
+      if (!product) return res.status(404).json({ error: 'Producto no encontrado con ese código de barras' })
+
+      const sales = await prisma.sale.findMany({
+        where: {
+          status: 'completed',
+          items: { some: { productId: product.id } },
+        },
+        include: {
+          items: { where: { productId: product.id } },
+          client: true,
+          returns: { include: { items: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 20,
+      })
+
+      res.json({ product, sales })
+    } catch (e) { next(e) }
+  })
+
   router.get('/:id', requirePermission(prisma, 'sales', 'view'), async (req, res, next) => {
     try {
       const sale = await prisma.sale.findUnique({
@@ -425,33 +449,65 @@ export function saleRoutes(prisma: PrismaClient) {
 
       const result = await prisma.$transaction(async (tx) => {
         const saleReturnItems = []
+        let returnSubtotal = 0
 
         for (const ri of returnItems) {
           const saleItem = sale.items.find(i => i.productId === ri.productId)
           if (!saleItem) throw new Error(`Product ${ri.productId} not found in sale`)
+          if (ri.quantity > saleItem.quantity) throw new Error(`Cannot return more than ${saleItem.quantity} of ${saleItem.productName}`)
 
           await tx.product.update({
             where: { id: ri.productId },
             data: { stock: { increment: ri.quantity } },
           })
 
+          const itemSubtotal = saleItem.unitPrice * ri.quantity
+          returnSubtotal += itemSubtotal
+
           saleReturnItems.push({
             productId: ri.productId,
             productName: saleItem.productName,
             quantity: ri.quantity,
             unitPrice: saleItem.unitPrice,
-            subtotal: saleItem.unitPrice * ri.quantity,
+            subtotal: itemSubtotal,
           })
         }
 
-        const returnSubtotal = saleReturnItems.reduce((s, i) => s + i.subtotal, 0)
+        // Calculate proportional discount
+        let discountAllocation = 0
+        if (sale.discount > 0 && sale.subtotal > 0) {
+          const ratio = returnSubtotal / sale.subtotal
+          discountAllocation = Math.round(sale.discount * ratio * 100) / 100
+        }
+
+        // Calculate proportional tax
+        let taxAllocation = 0
+        if (sale.taxTotal > 0 && sale.subtotal > 0) {
+          const ratio = returnSubtotal / sale.subtotal
+          taxAllocation = Math.round(sale.taxTotal * ratio * 100) / 100
+        }
+
+        const refundTotal = returnSubtotal - discountAllocation + taxAllocation
 
         if (sale.paymentMethod === 'credit' && sale.clientId) {
           await tx.client.update({
             where: { id: sale.clientId },
-            data: { currentBalance: { decrement: returnSubtotal } },
+            data: { currentBalance: { decrement: refundTotal } },
           })
         }
+
+        // Generate credit note number
+        const year = new Date().getFullYear()
+        const lastReturn = await tx.saleReturn.findFirst({
+          where: { creditNoteNumber: { startsWith: `CN-${year}-` } },
+          orderBy: { id: 'desc' },
+        })
+        let seq = 1
+        if (lastReturn?.creditNoteNumber) {
+          const parts = lastReturn.creditNoteNumber.split('-')
+          seq = Number(parts[parts.length - 1]) + 1
+        }
+        const creditNoteNumber = `CN-${year}-${String(seq).padStart(4, '0')}`
 
         // Reverse points proportionally
         if (sale.clientId && sale.pointsEarned > 0 && sale.subtotal > 0) {
@@ -474,7 +530,7 @@ export function saleRoutes(prisma: PrismaClient) {
                 balanceBefore: oldBalance,
                 balanceAfter: newBalance,
                 referenceType: 'RETURN',
-                referenceId: sale.invoiceNumber || String(sale.id),
+                referenceId: creditNoteNumber,
                 description: `Reversión de ${pointsToReverse} puntos por devolución parcial de ${sale.invoiceNumber}`,
                 createdById: userId,
               },
@@ -491,6 +547,8 @@ export function saleRoutes(prisma: PrismaClient) {
           data: {
             saleId: sale.id,
             reason: reason || '',
+            totalRefund: refundTotal,
+            creditNoteNumber,
             items: { create: saleReturnItems },
           },
           include: { items: true },
