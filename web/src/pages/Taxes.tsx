@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import api from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import { can } from '../lib/permissions'
-import { Percent, Plus, Pencil, X, Check, AlertCircle, Star, Save } from 'lucide-react'
+import { Percent, Plus, Pencil, X, Check, AlertCircle, Star } from 'lucide-react'
 
 interface Tax {
   id: number

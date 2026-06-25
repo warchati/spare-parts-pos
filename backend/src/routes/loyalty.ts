@@ -107,8 +107,16 @@ export function loyaltyRoutes(prisma: PrismaClient) {
       if (type) where.type = type
       if (start || end) {
         where.createdAt = {}
-        if (start) where.createdAt.gte = new Date(start as string)
-        if (end) where.createdAt.lte = new Date(end as string)
+        if (start) {
+          const d = new Date(start as string)
+          if (isNaN(d.getTime())) return res.status(400).json({ error: 'Invalid start date' })
+          where.createdAt.gte = d
+        }
+        if (end) {
+          const d = new Date(end as string)
+          if (isNaN(d.getTime())) return res.status(400).json({ error: 'Invalid end date' })
+          where.createdAt.lte = d
+        }
       }
 
       const transactions = await prisma.loyaltyTransaction.findMany({

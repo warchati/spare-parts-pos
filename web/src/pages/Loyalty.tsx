@@ -3,7 +3,7 @@ import api from '../lib/api'
 import { formatCurrency, getSymbol } from '../lib/currency'
 import { useAuth } from '../contexts/AuthContext'
 import { can } from '../lib/permissions'
-import { Search, Award, History, Settings, ChevronDown, ChevronUp } from 'lucide-react'
+import { Search, Award, History, Settings } from 'lucide-react'
 
 interface ClientPoints {
   id: number

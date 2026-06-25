@@ -28,7 +28,7 @@ async function main() {
     },
   })
 
-  const proveedor1 = await prisma.supplier.upsert({
+  await prisma.supplier.upsert({
     where: { id: 1 },
     update: {},
     create: {
@@ -40,7 +40,7 @@ async function main() {
     },
   })
 
-  const proveedor2 = await prisma.supplier.upsert({
+  await prisma.supplier.upsert({
     where: { id: 2 },
     update: {},
     create: {
@@ -183,8 +183,6 @@ async function main() {
   }
 
   console.log('Seed completed!')
-  console.log(`Admin: admin / admin123`)
-  console.log(`Cajero: cajero / cajero123`)
 }
 
 main()

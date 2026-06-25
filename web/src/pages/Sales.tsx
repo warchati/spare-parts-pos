@@ -22,9 +22,9 @@ export default function Sales() {
   const loadSales = async () => {
     try {
       const params: any = {}
-      if (startDate) params.startDate = startDate
-      if (endDate) params.endDate = endDate
-      if (paymentFilter) params.paymentMethod = paymentFilter
+      if (startDate) params.start = startDate
+      if (endDate) params.end = endDate
+      if (paymentFilter) params.status = paymentFilter
       const res = await api.get('/sales', { params })
       setSales(res.data)
     } catch (e) { console.error(e) }
