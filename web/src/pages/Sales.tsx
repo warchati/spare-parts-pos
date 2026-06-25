@@ -124,8 +124,8 @@ export default function Sales() {
               {selectedSale.taxTotal > 0 && (
                 <p className="text-sm text-gray-500">TVA Total: <span className="font-medium text-gray-800">{formatCurrency(selectedSale.taxTotal)}</span></p>
               )}
-              {selectedSale.paymentMethod === 'credit' && selectedSale.creditPayment && (
-                <p className="text-sm text-orange-600">Crédito: {formatCurrency(selectedSale.creditPayment.amount)}</p>
+              {selectedSale.paymentMethod === 'credit' && selectedSale.creditPayments?.length > 0 && (
+                <p className="text-sm text-orange-600">Crédito: {formatCurrency(selectedSale.creditPayments[0].amount)}</p>
               )}
             </div>
             <div className="border-t pt-3 space-y-2">

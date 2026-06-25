@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { PrismaClient } from '@prisma/client'
+import bcrypt from 'bcryptjs'
 import { requirePermission, AuthRequest } from '../middleware/auth'
 
 export function userRoutes(prisma: PrismaClient) {
@@ -33,8 +34,9 @@ export function userRoutes(prisma: PrismaClient) {
       const existing = await prisma.user.findUnique({ where: { username } })
       if (existing) return res.status(409).json({ error: 'Username already exists' })
 
+      const hashedPassword = await bcrypt.hash(password, 10)
       const user = await prisma.user.create({
-        data: { username, name, email: email || '', password, role: role || 'cashier' },
+        data: { username, name, email: email || '', password: hashedPassword, role: role || 'cashier' },
         select: { id: true, username: true, name: true, email: true, role: true, active: true },
       })
       res.status(201).json(user)
@@ -48,7 +50,7 @@ export function userRoutes(prisma: PrismaClient) {
       if (username !== undefined) data.username = username
       if (name !== undefined) data.name = name
       if (email !== undefined) data.email = email
-      if (password !== undefined) data.password = password
+      if (password !== undefined) data.password = await bcrypt.hash(password, 10)
       if (role !== undefined) {
         // Only admins can change roles, prevent self-escalation
         if (req.user!.role !== 'admin') {

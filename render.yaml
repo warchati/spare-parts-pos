@@ -9,6 +9,8 @@ services:
     healthCheckPath: /api/health
     envVars:
       - key: DATABASE_URL
-        value: postgresql://postgres:Postventa2024!@db.pzslmfjabfyjzwchaahk.supabase.co:5432/postgres
+        sync: false
+      - key: JWT_SECRET
+        sync: false
       - key: PORT
         value: "3000"

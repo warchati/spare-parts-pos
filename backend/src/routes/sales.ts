@@ -121,18 +121,22 @@ export function saleRoutes(prisma: PrismaClient) {
         const saleItems = []
 
         for (const item of items) {
+          // Lock the product row to prevent race conditions
+          await tx.$queryRaw`SELECT id FROM "Product" WHERE id = ${item.productId} FOR UPDATE`
+
           const product = await tx.product.findUniqueOrThrow({
             where: { id: item.productId },
             include: { tax: true },
           })
 
-          const updated = await tx.product.updateMany({
-            where: { id: product.id, stock: { gte: item.quantity } },
-            data: { stock: { decrement: item.quantity } },
-          })
-          if (updated.count === 0) {
+          if (product.stock < item.quantity) {
             throw new Error(`Insufficient stock for ${product.name}`)
           }
+
+          await tx.product.update({
+            where: { id: product.id },
+            data: { stock: { decrement: item.quantity } },
+          })
 
           const totalPrice = product.sellPrice * item.quantity
           subtotal += totalPrice

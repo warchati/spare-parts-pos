@@ -18,14 +18,14 @@ export default function CreditPayments() {
 
   const loadClients = async () => {
     try {
-      const res = await api.get('/credit', { params: { q: search || undefined } })
+      const res = await api.get('/credit/clients')
       setClients(res.data)
     } catch (e) { console.error(e) }
   }
 
   const loadClientDetail = async (client: any) => {
     try {
-      const res = await api.get(`/credit/clients`, { params: { clientId: client.id } })
+      const res = await api.get('/credit', { params: { clientId: client.id } })
       setClientDetail(res.data)
       setSelectedClient(client)
     } catch (e: any) { alert(e.response?.data?.error || 'Error al cargar detalle') }

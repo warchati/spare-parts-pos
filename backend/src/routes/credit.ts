@@ -7,6 +7,22 @@ export function creditRoutes(prisma: PrismaClient) {
 
   router.get('/', requirePermission(prisma, 'credit', 'view'), async (req, res, next) => {
     try {
+      const clientId = req.query.clientId ? Number(req.query.clientId) : undefined
+      if (clientId) {
+        const [payments, sales] = await Promise.all([
+          prisma.creditPayment.findMany({
+            where: { clientId },
+            include: { sale: { include: { items: true } }, client: true },
+            orderBy: { createdAt: 'desc' },
+          }),
+          prisma.sale.findMany({
+            where: { clientId, paymentMethod: 'credit' },
+            select: { id: true, total: true, createdAt: true },
+            orderBy: { createdAt: 'desc' },
+          }),
+        ])
+        return res.json({ payments, sales })
+      }
       const payments = await prisma.creditPayment.findMany({
         include: { sale: { include: { items: true } }, client: true },
         orderBy: { createdAt: 'desc' },

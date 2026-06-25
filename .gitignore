@@ -1,6 +1,7 @@
 node_modules/
 dist/
 .env
+.env.local
 *.log
 prisma/test.db
 prisma/test.db-journal
@@ -8,4 +9,6 @@ prisma/migrations/
 *.bak
 web/node_modules/
 mobile/node_modules/
+backend/backend_err.log
+backend/backend_out.log
 
