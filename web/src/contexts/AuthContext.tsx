@@ -47,7 +47,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const res = await api.get('/permissions/mine')
       setPermissions(res.data)
-    } catch {
+    } catch (err: any) {
+      if (err.response?.status === 401) {
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+        setUser(null)
+        setToken(null)
+      }
       setPermissions([])
     }
   }
