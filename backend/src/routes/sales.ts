@@ -466,6 +466,7 @@ export function saleRoutes(prisma: PrismaClient) {
       if (!sale) return res.status(404).json({ error: 'Sale not found' })
       if (sale.status !== 'completed') return res.status(400).json({ error: 'Sale is not completed' })
 
+      const loyaltyConfig = await getLoyaltyConfig()
       const result = await prisma.$transaction(async (tx) => {
         const saleReturnItems = []
         let returnSubtotal = 0
@@ -492,21 +493,31 @@ export function saleRoutes(prisma: PrismaClient) {
           })
         }
 
+        const ratio = sale.subtotal > 0 ? returnSubtotal / sale.subtotal : 0
+
         // Calculate proportional discount
         let discountAllocation = 0
-        if (sale.discount > 0 && sale.subtotal > 0) {
-          const ratio = returnSubtotal / sale.subtotal
+        if (sale.discount > 0 && ratio > 0) {
           discountAllocation = Math.round(sale.discount * ratio * 100) / 100
         }
 
         // Calculate proportional tax
         let taxAllocation = 0
-        if (sale.taxTotal > 0 && sale.subtotal > 0) {
-          const ratio = returnSubtotal / sale.subtotal
+        if (sale.taxTotal > 0 && ratio > 0) {
           taxAllocation = Math.round(sale.taxTotal * ratio * 100) / 100
         }
 
-        const refundTotal = returnSubtotal - discountAllocation + taxAllocation
+        // Calculate proportional points discount and points to restore
+        let pointsDiscountAllocation = 0
+        let pointsToRestore = 0
+        if (sale.clientId && sale.pointsRedeemed > 0 && ratio > 0) {
+          pointsToRestore = Math.floor(sale.pointsRedeemed * ratio)
+          if (pointsToRestore > 0) {
+            pointsDiscountAllocation = Math.round(pointsToRestore * loyaltyConfig.redeemRate * 100) / 100
+          }
+        }
+
+        const refundTotal = returnSubtotal - discountAllocation + taxAllocation - pointsDiscountAllocation
 
         if (sale.paymentMethod === 'credit' && sale.clientId) {
           await tx.client.update({
@@ -528,9 +539,8 @@ export function saleRoutes(prisma: PrismaClient) {
         }
         const creditNoteNumber = `CN-${year}-${String(seq).padStart(4, '0')}`
 
-        // Reverse points proportionally
-        if (sale.clientId && sale.pointsEarned > 0 && sale.subtotal > 0) {
-          const ratio = returnSubtotal / sale.subtotal
+        // Reverse earned points proportionally
+        if (sale.clientId && sale.pointsEarned > 0 && ratio > 0) {
           const pointsToReverse = Math.floor(sale.pointsEarned * ratio)
 
           if (pointsToReverse > 0) {
@@ -550,7 +560,7 @@ export function saleRoutes(prisma: PrismaClient) {
                 balanceAfter: newBalance,
                 referenceType: 'RETURN',
                 referenceId: creditNoteNumber,
-                description: `Reversión de ${pointsToReverse} puntos por devolución parcial de ${sale.invoiceNumber}`,
+                description: `Reversión de ${pointsToReverse} puntos ganados por devolución parcial de ${sale.invoiceNumber}`,
                 createdById: userId,
               },
             })
@@ -560,6 +570,35 @@ export function saleRoutes(prisma: PrismaClient) {
               data: { pointsBalance: newBalance },
             })
           }
+        }
+
+        // Restore redeemed points proportionally
+        if (sale.clientId && pointsToRestore > 0) {
+          const client = await tx.client.findUnique({
+            where: { id: sale.clientId },
+            select: { pointsBalance: true },
+          })
+          const oldBalance = client?.pointsBalance ?? 0
+          const newBalance = oldBalance + pointsToRestore
+
+          await tx.loyaltyTransaction.create({
+            data: {
+              clientId: sale.clientId,
+              type: 'REVERSE',
+              points: pointsToRestore,
+              balanceBefore: oldBalance,
+              balanceAfter: newBalance,
+              referenceType: 'RETURN',
+              referenceId: creditNoteNumber,
+              description: `Restauración de ${pointsToRestore} puntos canjeados por devolución parcial de ${sale.invoiceNumber}`,
+              createdById: userId,
+            },
+          })
+
+          await tx.client.update({
+            where: { id: sale.clientId },
+            data: { pointsBalance: newBalance },
+          })
         }
 
         const saleReturn = await tx.saleReturn.create({
