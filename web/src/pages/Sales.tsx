@@ -101,9 +101,16 @@ export default function Sales() {
                 </td>
                 <td className="px-4 py-3 text-right font-bold">{formatCurrency(s.total)}</td>
                 <td className="px-4 py-3">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${s.status === 'completed' ? 'bg-green-100 text-green-700' : s.status === 'cancelled' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                    {s.status === 'completed' ? 'Completada' : s.status === 'cancelled' ? 'Cancelada' : 'Pendiente'}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${s.status === 'completed' ? 'bg-green-100 text-green-700' : s.status === 'cancelled' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                      {s.status === 'completed' ? 'Completada' : s.status === 'cancelled' ? 'Cancelada' : 'Pendiente'}
+                    </span>
+                    {s.returns?.length > 0 && (
+                      <span className="px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700">
+                        Con devolución
+                      </span>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
@@ -134,6 +141,17 @@ export default function Sales() {
               )}
               {selectedSale.pointsEarned > 0 && (
                 <p className="text-sm text-green-600">Puntos ganados: +{selectedSale.pointsEarned}</p>
+              )}
+              {selectedSale.returns?.length > 0 && (
+                <div className="pt-2 border-t mt-2">
+                  <p className="text-sm font-medium text-orange-700 mb-1">Devoluciones</p>
+                  {selectedSale.returns.map((r: any) => (
+                    <div key={r.id} className="text-xs text-gray-500 flex justify-between">
+                      <span>{r.creditNoteNumber} &middot; {new Date(r.createdAt).toLocaleDateString('es-AR')}</span>
+                      <span className="font-medium text-orange-600">-{formatCurrency(r.totalRefund)}</span>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
             <div className="border-t pt-3 space-y-2">
