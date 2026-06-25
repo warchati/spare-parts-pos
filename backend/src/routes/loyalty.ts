@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { PrismaClient } from '@prisma/client'
-import { requirePermission, AuthRequest } from '../middleware/auth'
+import { requirePermission, requireAnyPermission, AuthRequest } from '../middleware/auth'
 
 export function loyaltyRoutes(prisma: PrismaClient) {
   const router = Router()
@@ -16,7 +16,7 @@ export function loyaltyRoutes(prisma: PrismaClient) {
     }
   }
 
-  router.get('/config', requirePermission(prisma, 'loyalty', 'view'), async (_req, res, next) => {
+  router.get('/config', requireAnyPermission(prisma, 'loyalty', ['view', 'redeem']), async (_req, res, next) => {
     try {
       const config = await getConfig()
       res.json(config)
@@ -77,7 +77,7 @@ export function loyaltyRoutes(prisma: PrismaClient) {
     } catch (e) { next(e) }
   })
 
-  router.get('/clients/:id', requirePermission(prisma, 'loyalty', 'view'), async (req, res, next) => {
+  router.get('/clients/:id', requireAnyPermission(prisma, 'loyalty', ['view', 'redeem']), async (req, res, next) => {
     try {
       const client = await prisma.client.findUnique({
         where: { id: Number(req.params.id) },

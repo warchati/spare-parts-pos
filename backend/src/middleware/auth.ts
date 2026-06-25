@@ -160,3 +160,18 @@ export function requirePermission(prisma: PrismaClient, module: string, action: 
     next()
   }
 }
+
+export function requireAnyPermission(prisma: PrismaClient, module: string, actions: string[]) {
+  return async (req: AuthRequest, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Not authenticated' })
+    }
+
+    for (const action of actions) {
+      const allowed = await hasPermission(prisma, req.user.role, module, action, req.user.id)
+      if (allowed) return next()
+    }
+
+    return res.status(403).json({ error: 'Insufficient permissions' })
+  }
+}
