@@ -206,13 +206,16 @@ export function saleRoutes(prisma: PrismaClient) {
         }
 
         // Recalculate tax on discounted amount (descuento antes de IVA)
+        let taxRate = 0
         if (taxTotal > 0 && subtotal > 0) {
           const taxRatio = taxTotal / subtotal
           taxTotal = Math.round(afterDiscount * taxRatio * 100) / 100
+          taxRate = Math.round(taxRatio * 10000) / 100
         } else if (taxTotal === 0) {
           const defaultTax = await tx.tax.findFirst({ where: { isDefault: true, isActive: true } })
           if (defaultTax) {
-            taxTotal = afterDiscount * defaultTax.percentage / 100
+            taxRate = defaultTax.percentage
+            taxTotal = afterDiscount * taxRate / 100
           }
         }
 
@@ -274,6 +277,7 @@ export function saleRoutes(prisma: PrismaClient) {
             invoiceNumber,
             subtotal,
             discount: discount || 0,
+            tax: taxRate,
             taxTotal,
             total,
             pointsRedeemed: redeemPoints,
