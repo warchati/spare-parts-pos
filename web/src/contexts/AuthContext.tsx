@@ -80,6 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('user', JSON.stringify(userData))
     setUser(userData)
     setToken(newToken)
+    await refreshPermissions()
   }
 
   const logout = () => {
