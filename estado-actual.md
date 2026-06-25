@@ -14,6 +14,8 @@
 ## Commits recientes (nuevo → viejo)
 | Commit | Mensaje |
 |--------|---------|
+| `244e9f3` | fix: guardar tax rate al crear venta para que TVA aparezca en factura |
+| `1cafd6d` | fix: barcodes apilados verticalmente (NCF debajo de factura) |
 | `330ea7e` | feat: factura profesional con barcodes, configuracion de empresa y logo |
 | `6e013f8` | fix: login espera refreshPermissions antes de navegar |
 | `e97002f` | fix: permisos reactivos con global ref, visibilitychange y polling 60s |
@@ -32,8 +34,8 @@
 - Header: logo (subible por admin), nombre empresa, RNC, dirección, teléfono, email
 - Datos: cliente, RNC/doc, vendedor, fecha, hora, método de pago
 - Tabla de items: cantidad, descripción, precio unitario, total
-- Subtotal, descuento (solo si > 0), TVA, descuento puntos, total
-- **2 códigos de barras CODE128** (número de factura + NCF) lado a lado
+- Subtotal, descuento (solo si > 0), TVA con tasa (XX%), descuento puntos, total
+- **2 códigos de barras CODE128** (número de factura + NCF) apilados verticalmente
 - Estilos `@media print` con tamaño 80mm para impresión térmica
 - Modal interactivo con botones "Imprimir" y "Cerrar"
 
@@ -59,7 +61,17 @@
 - Endpoints: `GET /store-config`, `PUT /store-config`, `POST /store-config/logo`
 - Migración `20260625000001_add_store_config` aplicada y registrada
 
-### 6. Permisos
+### 7. Fix: TVA no aparecía en factura
+- El backend no guardaba el campo `tax` (tasa porcentual) al crear la venta, solo `taxTotal` (monto calculado)
+- La factura chequeaba `sale.tax > 0` y como siempre era 0, la línea de TVA no se mostraba
+- Fix: se calcula y almacena `taxRate` (tasa efectiva ponderada o tasa del impuesto default) en el campo `tax` de Sale
+- Ahora la factura muestra `TVA (XX%)` correctamente para ventas nuevas
+
+### 8. Fix: Barcodes apilados verticalmente
+- Cambiado layout de barcodes de `flex justify-center gap-6` (horizontal) a `flex flex-col items-center gap-3` (vertical)
+- NCF aparece debajo del número de factura, como en facturas profesionales
+
+### 9. Permisos
 - Nuevo módulo `storeConfig` con acciones `view`/`edit`
 - Asignado a admin y supervisor
 - Seed actualizado con permisos en DB
@@ -79,7 +91,7 @@
 | `backend/prisma/schema.prisma` | + modelo `StoreConfig` |
 | `backend/prisma/seed.ts` | + permisos `storeConfig` |
 | `backend/src/middleware/auth.ts` | + permiso `storeConfig` |
-| `backend/src/routes/sales.ts` | + `user: true` en POST response |
+| `backend/src/routes/sales.ts` | + `user: true` en POST response; + `taxRate` guardado al crear venta |
 | `backend/src/server.ts` | + ruta `/api/store-config` |
 | `web/package.json` | + dependencia `jsbarcode` |
 | `web/package-lock.json` | actualizado |
@@ -92,5 +104,6 @@
 ## Pendientes / Issues conocidos
 1. **Imágenes de productos** — Almacenadas como base64 en `ProductImage.url`, no cargan en producción por límites de Vercel (4.5MB respuesta) y navegador (2MB data URL). Pendiente migrar a Vercel Blob Storage.
 2. **TVA para cajero** — `taxes: []` para cashier, falta agregar `taxes: ['view']` para que vea TVA en POS.
-3. **Auto-incremento de NCF** — Actualmente el admin lo actualiza manualmente en Config. Factura. Se podría auto-incrementar tras cada venta.
-4. **Factura en PDF** — Solo HTML imprimible por ahora. jsPDF ya está instalado si se quiere agregar descarga PDF.
+3. **TVA en ventas viejas** — Ventas creadas antes del fix tienen `tax = 0`, la TVA no se muestra en su factura. Pendiente script de backfill.
+4. **Auto-incremento de NCF** — Actualmente el admin lo actualiza manualmente en Config. Factura. Se podría auto-incrementar tras cada venta.
+5. **Factura en PDF** — Solo HTML imprimible por ahora. jsPDF ya está instalado si se quiere agregar descarga PDF.
