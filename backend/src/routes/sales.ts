@@ -154,10 +154,21 @@ export function saleRoutes(prisma: PrismaClient) {
           })
         }
 
-        if (taxTotal === 0) {
+        const discountAmount = discount || 0
+        const afterDiscount = subtotal - discountAmount
+
+        if (afterDiscount < 0) {
+          throw new Error('Discount exceeds subtotal')
+        }
+
+        // Recalculate tax on discounted amount (descuento antes de IVA)
+        if (taxTotal > 0 && subtotal > 0) {
+          const taxRatio = taxTotal / subtotal
+          taxTotal = Math.round(afterDiscount * taxRatio * 100) / 100
+        } else if (taxTotal === 0) {
           const defaultTax = await tx.tax.findFirst({ where: { isDefault: true, isActive: true } })
           if (defaultTax) {
-            taxTotal = subtotal * defaultTax.percentage / 100
+            taxTotal = afterDiscount * defaultTax.percentage / 100
           }
         }
 
@@ -176,7 +187,7 @@ export function saleRoutes(prisma: PrismaClient) {
           }
         }
 
-        const total = subtotal - (discount || 0) - pointsDiscount + taxTotal
+        const total = afterDiscount + taxTotal - pointsDiscount
 
         let resolvedCurrencyId = currencyId || null
         if (!resolvedCurrencyId) {

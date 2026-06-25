@@ -160,9 +160,10 @@ export default function POS() {
 
   const subtotal = cart.reduce((sum, i) => sum + i.totalPrice, 0)
   const taxRate = defaultTax?.percentage || 0
-  const taxAmount = subtotal * taxRate / 100
+  const afterDiscount = subtotal // sin descuento por ahora
+  const taxAmount = afterDiscount * taxRate / 100
   const pointsDiscount = Math.round(pointsToRedeem * loyaltyConfig.redeemRate * 100) / 100
-  const total = subtotal + taxAmount - pointsDiscount
+  const total = afterDiscount + taxAmount - pointsDiscount
   const pointsEarned = Math.floor(total / loyaltyConfig.earnRate)
 
   const handlePayment = async () => {
