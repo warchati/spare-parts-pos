@@ -1,3 +1,9 @@
+let _latestPermissions: { module: string, action: string }[] = []
+
+export function updateLatestPermissions(perms: { module: string, action: string }[]) {
+  _latestPermissions = perms
+}
+
 const PERMISSIONS: Record<string, Record<string, string[]>> = {
   admin: {
     pos: ['sell'],
@@ -76,15 +82,9 @@ const PERMISSIONS: Record<string, Record<string, string[]>> = {
   },
 }
 
-let _cachedPermissions: { module: string, action: string }[] = []
-
-export function setPermissions(perms: { module: string, action: string }[]) {
-  _cachedPermissions = perms
-}
-
 export function can(role: string | undefined, module: string, action: string): boolean {
-  if (_cachedPermissions.length > 0) {
-    return _cachedPermissions.some(p => p.module === module && p.action === action)
+  if (_latestPermissions.length > 0) {
+    return _latestPermissions.some(p => p.module === module && p.action === action)
   }
   const r = role || 'cashier'
   const perms = PERMISSIONS[r]

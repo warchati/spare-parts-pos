@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
 import api from '../lib/api'
-import { setPermissions as setCachedPermissions } from '../lib/permissions'
+import { updateLatestPermissions } from '../lib/permissions'
 
 interface User {
   id: number
@@ -43,10 +43,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [token])
 
+  useEffect(() => {
+    if (!token) return
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') refreshPermissions()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    const interval = setInterval(refreshPermissions, 60000)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      clearInterval(interval)
+    }
+  }, [token])
+
   const refreshPermissions = async () => {
     try {
       const res = await api.get('/permissions/mine')
       setPermissions(res.data)
+      updateLatestPermissions(res.data)
     } catch (err: any) {
       if (err.response?.status === 401) {
         localStorage.removeItem('token')
@@ -55,6 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setToken(null)
       }
       setPermissions([])
+      updateLatestPermissions([])
     }
   }
 
@@ -73,7 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
     setToken(null)
     setPermissions([])
-    setCachedPermissions([])
+    updateLatestPermissions([])
   }
 
   return (
