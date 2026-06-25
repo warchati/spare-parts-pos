@@ -12,27 +12,44 @@ export function reportRoutes(prisma: PrismaClient) {
       const tomorrow = new Date(today)
       tomorrow.setDate(tomorrow.getDate() + 1)
 
+      const safe = <T>(p: Promise<T>, fallback: T): Promise<T> => p.catch(() => fallback)
+
       const [todaySales, allSales, lowStock, recentSales, activeRegister] = await Promise.all([
-        prisma.sale.findMany({
-          where: { createdAt: { gte: today, lt: tomorrow }, status: 'completed' },
-          include: { items: true },
-        }),
-        prisma.sale.findMany({
-          where: { status: 'completed' },
-          include: { items: true },
-          orderBy: { createdAt: 'desc' },
-        }),
-        prisma.product.findMany({
-          where: { active: true },
-          orderBy: { stock: 'asc' },
-          take: 50,
-        }).then(products => products.filter(p => p.stock <= p.minStock)),
-        prisma.sale.findMany({
-          take: 10,
-          orderBy: { createdAt: 'desc' },
-          include: { items: true, client: true, user: true },
-        }),
-        prisma.cashRegister.findFirst({ where: { status: 'open' }, include: { user: true } }),
+        safe(
+          prisma.sale.findMany({
+            where: { createdAt: { gte: today, lt: tomorrow }, status: 'completed' },
+            include: { items: true },
+          }),
+          []
+        ),
+        safe(
+          prisma.sale.findMany({
+            where: { status: 'completed' },
+            include: { items: true },
+            orderBy: { createdAt: 'desc' },
+          }),
+          []
+        ),
+        safe(
+          prisma.product.findMany({
+            where: { active: true },
+            orderBy: { stock: 'asc' },
+            take: 50,
+          }).then(products => products.filter(p => p.stock <= p.minStock)),
+          []
+        ),
+        safe(
+          prisma.sale.findMany({
+            take: 10,
+            orderBy: { createdAt: 'desc' },
+            include: { items: true, client: true, user: true },
+          }),
+          []
+        ),
+        safe(
+          prisma.cashRegister.findFirst({ where: { status: 'open' }, include: { user: true } }),
+          null
+        ),
       ])
 
       const topProducts: { productId: number; productName: string; totalQuantity: number }[] = []
@@ -99,8 +116,16 @@ export function reportRoutes(prisma: PrismaClient) {
 
       if (start || end) {
         where.createdAt = {}
-        if (start) where.createdAt.gte = new Date(start as string)
-        if (end) where.createdAt.lte = new Date(end as string)
+        if (start) {
+          const d = new Date(start as string)
+          if (isNaN(d.getTime())) return res.status(400).json({ error: 'Invalid start date' })
+          where.createdAt.gte = d
+        }
+        if (end) {
+          const d = new Date(end as string)
+          if (isNaN(d.getTime())) return res.status(400).json({ error: 'Invalid end date' })
+          where.createdAt.lte = d
+        }
       }
 
       const sales = await prisma.sale.findMany({
@@ -174,11 +199,16 @@ export function reportRoutes(prisma: PrismaClient) {
 
       if (startDate || endDate) {
         where.createdAt = {}
-        if (startDate) where.createdAt.gte = new Date(startDate as string)
+        if (startDate) {
+          const d = new Date(startDate as string)
+          if (isNaN(d.getTime())) return res.status(400).json({ error: 'Invalid startDate' })
+          where.createdAt.gte = d
+        }
         if (endDate) {
-          const end = new Date(endDate as string)
-          end.setHours(23, 59, 59, 999)
-          where.createdAt.lte = end
+          const d = new Date(endDate as string)
+          if (isNaN(d.getTime())) return res.status(400).json({ error: 'Invalid endDate' })
+          d.setHours(23, 59, 59, 999)
+          where.createdAt.lte = d
         }
       }
 
