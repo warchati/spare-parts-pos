@@ -4,7 +4,7 @@ import { Shield, Save, Check } from 'lucide-react'
 
 const ROLES = ['admin', 'supervisor', 'cashier', 'seller']
 const MODULES = ['pos', 'products', 'clients', 'suppliers', 'sales', 'purchases', 'dashboard', 'cashRegister', 'users', 'vehicles', 'credit', 'exports', 'taxes', 'currencies', 'returns']
-const ACTIONS = ['view', 'create', 'edit', 'delete', 'sell', 'receive', 'open', 'close', 'movements', 'pay']
+const ACTIONS = ['view', 'create', 'edit', 'delete', 'sell', 'receive', 'open', 'close', 'movements', 'pay', 'redeem']
 
 const MODULE_LABELS: Record<string, string> = {
   pos: 'POS', products: 'Productos', clients: 'Clientes', suppliers: 'Proveedores',
@@ -15,7 +15,27 @@ const MODULE_LABELS: Record<string, string> = {
 const ACTION_LABELS: Record<string, string> = {
   view: 'Ver', create: 'Crear', edit: 'Editar', delete: 'Eliminar',
   sell: 'Vender', receive: 'Recibir', open: 'Abrir', close: 'Cerrar',
-  movements: 'Movimientos', pay: 'Pagar',
+  movements: 'Movimientos', pay: 'Pagar', redeem: 'Canjear',
+}
+
+const MODULE_ACTIONS: Record<string, string[]> = {
+  pos: ['sell'],
+  products: ['view', 'create', 'edit'],
+  clients: ['view', 'create', 'edit'],
+  suppliers: ['view', 'create', 'edit'],
+  sales: ['view', 'edit'],
+  purchases: ['view', 'create', 'receive'],
+  dashboard: ['view'],
+  cashRegister: ['open', 'close', 'movements'],
+  users: ['view', 'create', 'edit', 'delete'],
+  vehicles: ['view', 'create', 'edit', 'delete'],
+  credit: ['view', 'pay'],
+  exports: ['view'],
+  taxes: ['view', 'create', 'edit'],
+  currencies: ['view', 'create', 'edit'],
+  permissions: ['edit'],
+  loyalty: ['view', 'edit', 'redeem'],
+  returns: ['view', 'edit'],
 }
 
 export default function Permissions() {
@@ -96,28 +116,51 @@ export default function Permissions() {
             </tr>
           </thead>
           <tbody>
-            {MODULES.map(module => (
-              <tr key={module} className="border-t border-gray-100 hover:bg-gray-50">
-                <td className="px-4 py-3 font-medium text-sm">{MODULE_LABELS[module] || module}</td>
-                {ACTIONS.map(action => {
-                  const enabled = data[selectedRole]?.[module]?.includes(action)
-                  return (
-                    <td key={action} className="text-center px-2 py-3">
-                      <button
-                        onClick={() => toggle(module, action)}
-                        className={`w-6 h-6 rounded border flex items-center justify-center transition-colors ${
-                          enabled ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-300 text-transparent hover:border-gray-400'
-                        }`}
+            {MODULES.map(module => {
+              const moduleActions = MODULE_ACTIONS[module] || []
+              return (
+                <tr key={module} className="border-t border-gray-100 hover:bg-gray-50">
+                  <td className="px-4 py-3 font-medium text-sm">{MODULE_LABELS[module] || module}</td>
+                  {ACTIONS.map(action => {
+                    const enabled = data[selectedRole]?.[module]?.includes(action)
+                    const isTypical = moduleActions.includes(action)
+                    return (
+                      <td
+                        key={action}
+                        className={`text-center px-2 py-3 ${isTypical ? 'bg-blue-50/40' : 'opacity-40'}`}
                       >
-                        {enabled && <Check className="w-3.5 h-3.5" />}
-                      </button>
-                    </td>
-                  )
-                })}
-              </tr>
-            ))}
+                        <button
+                          onClick={() => toggle(module, action)}
+                          className={`w-6 h-6 rounded border flex items-center justify-center transition-colors ${
+                            enabled ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-300 text-transparent hover:border-gray-400'
+                          } ${!isTypical && !enabled ? 'cursor-not-allowed' : ''}`}
+                          title={isTypical ? `Acción recomendada para ${MODULE_LABELS[module] || module}` : `Acción no aplica a ${MODULE_LABELS[module] || module}`}
+                        >
+                          {enabled && <Check className="w-3.5 h-3.5" />}
+                        </button>
+                      </td>
+                    )
+                  })}
+                </tr>
+              )
+            })}
           </tbody>
         </table>
+      </div>
+
+      <div className="mt-3 flex items-center gap-4 text-xs text-gray-400">
+        <span className="flex items-center gap-1.5">
+          <span className="w-4 h-4 rounded border border-gray-300 inline-block" />
+          No aplica
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-4 h-4 rounded bg-blue-50/60 border border-blue-200 inline-block" />
+          Acción recomendada
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-4 h-4 rounded bg-blue-600 border border-blue-600 inline-block" />
+          Permiso activo
+        </span>
       </div>
     </div>
   )
