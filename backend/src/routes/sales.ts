@@ -88,7 +88,7 @@ export function saleRoutes(prisma: PrismaClient) {
     } catch (e) { next(e) }
   })
 
-  router.get('/by-barcode/:barcode', requirePermission(prisma, 'sales', 'view'), async (req, res, next) => {
+  router.get('/by-barcode/:barcode', requirePermission(prisma, 'returns', 'view'), async (req, res, next) => {
     try {
       const { barcode } = req.params
       const product = await prisma.product.findFirst({ where: { barcode } })
@@ -112,7 +112,7 @@ export function saleRoutes(prisma: PrismaClient) {
     } catch (e) { next(e) }
   })
 
-  router.get('/by-invoice/:invoiceNumber', requirePermission(prisma, 'sales', 'view'), async (req, res, next) => {
+  router.get('/by-invoice/:invoiceNumber', requirePermission(prisma, 'returns', 'view'), async (req, res, next) => {
     try {
       const { invoiceNumber } = req.params
       const sale = await prisma.sale.findFirst({
@@ -456,7 +456,7 @@ export function saleRoutes(prisma: PrismaClient) {
     } catch (e) { next(e) }
   })
 
-  router.post('/:id/returns', requirePermission(prisma, 'sales', 'edit'), async (req: AuthRequest, res, next) => {
+  router.post('/:id/returns', requirePermission(prisma, 'returns', 'edit'), async (req: AuthRequest, res, next) => {
     try {
       const { items: returnItems, reason } = req.body
       const userId = req.user!.id

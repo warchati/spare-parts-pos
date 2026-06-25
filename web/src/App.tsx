@@ -61,7 +61,7 @@ export default function App() {
         <Route path="currencies" element={<PermissionGuard module="currencies" action="view"><Currencies /></PermissionGuard>} />
         <Route path="permissions" element={<PermissionGuard module="permissions" action="edit"><Permissions /></PermissionGuard>} />
         <Route path="loyalty" element={<PermissionGuard module="loyalty" action="view"><Loyalty /></PermissionGuard>} />
-        <Route path="returns" element={<PermissionGuard module="sales" action="edit"><Returns /></PermissionGuard>} />
+        <Route path="returns" element={<PermissionGuard module="returns" action="view"><Returns /></PermissionGuard>} />
       </Route>
     </Routes>
   )

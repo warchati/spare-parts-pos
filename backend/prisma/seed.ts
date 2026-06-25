@@ -115,6 +115,7 @@ async function main() {
       exports: ['view'],
       taxes: ['create', 'edit', 'view'],
       currencies: ['create', 'edit', 'view'],
+      returns: ['view', 'edit'],
       loyalty: ['view', 'edit', 'redeem'],
     },
     supervisor: {
@@ -132,6 +133,7 @@ async function main() {
       exports: ['view'],
       taxes: ['view'],
       currencies: ['view'],
+      returns: ['view', 'edit'],
       loyalty: ['view', 'redeem'],
     },
     cashier: {
@@ -149,6 +151,7 @@ async function main() {
       exports: [],
       taxes: [],
       currencies: [],
+      returns: [],
       loyalty: ['redeem'],
     },
     seller: {
@@ -166,6 +169,7 @@ async function main() {
       exports: [],
       taxes: [],
       currencies: [],
+      returns: [],
       loyalty: ['view', 'redeem'],
     },
   }

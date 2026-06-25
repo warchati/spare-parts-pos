@@ -21,7 +21,7 @@ const navItems = [
   { to: '/taxes', label: 'Impuestos', icon: Percent, module: 'taxes', action: 'view' },
   { to: '/currencies', label: 'Monedas', icon: DollarSign, module: 'currencies', action: 'view' },
   { to: '/loyalty', label: 'Lealtad', icon: Award, module: 'loyalty', action: 'view' },
-  { to: '/returns', label: 'Devoluciones', icon: RotateCcw, module: 'sales', action: 'edit' },
+  { to: '/returns', label: 'Devoluciones', icon: RotateCcw, module: 'returns', action: 'view' },
 ]
 
 export default function Layout() {

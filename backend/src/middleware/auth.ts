@@ -27,6 +27,7 @@ export const PERMISSIONS: Record<string, Record<string, string[]>> = {
     taxes: ['create', 'edit', 'view'],
     currencies: ['create', 'edit', 'view'],
     permissions: ['edit'],
+    returns: ['view', 'edit'],
     loyalty: ['view', 'edit', 'redeem'],
   },
   supervisor: {
@@ -45,6 +46,7 @@ export const PERMISSIONS: Record<string, Record<string, string[]>> = {
     taxes: ['view'],
     currencies: ['view'],
     permissions: [],
+    returns: ['view', 'edit'],
     loyalty: ['view', 'redeem'],
   },
   cashier: {
@@ -63,6 +65,7 @@ export const PERMISSIONS: Record<string, Record<string, string[]>> = {
     taxes: [],
     currencies: [],
     permissions: [],
+    returns: [],
     loyalty: ['redeem'],
   },
   seller: {
@@ -80,6 +83,7 @@ export const PERMISSIONS: Record<string, Record<string, string[]>> = {
     exports: [],
     taxes: [],
     currencies: [],
+    returns: [],
     loyalty: ['view', 'redeem'],
   },
 }
