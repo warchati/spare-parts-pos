@@ -52,9 +52,10 @@ export function permissionRoutes(prisma: PrismaClient) {
       const permMap = new Map<string, boolean>()
       for (const p of rolePerms) permMap.set(`${p.module}:${p.action}`, true)
 
-      // Merge with hardcoded defaults for any missing modules
+      // Only merge hardcoded defaults if role has NO DB records at all
+      // (so admin changes via the Permissions page are respected immediately)
       const hardcoded = PERMISSIONS[req.user.role]
-      if (hardcoded) {
+      if (rolePerms.length === 0 && hardcoded) {
         for (const [mod, actions] of Object.entries(hardcoded)) {
           for (const action of actions) {
             const key = `${mod}:${action}`

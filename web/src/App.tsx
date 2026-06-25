@@ -45,12 +45,12 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route index element={<Navigate to="/dashboard" replace />} />
-        <Route path="dashboard" element={<Dashboard />} />
-        <Route path="pos" element={<POS />} />
-        <Route path="products" element={<Products />} />
-        <Route path="clients" element={<Clients />} />
+        <Route path="dashboard" element={<PermissionGuard module="dashboard" action="view"><Dashboard /></PermissionGuard>} />
+        <Route path="pos" element={<PermissionGuard module="pos" action="sell"><POS /></PermissionGuard>} />
+        <Route path="products" element={<PermissionGuard module="products" action="view"><Products /></PermissionGuard>} />
+        <Route path="clients" element={<PermissionGuard module="clients" action="view"><Clients /></PermissionGuard>} />
         <Route path="suppliers" element={<PermissionGuard module="suppliers" action="view"><Suppliers /></PermissionGuard>} />
-        <Route path="sales" element={<Sales />} />
+        <Route path="sales" element={<PermissionGuard module="sales" action="view"><Sales /></PermissionGuard>} />
         <Route path="purchases" element={<PermissionGuard module="purchases" action="view"><Purchases /></PermissionGuard>} />
         <Route path="users" element={<PermissionGuard module="users" action="view"><Users /></PermissionGuard>} />
         <Route path="cash-register" element={<PermissionGuard module="cashRegister" action="movements"><CashRegister /></PermissionGuard>} />
