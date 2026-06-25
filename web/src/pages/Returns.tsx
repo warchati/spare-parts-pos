@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import api from '../lib/api'
 import { formatCurrency } from '../lib/currency'
-import { Search, ArrowLeft, RotateCcw, CheckCircle, Barcode } from 'lucide-react'
+import { Search, ArrowLeft, RotateCcw, CheckCircle, Barcode, FileText } from 'lucide-react'
 
 interface Product {
   id: number
@@ -40,9 +40,12 @@ interface LookupResult {
 }
 
 export default function Returns() {
+  const [searchMode, setSearchMode] = useState<'barcode' | 'invoice'>('barcode')
   const [barcode, setBarcode] = useState('')
+  const [invoiceNumber, setInvoiceNumber] = useState('')
   const [loading, setLoading] = useState(false)
   const [lookup, setLookup] = useState<LookupResult | null>(null)
+  const [invoiceSale, setInvoiceSale] = useState<Sale | null>(null)
   const [error, setError] = useState('')
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null)
   const [returnQty, setReturnQty] = useState(1)
@@ -55,6 +58,7 @@ export default function Returns() {
     setLoading(true)
     setError('')
     setLookup(null)
+    setInvoiceSale(null)
     setSelectedSale(null)
     setResult(null)
     try {
@@ -63,6 +67,24 @@ export default function Returns() {
       if (res.data.sales.length === 0) setError('No hay ventas completadas con este producto')
     } catch (e: any) {
       setError(e.response?.data?.error || 'Error al buscar el producto')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const searchByInvoice = async () => {
+    if (!invoiceNumber.trim()) return
+    setLoading(true)
+    setError('')
+    setLookup(null)
+    setInvoiceSale(null)
+    setSelectedSale(null)
+    setResult(null)
+    try {
+      const res = await api.get(`/sales/by-invoice/${encodeURIComponent(invoiceNumber.trim())}`)
+      setInvoiceSale(res.data)
+    } catch (e: any) {
+      setError(e.response?.data?.error || 'Error al buscar la factura')
     } finally {
       setLoading(false)
     }
@@ -102,7 +124,9 @@ export default function Returns() {
 
   const resetAll = () => {
     setBarcode('')
+    setInvoiceNumber('')
     setLookup(null)
+    setInvoiceSale(null)
     setSelectedSale(null)
     setReturnQty(1)
     setReason('')
@@ -124,7 +148,7 @@ export default function Returns() {
           <div className="bg-gray-50 rounded-xl p-4 mb-6 text-left space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-gray-500">Producto</span>
-              <span className="font-medium">{lookup?.product.name}</span>
+              <span className="font-medium">{lookup?.product.name || selectedSale?.items[0]?.productName}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-gray-500">Cantidad</span>
@@ -154,33 +178,124 @@ export default function Returns() {
         <RotateCcw className="w-6 h-6" /> Devoluciones
       </h1>
 
-      {!lookup && (
+      {!lookup && !invoiceSale && (
         <div className="bg-white rounded-2xl border border-gray-200 p-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">Escanear o ingresar código de barras</label>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={barcode}
-              onChange={(e) => setBarcode(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && searchByBarcode()}
-              placeholder="Código de barras..."
-              className="flex-1 px-4 py-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-lg font-mono"
-              autoFocus
-            />
+          <div className="flex gap-1 mb-4 bg-gray-100 rounded-lg p-1">
             <button
-              onClick={searchByBarcode}
-              disabled={loading || !barcode.trim()}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+              onClick={() => { setSearchMode('barcode'); setError('') }}
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${searchMode === 'barcode' ? 'bg-white text-blue-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
             >
-              {loading ? 'Buscando...' : <><Search className="w-5 h-5" /> Buscar</>}
+              <Barcode className="w-4 h-4" /> Código de barras
+            </button>
+            <button
+              onClick={() => { setSearchMode('invoice'); setError('') }}
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${searchMode === 'invoice' ? 'bg-white text-blue-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              <FileText className="w-4 h-4" /> Número de factura
             </button>
           </div>
+
+          {searchMode === 'barcode' ? (
+            <>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Escanear o ingresar código de barras</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={barcode}
+                  onChange={(e) => setBarcode(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && searchByBarcode()}
+                  placeholder="Código de barras..."
+                  className="flex-1 px-4 py-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-lg font-mono"
+                  autoFocus
+                />
+                <button
+                  onClick={searchByBarcode}
+                  disabled={loading || !barcode.trim()}
+                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+                >
+                  {loading ? 'Buscando...' : <><Search className="w-5 h-5" /> Buscar</>}
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Ingresar número de factura</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={invoiceNumber}
+                  onChange={(e) => setInvoiceNumber(e.target.value.toUpperCase())}
+                  onKeyDown={(e) => e.key === 'Enter' && searchByInvoice()}
+                  placeholder="Ej: INV-2026-0001"
+                  className="flex-1 px-4 py-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-lg font-mono"
+                  autoFocus
+                />
+                <button
+                  onClick={searchByInvoice}
+                  disabled={loading || !invoiceNumber.trim()}
+                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+                >
+                  {loading ? 'Buscando...' : <><Search className="w-5 h-5" /> Buscar</>}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       )}
 
       {error && (
         <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
           {error}
+        </div>
+      )}
+
+      {invoiceSale && !selectedSale && (
+        <div className="bg-white rounded-2xl border border-gray-200 p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <FileText className="w-6 h-6 text-blue-500" />
+            <div>
+              <p className="font-bold text-gray-800">{invoiceSale.invoiceNumber}</p>
+              <p className="text-sm text-gray-500">{new Date(invoiceSale.createdAt).toLocaleString('es-AR')}</p>
+              <p className="text-sm text-gray-500">{invoiceSale.client?.name || 'Consumidor Final'} &middot; Total: {formatCurrency(invoiceSale.total)}</p>
+            </div>
+          </div>
+
+          <button onClick={resetAll} className="text-sm text-blue-600 hover:underline flex items-center gap-1 mb-4">
+            <ArrowLeft className="w-3 h-3" /> Nueva búsqueda
+          </button>
+
+          <h3 className="text-sm font-medium text-gray-700 mb-3">Seleccionar producto a devolver</h3>
+          <div className="space-y-2">
+            {invoiceSale.items.map((item) => {
+              const returned = invoiceSale.returns.reduce((sum, r) => sum + r.items.filter(ri => ri.productId === item.productId).reduce((s, ri) => s + ri.quantity, 0), 0)
+              const avail = item.quantity - returned
+              return (
+                <div
+                  key={item.id}
+                  className={`flex items-center justify-between p-3 rounded-lg border ${avail > 0 ? 'hover:border-blue-300 cursor-pointer border-gray-200' : 'border-gray-100 bg-gray-50 opacity-50'}`}
+                  onClick={() => {
+                    if (avail <= 0) return
+                    setLookup({ product: { id: item.productId, code: '', barcode: '', name: item.productName, sellPrice: item.unitPrice }, sales: [{ ...invoiceSale, items: [item] }] })
+                    setSelectedSale({ ...invoiceSale, items: [item] })
+                    setReturnQty(1)
+                  }}
+                >
+                  <div>
+                    <p className="font-medium text-gray-800">{item.productName}</p>
+                    <p className="text-sm text-gray-500">{item.unitPrice} x {item.quantity}</p>
+                  </div>
+                  <div className="text-right text-sm">
+                    <p className="font-medium">{formatCurrency(item.totalPrice)}</p>
+                    {avail > 0 ? (
+                      <span className="text-green-600">{avail} disponible{avail !== 1 ? 's' : ''}</span>
+                    ) : (
+                      <span className="text-red-500">Agotado</span>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
 

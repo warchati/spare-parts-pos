@@ -111,6 +111,25 @@ export function saleRoutes(prisma: PrismaClient) {
     } catch (e) { next(e) }
   })
 
+  router.get('/by-invoice/:invoiceNumber', requirePermission(prisma, 'sales', 'view'), async (req, res, next) => {
+    try {
+      const { invoiceNumber } = req.params
+      const sale = await prisma.sale.findFirst({
+        where: {
+          invoiceNumber,
+          status: 'completed',
+        },
+        include: {
+          items: true,
+          client: true,
+          returns: { include: { items: true } },
+        },
+      })
+      if (!sale) return res.status(404).json({ error: 'Venta no encontrada con ese número de factura' })
+      res.json(sale)
+    } catch (e) { next(e) }
+  })
+
   router.get('/:id', requirePermission(prisma, 'sales', 'view'), async (req, res, next) => {
     try {
       const sale = await prisma.sale.findUnique({
