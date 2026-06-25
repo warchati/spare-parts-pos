@@ -170,7 +170,7 @@ export default function InvoiceReceipt({ sale, config, onClose }: Props) {
               )}
             </div>
 
-            <div className="flex justify-center gap-6 mb-3">
+            <div className="flex flex-col items-center gap-3 mb-3">
               <Barcode value={invoiceNumber} label="Nº Factura" />
               {config.ncf && <Barcode value={config.ncf} label="NCF" />}
             </div>
