@@ -127,6 +127,12 @@ export default function Sales() {
               {selectedSale.paymentMethod === 'credit' && selectedSale.creditPayments?.length > 0 && (
                 <p className="text-sm text-orange-600">Crédito: {formatCurrency(selectedSale.creditPayments[0].amount)}</p>
               )}
+              {selectedSale.pointsRedeemed > 0 && (
+                <p className="text-sm text-blue-600">Puntos canjeados: {selectedSale.pointsRedeemed} ({formatCurrency(Math.round(selectedSale.pointsRedeemed * 0.05 * 100) / 100)})</p>
+              )}
+              {selectedSale.pointsEarned > 0 && (
+                <p className="text-sm text-green-600">Puntos ganados: +{selectedSale.pointsEarned}</p>
+              )}
             </div>
             <div className="border-t pt-3 space-y-2">
               {selectedSale.items?.map((item: any) => (
