@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { PrismaClient } from '@prisma/client'
-import { requirePermission, PERMISSIONS } from '../middleware/auth'
+import { requirePermission } from '../middleware/auth'
 
 export function permissionRoutes(prisma: PrismaClient) {
   const router = Router()
@@ -52,25 +52,15 @@ export function permissionRoutes(prisma: PrismaClient) {
       const permMap = new Map<string, boolean>()
       for (const p of rolePerms) permMap.set(`${p.module}:${p.action}`, true)
 
-      // Only merge hardcoded defaults if role has NO DB records at all
-      // (so admin changes via the Permissions page are respected immediately)
-      const hardcoded = PERMISSIONS[req.user.role]
-      if (rolePerms.length === 0 && hardcoded) {
-        for (const [mod, actions] of Object.entries(hardcoded)) {
-          for (const action of actions) {
-            const key = `${mod}:${action}`
-            if (!permMap.has(key)) permMap.set(key, true)
-          }
-        }
-      }
-
       // Apply user-level overrides (grant/deny)
       for (const p of userPerms) permMap.set(`${p.module}:${p.action}`, p.granted)
 
+      // Return only what's in DB + user overrides
       const result: { module: string, action: string }[] = []
       for (const [key, granted] of permMap) {
         if (granted) {
-          const [module, action] = key.split(':')
+          const module = key.slice(0, key.lastIndexOf(':'))
+          const action = key.slice(key.lastIndexOf(':') + 1)
           result.push({ module, action })
         }
       }
