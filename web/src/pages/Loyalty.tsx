@@ -37,6 +37,11 @@ export default function Loyalty() {
   const [search, setSearch] = useState('')
   const [config, setConfig] = useState({ earnRate: 10, redeemRate: 0.05, expireMonths: 12 })
   const [editConfig, setEditConfig] = useState({ key: '', value: '' })
+  const [histClientSearch, setHistClientSearch] = useState('')
+  const [histType, setHistType] = useState('')
+  const [histStart, setHistStart] = useState('')
+  const [histEnd, setHistEnd] = useState('')
+  const [clientsLookup, setClientsLookup] = useState<{ id: number; name: string }[]>([])
 
   useEffect(() => {
     loadClients()
@@ -47,6 +52,17 @@ export default function Loyalty() {
     if (tab === 'history') loadTransactions()
   }, [tab])
 
+  useEffect(() => {
+    if (histClientSearch.length < 2) { setClientsLookup([]); return }
+    const timer = setTimeout(async () => {
+      try {
+        const res = await api.get('/loyalty/clients', { params: { q: histClientSearch } })
+        setClientsLookup(res.data)
+      } catch { setClientsLookup([]) }
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [histClientSearch])
+
   const loadClients = async () => {
     try {
       const res = await api.get('/loyalty/clients', { params: { q: search || undefined, sortBy: 'points', order: 'desc' } })
@@ -56,7 +72,15 @@ export default function Loyalty() {
 
   const loadTransactions = async () => {
     try {
-      const res = await api.get('/loyalty/transactions', { params: { limit: 100 } })
+      const params: any = { limit: 100 }
+      if (histClientSearch) {
+        const res = await api.get('/loyalty/clients', { params: { q: histClientSearch } })
+        if (res.data.length === 1) params.clientId = res.data[0].id
+      }
+      if (histType) params.type = histType
+      if (histStart) params.start = histStart
+      if (histEnd) params.end = histEnd
+      const res = await api.get('/loyalty/transactions', { params })
       setTransactions(res.data)
     } catch {}
   }
@@ -184,44 +208,107 @@ export default function Loyalty() {
       )}
 
       {tab === 'history' && (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-gray-50 text-sm text-gray-500">
-                <th className="text-left px-4 py-3">Fecha</th>
-                <th className="text-left px-4 py-3">Cliente</th>
-                <th className="text-left px-4 py-3">Tipo</th>
-                <th className="text-right px-4 py-3">Puntos</th>
-                <th className="text-right px-4 py-3">Saldo Anterior</th>
-                <th className="text-right px-4 py-3">Saldo Nuevo</th>
-                <th className="text-left px-4 py-3">Descripción</th>
-                <th className="text-left px-4 py-3">Por</th>
-              </tr>
-            </thead>
-            <tbody>
-              {transactions.map((t) => (
-                <tr key={t.id} className="border-t border-gray-100 hover:bg-gray-50 text-sm">
-                  <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
-                    {new Date(t.createdAt).toLocaleDateString('es', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                  </td>
-                  <td className="px-4 py-3 font-medium">{t.client.name}</td>
-                  <td className="px-4 py-3">{typeBadge(t.type)}</td>
-                  <td className={`px-4 py-3 text-right font-mono font-bold ${
-                    t.type === 'EARN' ? 'text-green-600' : t.type === 'REDEEM' ? 'text-blue-600' : 'text-yellow-600'
-                  }`}>
-                    {t.type === 'EARN' ? '+' : '-'}{t.points.toLocaleString()}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono text-gray-500">{t.balanceBefore.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-right font-mono text-gray-500">{t.balanceAfter.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-gray-600 max-w-xs truncate">{t.description}</td>
-                  <td className="px-4 py-3 text-gray-500">{t.createdBy.name}</td>
-                </tr>
-              ))}
-              {transactions.length === 0 && (
-                <tr><td colSpan={8} className="text-center py-8 text-gray-400">Sin transacciones</td></tr>
+        <div>
+          <div className="flex flex-wrap gap-3 mb-4 items-end">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                value={histClientSearch}
+                onChange={(e) => setHistClientSearch(e.target.value)}
+                placeholder="Buscar cliente..."
+                className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-yellow-500"
+              />
+              {clientsLookup.length > 0 && (
+                <div className="absolute z-10 top-full mt-1 left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg max-h-40 overflow-auto">
+                  {clientsLookup.map((c) => (
+                    <button
+                      key={c.id}
+                      onClick={() => { setHistClientSearch(c.name); setClientsLookup([]) }}
+                      className="block w-full text-left px-3 py-2 text-sm hover:bg-yellow-50"
+                    >
+                      {c.name}
+                    </button>
+                  ))}
+                </div>
               )}
-            </tbody>
-          </table>
+            </div>
+            <select
+              value={histType}
+              onChange={(e) => setHistType(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-yellow-500"
+            >
+              <option value="">Todos los tipos</option>
+              <option value="EARN">Ganados</option>
+              <option value="REDEEM">Canjeados</option>
+              <option value="REVERSE">Reversión</option>
+              <option value="EXPIRE">Caducados</option>
+              <option value="ADJUST">Ajuste</option>
+            </select>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-gray-500">Desde</label>
+              <input
+                type="date"
+                value={histStart}
+                onChange={(e) => setHistStart(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-yellow-500"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-gray-500">Hasta</label>
+              <input
+                type="date"
+                value={histEnd}
+                onChange={(e) => setHistEnd(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-yellow-500"
+              />
+            </div>
+            <button
+              onClick={loadTransactions}
+              className="px-4 py-2 bg-yellow-500 text-white rounded-lg text-sm font-medium hover:bg-yellow-600"
+            >
+              Filtrar
+            </button>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gray-50 text-sm text-gray-500">
+                  <th className="text-left px-4 py-3">Fecha</th>
+                  <th className="text-left px-4 py-3">Cliente</th>
+                  <th className="text-left px-4 py-3">Tipo</th>
+                  <th className="text-right px-4 py-3">Puntos</th>
+                  <th className="text-right px-4 py-3">Saldo Anterior</th>
+                  <th className="text-right px-4 py-3">Saldo Nuevo</th>
+                  <th className="text-left px-4 py-3">Descripción</th>
+                  <th className="text-left px-4 py-3">Por</th>
+                </tr>
+              </thead>
+              <tbody>
+                {transactions.map((t) => (
+                  <tr key={t.id} className="border-t border-gray-100 hover:bg-gray-50 text-sm">
+                    <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
+                      {new Date(t.createdAt).toLocaleDateString('es', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </td>
+                    <td className="px-4 py-3 font-medium">{t.client.name}</td>
+                    <td className="px-4 py-3">{typeBadge(t.type)}</td>
+                    <td className={`px-4 py-3 text-right font-mono font-bold ${
+                      t.type === 'EARN' ? 'text-green-600' : t.type === 'REDEEM' ? 'text-blue-600' : 'text-yellow-600'
+                    }`}>
+                      {t.type === 'EARN' ? '+' : '-'}{t.points.toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono text-gray-500">{t.balanceBefore.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-right font-mono text-gray-500">{t.balanceAfter.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-gray-600 max-w-xs truncate">{t.description}</td>
+                    <td className="px-4 py-3 text-gray-500">{t.createdBy.name}</td>
+                  </tr>
+                ))}
+                {transactions.length === 0 && (
+                  <tr><td colSpan={8} className="text-center py-8 text-gray-400">Sin transacciones</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
