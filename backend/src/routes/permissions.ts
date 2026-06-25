@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { PrismaClient } from '@prisma/client'
-import { requirePermission } from '../middleware/auth'
+import { requirePermission, PERMISSIONS } from '../middleware/auth'
 
 export function permissionRoutes(prisma: PrismaClient) {
   const router = Router()
@@ -48,9 +48,22 @@ export function permissionRoutes(prisma: PrismaClient) {
         select: { module: true, action: true, granted: true },
       })
 
-      // Start with role permissions and apply user overrides
+      // Start with DB role permissions
       const permMap = new Map<string, boolean>()
       for (const p of rolePerms) permMap.set(`${p.module}:${p.action}`, true)
+
+      // Merge with hardcoded defaults for any missing modules
+      const hardcoded = PERMISSIONS[req.user.role]
+      if (hardcoded) {
+        for (const [mod, actions] of Object.entries(hardcoded)) {
+          for (const action of actions) {
+            const key = `${mod}:${action}`
+            if (!permMap.has(key)) permMap.set(key, true)
+          }
+        }
+      }
+
+      // Apply user-level overrides (grant/deny)
       for (const p of userPerms) permMap.set(`${p.module}:${p.action}`, p.granted)
 
       const result: { module: string, action: string }[] = []
