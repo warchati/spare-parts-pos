@@ -4,6 +4,7 @@ import { formatCurrency } from '../lib/currency'
 import { useAuth } from '../contexts/AuthContext'
 import { can } from '../lib/permissions'
 import { Search, Plus, Minus, Trash2, X, User, CreditCard, DollarSign, Building2, Award, Gift } from 'lucide-react'
+import InvoiceReceipt from './InvoiceReceipt'
 
 interface Product {
   id: number
@@ -57,6 +58,9 @@ export default function POS() {
   const [clientPoints, setClientPoints] = useState<{ balance: number; value: number } | null>(null)
   const [pointsToRedeem, setPointsToRedeem] = useState(0)
   const [showPointsInput, setShowPointsInput] = useState(false)
+  const [showInvoice, setShowInvoice] = useState(false)
+  const [lastSale, setLastSale] = useState<any>(null)
+  const [storeConfig, setStoreConfig] = useState<any>(null)
   const searchRef = useRef<HTMLInputElement>(null)
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
@@ -170,7 +174,7 @@ export default function POS() {
     if (cart.length === 0) return
     setLoading(true)
     try {
-      await api.post('/sales', {
+      const res = await api.post('/sales', {
         items: cart.map(i => ({ productId: i.productId, quantity: i.quantity })),
         clientId: client?.id || null,
         userId: user!.id,
@@ -178,13 +182,17 @@ export default function POS() {
         currencyId: selectedCurrency?.id || null,
         pointsToRedeem: pointsToRedeem || 0,
       })
-      setSuccess(true)
+      setLastSale(res.data)
       setCart([])
       setClient(null)
       setClientPoints(null)
       setPointsToRedeem(0)
       setShowPointsInput(false)
+      setSuccess(true)
       setTimeout(() => setSuccess(false), 3000)
+      const configRes = await api.get('/store-config')
+      setStoreConfig(configRes.data)
+      setShowInvoice(true)
     } catch (e: any) {
       alert(e.response?.data?.error || 'Error al procesar venta')
     } finally {
@@ -455,6 +463,10 @@ export default function POS() {
             </div>
           </div>
         </div>
+      )}
+
+      {showInvoice && lastSale && storeConfig && (
+        <InvoiceReceipt sale={lastSale} config={storeConfig} onClose={() => setShowInvoice(false)} />
       )}
 
       {showPaymentModal && (

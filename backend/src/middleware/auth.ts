@@ -29,6 +29,7 @@ export const PERMISSIONS: Record<string, Record<string, string[]>> = {
     permissions: ['edit'],
     returns: ['view', 'edit'],
     loyalty: ['view', 'edit', 'redeem'],
+    storeConfig: ['view', 'edit'],
   },
   supervisor: {
     pos: ['sell'],
@@ -48,6 +49,7 @@ export const PERMISSIONS: Record<string, Record<string, string[]>> = {
     permissions: [],
     returns: ['view', 'edit'],
     loyalty: ['view', 'redeem'],
+    storeConfig: [],
   },
   cashier: {
     pos: ['sell'],
@@ -85,6 +87,7 @@ export const PERMISSIONS: Record<string, Record<string, string[]>> = {
     currencies: [],
     returns: [],
     loyalty: ['view', 'redeem'],
+    storeConfig: [],
   },
 }
 

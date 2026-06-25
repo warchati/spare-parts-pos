@@ -118,6 +118,7 @@ async function main() {
       permissions: ['edit'],
       returns: ['view', 'edit'],
       loyalty: ['view', 'edit', 'redeem'],
+      storeConfig: ['view', 'edit'],
     },
     supervisor: {
       pos: ['sell'],
@@ -136,6 +137,7 @@ async function main() {
       currencies: ['view'],
       returns: ['view', 'edit'],
       loyalty: ['view', 'redeem'],
+      storeConfig: [],
     },
     cashier: {
       pos: ['sell'],
@@ -172,6 +174,7 @@ async function main() {
       currencies: [],
       returns: [],
       loyalty: ['view', 'redeem'],
+      storeConfig: [],
     },
   }
 

@@ -5,7 +5,8 @@ import { formatCurrency } from '../lib/currency'
 import { downloadExport } from '../lib/download'
 import { useAuth } from '../contexts/AuthContext'
 import { can } from '../lib/permissions'
-import { Receipt, Search, Download, CreditCard, X, AlertCircle, Printer, RotateCcw, User } from 'lucide-react'
+import { Receipt, Search, Download, CreditCard, X, AlertCircle, Printer, RotateCcw, User, FileText } from 'lucide-react'
+import InvoiceReceipt from './InvoiceReceipt'
 
 export default function Sales() {
   const { user } = useAuth()
@@ -23,6 +24,19 @@ export default function Sales() {
   const [showClientModal, setShowClientModal] = useState(false)
   const [showCancelModal, setShowCancelModal] = useState(false)
   const [cancelReason, setCancelReason] = useState('')
+  const [showInvoice, setShowInvoice] = useState(false)
+  const [storeConfig, setStoreConfig] = useState<any>(null)
+
+  const handleShowInvoice = async (sale: any) => {
+    setSelectedSale(sale)
+    try {
+      const res = await api.get('/store-config')
+      setStoreConfig(res.data)
+      setShowInvoice(true)
+    } catch {
+      setStoreConfig(null)
+    }
+  }
 
   useEffect(() => { loadSales() }, [])
 
@@ -237,10 +251,10 @@ export default function Sales() {
             </div>
             <div className="flex gap-2 mt-4">
               <button
-                onClick={() => { window.print() }}
+                onClick={() => handleShowInvoice(selectedSale)}
                 className="flex items-center justify-center gap-2 flex-1 px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm"
               >
-                <Printer className="w-4 h-4" /> Imprimir
+                <FileText className="w-4 h-4" /> Ver Factura
               </button>
               {selectedSale.status === 'completed' && can(user?.role, 'sales', 'edit') && (
                 <>
@@ -261,6 +275,10 @@ export default function Sales() {
             </div>
           </div>
         </div>
+      )}
+
+      {showInvoice && selectedSale && storeConfig && (
+        <InvoiceReceipt sale={selectedSale} config={storeConfig} onClose={() => { setShowInvoice(false); setStoreConfig(null) }} />
       )}
 
       {showCancelModal && (

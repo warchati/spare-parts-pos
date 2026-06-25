@@ -1,6 +1,6 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { ShoppingCart, Package, Users, Truck, Receipt, ClipboardList, LogOut, Store, LayoutDashboard, DollarSign, UserCog, Car, CreditCard, Percent, Shield, BarChart3, Award, RotateCcw } from 'lucide-react'
+import { ShoppingCart, Package, Users, Truck, Receipt, ClipboardList, LogOut, Store, LayoutDashboard, DollarSign, UserCog, Car, CreditCard, Percent, Shield, BarChart3, Award, RotateCcw, FileText } from 'lucide-react'
 import { can } from '../lib/permissions'
 
 const navItems = [
@@ -21,6 +21,7 @@ const navItems = [
   { to: '/currencies', label: 'Monedas', icon: DollarSign, module: 'currencies', action: 'view' },
   { to: '/loyalty', label: 'Lealtad', icon: Award, module: 'loyalty', action: 'view' },
   { to: '/returns', label: 'Devoluciones', icon: RotateCcw, module: 'returns', action: 'view' },
+  { to: '/invoice-config', label: 'Config. Factura', icon: FileText, module: 'storeConfig', action: 'edit' },
 ]
 
 export default function Layout() {

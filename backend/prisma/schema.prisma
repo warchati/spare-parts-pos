@@ -289,6 +289,18 @@ model LoyaltyConfig {
   value String
 }
 
+model StoreConfig {
+  id           Int      @id @default(1)
+  companyName  String   @default("")
+  rnc          String   @default("")
+  address      String   @default("")
+  phone        String   @default("")
+  email        String   @default("")
+  logoUrl      String   @default("")
+  ncf          String   @default("")
+  updatedAt    DateTime @updatedAt
+}
+
 model LoyaltyTransaction {
   id            Int      @id @default(autoincrement())
   clientId      Int

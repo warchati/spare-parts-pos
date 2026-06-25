@@ -344,7 +344,7 @@ export function saleRoutes(prisma: PrismaClient) {
 
         return await tx.sale.findUnique({
           where: { id: sale.id },
-          include: { items: true, client: true, creditPayments: true, currency: true },
+          include: { items: true, client: true, creditPayments: true, currency: true, user: true },
         })
       })
 
