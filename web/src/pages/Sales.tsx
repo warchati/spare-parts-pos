@@ -5,7 +5,7 @@ import { formatCurrency } from '../lib/currency'
 import { downloadExport } from '../lib/download'
 import { useAuth } from '../contexts/AuthContext'
 import { can } from '../lib/permissions'
-import { Receipt, Search, Download, CreditCard, X, AlertCircle, Printer, RotateCcw } from 'lucide-react'
+import { Receipt, Search, Download, CreditCard, X, AlertCircle, Printer, RotateCcw, User } from 'lucide-react'
 
 export default function Sales() {
   const { user } = useAuth()
@@ -15,7 +15,12 @@ export default function Sales() {
   const [selectedSale, setSelectedSale] = useState<any>(null)
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
   const [paymentFilter, setPaymentFilter] = useState('')
+  const [clientFilter, setClientFilter] = useState('')
+  const [clientResults, setClientResults] = useState<any[]>([])
+  const [selectedClient, setSelectedClient] = useState<{ id: number; name: string } | null>(null)
+  const [showClientModal, setShowClientModal] = useState(false)
   const [showCancelModal, setShowCancelModal] = useState(false)
   const [cancelReason, setCancelReason] = useState('')
 
@@ -26,10 +31,21 @@ export default function Sales() {
       const params: any = {}
       if (startDate) params.start = startDate
       if (endDate) params.end = endDate
-      if (paymentFilter) params.status = paymentFilter
+      if (statusFilter) params.status = statusFilter
+      if (paymentFilter) params.paymentMethod = paymentFilter
+      if (selectedClient) params.clientId = selectedClient.id
       const res = await api.get('/sales', { params })
       setSales(res.data)
     } catch (e) { console.error(e) }
+  }
+
+  const searchClient = async (q: string) => {
+    setClientFilter(q)
+    if (!q.trim()) { setClientResults([]); return }
+    try {
+      const res = await api.get('/clients', { params: { search: q } })
+      setClientResults(res.data)
+    } catch { setClientResults([]) }
   }
 
 
@@ -59,6 +75,12 @@ export default function Sales() {
         </div>
         <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="px-3 py-2.5 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm" />
         <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="px-3 py-2.5 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm" />
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-3 py-2.5 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+          <option value="">Todos los estados</option>
+          <option value="completed">Completada</option>
+          <option value="cancelled">Cancelada</option>
+          <option value="pending">Pendiente</option>
+        </select>
         <select value={paymentFilter} onChange={(e) => setPaymentFilter(e.target.value)} className="px-3 py-2.5 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm">
           <option value="">Todos los pagos</option>
           <option value="cash">Efectivo</option>
@@ -66,8 +88,43 @@ export default function Sales() {
           <option value="transfer">Transferencia</option>
           <option value="credit">Crédito</option>
         </select>
+        <button onClick={() => setShowClientModal(true)} className="flex items-center gap-2 px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm">
+          <User className="w-4 h-4" />
+          {selectedClient ? selectedClient.name : 'Cliente'}
+        </button>
         <button onClick={loadSales} className="px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">Filtrar</button>
       </div>
+
+      {showClientModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowClientModal(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-sm p-6 mx-4" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-bold mb-4">Seleccionar Cliente</h3>
+            <input
+              type="text"
+              value={clientFilter}
+              onChange={(e) => searchClient(e.target.value)}
+              placeholder="Buscar cliente..."
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm mb-3"
+              autoFocus
+            />
+            <div className="max-h-60 overflow-auto space-y-1">
+              <button onClick={() => { setSelectedClient(null); setShowClientModal(false) }} className="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-100 text-sm text-gray-500">
+                Todos los clientes
+              </button>
+              {clientResults.map((c: any) => (
+                <button
+                  key={c.id}
+                  onClick={() => { setSelectedClient({ id: c.id, name: c.name }); setShowClientModal(false) }}
+                  className={`w-full text-left px-3 py-2 rounded-lg hover:bg-gray-100 text-sm ${selectedClient?.id === c.id ? 'bg-blue-50 text-blue-700' : ''}`}
+                >
+                  {c.name}
+                </button>
+              ))}
+              {clientFilter && clientResults.length === 0 && <p className="text-sm text-gray-400 px-3 py-2">Sin resultados</p>}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <table className="w-full">
