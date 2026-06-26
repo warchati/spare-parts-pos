@@ -25,7 +25,7 @@ export function productRoutes(prisma: PrismaClient) {
 
       const products = await prisma.product.findMany({
         where,
-        include: { images: true },
+        include: { images: true, defaultLocation: true },
         orderBy: { name: 'asc' },
       })
       res.json(products)
@@ -60,7 +60,7 @@ export function productRoutes(prisma: PrismaClient) {
     try {
       const product = await prisma.product.findUnique({
         where: { id: Number(req.params.id) },
-        include: { images: true },
+        include: { images: true, defaultLocation: true },
       })
       if (!product) return res.status(404).json({ error: 'Product not found' })
       res.json(product)
