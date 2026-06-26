@@ -55,7 +55,7 @@ export const PERMISSIONS: Record<string, Record<string, string[]>> = {
     storeConfig: [],
     expenses: ['view'],
     warehouses: ['view'],
-    inventory: ['view'],
+    inventory: ['view', 'create', 'edit'],
   },
   cashier: {
     pos: ['sell'],

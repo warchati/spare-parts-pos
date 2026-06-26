@@ -178,7 +178,7 @@ async function main() {
       storeConfig: [],
       expenses: ['view'],
       warehouses: ['view'],
-      inventory: ['view'],
+      inventory: ['view', 'create', 'edit'],
     },
     cashier: {
       pos: ['sell'],
