@@ -119,14 +119,17 @@ export default function Dashboard() {
         </div>
         <div className="space-y-2">
           {dailySales.slice(0, period === 'week' ? 7 : 30).map((d: any) => (
-            <div key={d.date} className="flex items-center gap-4">
-              <span className="text-sm text-gray-500 w-28">{formatDay(d.date)}</span>
+            <div key={d.date} className="flex flex-col md:flex-row md:items-center gap-1 md:gap-4">
+              <div className="flex items-center justify-between md:w-28">
+                <span className="text-sm text-gray-500">{formatDay(d.date)}</span>
+                <span className="text-sm font-bold md:hidden">{formatCurrency(d.revenue)}</span>
+              </div>
               <div className="flex-1 bg-gray-100 rounded-full h-6 relative overflow-hidden">
                 <div className="bg-blue-500 h-full rounded-full transition-all flex items-center justify-end px-2" style={{ width: `${Math.min((d.revenue / (today.revenue || 1)) * 100, 100)}%` }}>
                   <span className="text-xs text-white font-medium">{d.count} ventas</span>
                 </div>
               </div>
-              <span className="text-sm font-bold w-24 text-right">{formatCurrency(d.revenue)}</span>
+              <span className="text-sm font-bold w-24 text-right hidden md:block">{formatCurrency(d.revenue)}</span>
             </div>
           ))}
           {dailySales.length === 0 && <p className="text-sm text-gray-400 text-center py-4">Sin ventas en este período</p>}
