@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { PrismaClient } from '@prisma/client'
-import { requirePermission } from '../middleware/auth'
+import { requirePermission, PERMISSIONS } from '../middleware/auth'
 
 export function permissionRoutes(prisma: PrismaClient) {
   const router = Router()
@@ -54,6 +54,19 @@ export function permissionRoutes(prisma: PrismaClient) {
 
       // Apply user-level overrides (grant/deny)
       for (const p of userPerms) permMap.set(`${p.module}:${p.action}`, p.granted)
+
+      // Merge hardcoded defaults for admin (so new modules appear without DB reseed)
+      if (req.user.role === 'admin') {
+        const defaults = PERMISSIONS['admin']
+        for (const [mod, actions] of Object.entries(defaults)) {
+          for (const action of actions) {
+            const key = `${mod}:${action}`
+            if (!permMap.has(key)) {
+              permMap.set(key, true)
+            }
+          }
+        }
+      }
 
       // Return only what's in DB + user overrides
       const result: { module: string, action: string }[] = []
