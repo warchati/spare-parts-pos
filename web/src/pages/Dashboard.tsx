@@ -28,7 +28,7 @@ export default function Dashboard() {
       const [reportsRes, salesRes, expensesRes] = await Promise.all([
         api.get('/reports'),
         api.get('/reports/sales'),
-        api.get(`/expenses/summary?startDate=${dateStr}&endDate=${dateStr}`),
+        api.get(`/expenses/summary?start=${dateStr}&end=${dateStr}`),
       ])
       setData(reportsRes.data)
       setDailySales(salesRes.data)
