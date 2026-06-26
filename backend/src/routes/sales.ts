@@ -163,6 +163,7 @@ export function saleRoutes(prisma: PrismaClient) {
         let subtotal = 0
         let taxTotal = 0
         const saleItems = []
+        const saleStockData: { productId: number; quantity: number; beforeStock: number; defaultLocationId: number | null }[] = []
 
         for (const item of items) {
           // Lock the product row to prevent race conditions
@@ -180,6 +181,13 @@ export function saleRoutes(prisma: PrismaClient) {
           await tx.product.update({
             where: { id: product.id },
             data: { stock: { decrement: item.quantity } },
+          })
+
+          saleStockData.push({
+            productId: product.id,
+            quantity: item.quantity,
+            beforeStock: product.stock,
+            defaultLocationId: product.defaultLocationId,
           })
 
           const totalPrice = product.sellPrice * item.quantity
@@ -347,6 +355,36 @@ export function saleRoutes(prisma: PrismaClient) {
           })
         }
 
+        for (const sd of saleStockData) {
+          const afterStock = sd.beforeStock - sd.quantity
+          let beforeLocStock = 0
+          let afterLocStock = 0
+          if (sd.defaultLocationId) {
+            const pl = await tx.productLocation.findUnique({
+              where: {
+                productId_locationId: { productId: sd.productId, locationId: sd.defaultLocationId },
+              },
+            })
+            beforeLocStock = pl?.stock ?? 0
+            afterLocStock = Math.max(0, beforeLocStock - sd.quantity)
+            if (pl) {
+              await tx.productLocation.update({ where: { id: pl.id }, data: { stock: afterLocStock } })
+            } else {
+              await tx.productLocation.create({
+                data: { productId: sd.productId, locationId: sd.defaultLocationId, stock: afterLocStock },
+              })
+            }
+          }
+          await tx.stockMovement.create({
+            data: {
+              productId: sd.productId, locationId: sd.defaultLocationId, type: 'SALE',
+              quantity: -sd.quantity, beforeStock: sd.beforeStock, afterStock,
+              beforeLocStock, afterLocStock, referenceType: 'Sale',
+              referenceId: sale.id, reason: `Venta ${invoiceNumber}`, userId,
+            },
+          })
+        }
+
         return await tx.sale.findUnique({
           where: { id: sale.id },
           include: { items: true, client: true, creditPayments: true, currency: true, user: true },
@@ -381,9 +419,40 @@ export function saleRoutes(prisma: PrismaClient) {
 
       const result = await prisma.$transaction(async (tx) => {
         for (const item of sale.items) {
+          const product = await tx.product.findUniqueOrThrow({
+            where: { id: item.productId },
+          })
+          const beforeStock = product.stock
+          const afterStock = beforeStock + item.quantity
           await tx.product.update({
             where: { id: item.productId },
             data: { stock: { increment: item.quantity } },
+          })
+          let beforeLocStock = 0
+          let afterLocStock = 0
+          if (product.defaultLocationId) {
+            const pl = await tx.productLocation.findUnique({
+              where: {
+                productId_locationId: { productId: item.productId, locationId: product.defaultLocationId },
+              },
+            })
+            beforeLocStock = pl?.stock ?? 0
+            afterLocStock = beforeLocStock + item.quantity
+            if (pl) {
+              await tx.productLocation.update({ where: { id: pl.id }, data: { stock: afterLocStock } })
+            } else {
+              await tx.productLocation.create({
+                data: { productId: item.productId, locationId: product.defaultLocationId, stock: afterLocStock },
+              })
+            }
+          }
+          await tx.stockMovement.create({
+            data: {
+              productId: item.productId, locationId: product.defaultLocationId, type: 'SALE_CANCEL',
+              quantity: item.quantity, beforeStock, afterStock,
+              beforeLocStock, afterLocStock, referenceType: 'Sale',
+              referenceId: sale.id, reason: `Cancelación ${sale.invoiceNumber}`, userId,
+            },
           })
         }
 
@@ -475,6 +544,7 @@ export function saleRoutes(prisma: PrismaClient) {
       const loyaltyConfig = await getLoyaltyConfig()
       const result = await prisma.$transaction(async (tx) => {
         const saleReturnItems = []
+        const returnStockData: { productId: number; quantity: number; beforeStock: number; defaultLocationId: number | null }[] = []
         let returnSubtotal = 0
 
         for (const ri of returnItems) {
@@ -482,9 +552,19 @@ export function saleRoutes(prisma: PrismaClient) {
           if (!saleItem) throw new Error(`Product ${ri.productId} not found in sale`)
           if (ri.quantity > saleItem.quantity) throw new Error(`Cannot return more than ${saleItem.quantity} of ${saleItem.productName}`)
 
+          const product = await tx.product.findUniqueOrThrow({
+            where: { id: ri.productId },
+          })
+          const beforeStock = product.stock
           await tx.product.update({
             where: { id: ri.productId },
             data: { stock: { increment: ri.quantity } },
+          })
+          returnStockData.push({
+            productId: ri.productId,
+            quantity: ri.quantity,
+            beforeStock,
+            defaultLocationId: product.defaultLocationId,
           })
 
           const itemSubtotal = saleItem.unitPrice * ri.quantity
@@ -617,6 +697,38 @@ export function saleRoutes(prisma: PrismaClient) {
           },
           include: { items: true },
         })
+
+        for (const sd of returnStockData) {
+          const afterStock = sd.beforeStock + sd.quantity
+          let beforeLocStock = 0
+          let afterLocStock = 0
+          if (sd.defaultLocationId) {
+            const pl = await tx.productLocation.findUnique({
+              where: {
+                productId_locationId: { productId: sd.productId, locationId: sd.defaultLocationId },
+              },
+            })
+            beforeLocStock = pl?.stock ?? 0
+            afterLocStock = beforeLocStock + sd.quantity
+            if (pl) {
+              await tx.productLocation.update({ where: { id: pl.id }, data: { stock: afterLocStock } })
+            } else {
+              await tx.productLocation.create({
+                data: { productId: sd.productId, locationId: sd.defaultLocationId, stock: afterLocStock },
+              })
+            }
+          }
+          await tx.stockMovement.create({
+            data: {
+              productId: sd.productId, locationId: sd.defaultLocationId, type: 'RETURN',
+              quantity: sd.quantity, beforeStock: sd.beforeStock, afterStock,
+              beforeLocStock, afterLocStock, referenceType: 'SaleReturn',
+              referenceId: saleReturn.id,
+              reason: `Devolución ${saleReturn.creditNoteNumber} en ${sale.invoiceNumber}`, userId,
+            },
+          })
+        }
+
         return saleReturn
       })
 

@@ -89,8 +89,9 @@ export function purchaseRoutes(prisma: PrismaClient) {
     } catch (e) { next(e) }
   })
 
-  router.patch('/:id/receive', requirePermission(prisma, 'purchases', 'receive'), async (req, res, next) => {
+  router.patch('/:id/receive', requirePermission(prisma, 'purchases', 'receive'), async (req: AuthRequest, res, next) => {
     try {
+      const userId = req.user!.id
       const result = await prisma.$transaction(async (tx) => {
         const purchase = await tx.purchaseOrder.findUnique({
           where: { id: Number(req.params.id) },
@@ -101,9 +102,40 @@ export function purchaseRoutes(prisma: PrismaClient) {
         if (purchase.status === 'received') throw new Error('Already received')
 
         for (const item of purchase.items) {
+          const product = await tx.product.findUniqueOrThrow({
+            where: { id: item.productId },
+          })
+          const beforeStock = product.stock
+          const afterStock = beforeStock + item.quantity
           await tx.product.update({
             where: { id: item.productId },
             data: { stock: { increment: item.quantity } },
+          })
+          let beforeLocStock = 0
+          let afterLocStock = 0
+          if (product.defaultLocationId) {
+            const pl = await tx.productLocation.findUnique({
+              where: {
+                productId_locationId: { productId: item.productId, locationId: product.defaultLocationId },
+              },
+            })
+            beforeLocStock = pl?.stock ?? 0
+            afterLocStock = beforeLocStock + item.quantity
+            if (pl) {
+              await tx.productLocation.update({ where: { id: pl.id }, data: { stock: afterLocStock } })
+            } else {
+              await tx.productLocation.create({
+                data: { productId: item.productId, locationId: product.defaultLocationId, stock: afterLocStock },
+              })
+            }
+          }
+          await tx.stockMovement.create({
+            data: {
+              productId: item.productId, locationId: product.defaultLocationId, type: 'PURCHASE_RECEIVE',
+              quantity: item.quantity, beforeStock, afterStock,
+              beforeLocStock, afterLocStock, referenceType: 'PurchaseOrder',
+              referenceId: purchase.id, reason: `Recepción de compra #${purchase.id}`, userId,
+            },
           })
         }
 
