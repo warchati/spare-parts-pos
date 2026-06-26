@@ -334,6 +334,7 @@ model Expense {
   paymentMethod String   @default("cash")
   reference     String   @default("")
   notes         String   @default("")
+  attachmentUrl String   @default("")
   userId        Int
   user          User     @relation(fields: [userId], references: [id])
   createdAt     DateTime @default(now())

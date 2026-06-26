@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import api from '../lib/api'
 import { formatCurrency } from '../lib/currency'
 import { useAuth } from '../contexts/AuthContext'
 import { can } from '../lib/permissions'
-import { Search, Plus, Pencil, Trash2, DollarSign, TrendingDown, X } from 'lucide-react'
+import { Search, Plus, Pencil, Trash2, TrendingDown, X, FileText, Eye, Loader2 } from 'lucide-react'
 
 const CATEGORIES = [
   'rent', 'utilities', 'salaries', 'supplies', 'maintenance',
@@ -22,6 +22,7 @@ const METHOD_LABELS: Record<string, string> = {
 
 export default function Expenses() {
   const { user } = useAuth()
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [expenses, setExpenses] = useState<any[]>([])
   const [summary, setSummary] = useState<any>(null)
   const [search, setSearch] = useState('')
@@ -30,7 +31,11 @@ export default function Expenses() {
   const [categoryFilter, setCategoryFilter] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<any>(null)
+  const [uploading, setUploading] = useState(false)
   const [form, setForm] = useState({ description: '', amount: 0, category: 'other', paymentMethod: 'cash', reference: '', notes: '' })
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null)
+  const [attachmentPreview, setAttachmentPreview] = useState('')
+  const [existingAttachment, setExistingAttachment] = useState('')
 
   useEffect(() => { loadExpenses() }, [search, categoryFilter])
 
@@ -58,20 +63,44 @@ export default function Expenses() {
 
   useEffect(() => { loadSummary() }, [startDate, endDate])
 
+  const uploadFile = async (file: File): Promise<string> => {
+    const fd = new FormData()
+    fd.append('file', file)
+    const res = await api.post('/uploads', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return res.data.url
+  }
+
   const handleSave = async () => {
     try {
-      if (editing) {
-        await api.put(`/expenses/${editing.id}`, form)
-      } else {
-        await api.post('/expenses', form)
+      setUploading(true)
+      let url = existingAttachment
+
+      if (attachmentFile) {
+        url = await uploadFile(attachmentFile)
       }
+
+      const payload = { ...form, attachmentUrl: url }
+
+      if (editing) {
+        await api.put(`/expenses/${editing.id}`, payload)
+      } else {
+        await api.post('/expenses', payload)
+      }
+
       setShowForm(false)
       setEditing(null)
       setForm({ description: '', amount: 0, category: 'other', paymentMethod: 'cash', reference: '', notes: '' })
+      setAttachmentFile(null)
+      setAttachmentPreview('')
+      setExistingAttachment('')
       loadExpenses()
       loadSummary()
     } catch (e: any) {
       alert(e.response?.data?.error || 'Error')
+    } finally {
+      setUploading(false)
     }
   }
 
@@ -86,7 +115,30 @@ export default function Expenses() {
     }
   }
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setAttachmentFile(file)
+    setExistingAttachment('')
+    if (file.type.startsWith('image/')) {
+      setAttachmentPreview(URL.createObjectURL(file))
+    } else {
+      setAttachmentPreview('')
+    }
+  }
+
+  const openForm = (expense?: any) => {
+    setEditing(expense || null)
+    setForm(expense ? { description: expense.description, amount: expense.amount, category: expense.category, paymentMethod: expense.paymentMethod, reference: expense.reference, notes: expense.notes } : { description: '', amount: 0, category: 'other', paymentMethod: 'cash', reference: '', notes: '' })
+    setAttachmentFile(null)
+    setAttachmentPreview('')
+    setExistingAttachment(expense?.attachmentUrl || '')
+    setShowForm(true)
+  }
+
   const formatDate = (d: string) => new Date(d).toLocaleString('es-AR')
+
+  const isImage = (url: string) => /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(url)
 
   return (
     <div className="p-6">
@@ -95,7 +147,7 @@ export default function Expenses() {
           <TrendingDown className="w-6 h-6 text-red-500" /> Gastos
         </h1>
         {can(user?.role, 'expenses', 'edit') && (
-          <button onClick={() => { setEditing(null); setForm({ description: '', amount: 0, category: 'other', paymentMethod: 'cash', reference: '', notes: '' }); setShowForm(true) }} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+          <button onClick={() => openForm()} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
             <Plus className="w-4 h-4" /> Nuevo Gasto
           </button>
         )}
@@ -136,13 +188,14 @@ export default function Expenses() {
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-        <table className="w-full min-w-[600px]">
+        <table className="w-full min-w-[700px]">
           <thead>
             <tr className="bg-gray-50 text-sm text-gray-500">
               <th className="text-left px-4 py-3">Descripción</th>
               <th className="text-left px-4 py-3">Categoría</th>
               <th className="text-right px-4 py-3">Monto</th>
               <th className="text-left px-4 py-3">Pago</th>
+              <th className="text-left px-4 py-3">Factura</th>
               <th className="text-left px-4 py-3">Ref.</th>
               <th className="text-left px-4 py-3">Fecha</th>
               <th className="text-left px-4 py-3">Registró</th>
@@ -160,13 +213,23 @@ export default function Expenses() {
                 </td>
                 <td className="px-4 py-3 text-right font-mono font-bold text-red-600">{formatCurrency(e.amount)}</td>
                 <td className="px-4 py-3 text-sm text-gray-500">{METHOD_LABELS[e.paymentMethod] || e.paymentMethod}</td>
+                <td className="px-4 py-3">
+                  {e.attachmentUrl ? (
+                    <a href={e.attachmentUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 text-sm" title="Ver factura">
+                      {isImage(e.attachmentUrl) ? <Eye className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
+                      <span className="hidden sm:inline">{isImage(e.attachmentUrl) ? 'Ver' : 'PDF'}</span>
+                    </a>
+                  ) : (
+                    <span className="text-gray-300 text-sm">-</span>
+                  )}
+                </td>
                 <td className="px-4 py-3 text-sm text-gray-500">{e.reference || '-'}</td>
                 <td className="px-4 py-3 text-sm text-gray-500">{formatDate(e.createdAt)}</td>
                 <td className="px-4 py-3 text-sm text-gray-500">{e.user?.name}</td>
                 {can(user?.role, 'expenses', 'edit') && (
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <button onClick={() => { setEditing(e); setForm({ description: e.description, amount: e.amount, category: e.category, paymentMethod: e.paymentMethod, reference: e.reference, notes: e.notes }); setShowForm(true) }} className="p-1.5 hover:bg-gray-100 rounded">
+                      <button onClick={() => openForm(e)} className="p-1.5 hover:bg-gray-100 rounded">
                         <Pencil className="w-4 h-4 text-gray-400" />
                       </button>
                       <button onClick={() => handleDelete(e.id)} className="p-1.5 hover:bg-red-50 rounded">
@@ -178,7 +241,7 @@ export default function Expenses() {
               </tr>
             ))}
             {expenses.length === 0 && (
-              <tr><td colSpan={8} className="text-center py-8 text-gray-400">No hay gastos</td></tr>
+              <tr><td colSpan={9} className="text-center py-8 text-gray-400">No hay gastos</td></tr>
             )}
           </tbody>
         </table>
@@ -186,7 +249,7 @@ export default function Expenses() {
 
       {showForm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl w-full max-w-md p-6 mx-4">
+          <div className="bg-white rounded-2xl w-full max-w-md p-6 mx-4 max-h-[90vh] overflow-auto">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold">{editing ? 'Editar Gasto' : 'Nuevo Gasto'}</h2>
               <button onClick={() => setShowForm(false)}><X className="w-5 h-5" /></button>
@@ -217,7 +280,20 @@ export default function Expenses() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Referencia (factura/recibo)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Factura / Recibo</label>
+                <input ref={fileInputRef} type="file" accept="image/*,.pdf" onChange={handleFileSelect} className="w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+                {attachmentPreview && (
+                  <img src={attachmentPreview} alt="Preview" className="mt-2 max-h-32 rounded border" />
+                )}
+                {!attachmentFile && existingAttachment && (
+                  <div className="mt-2 flex items-center gap-2 text-sm text-gray-500">
+                    <FileText className="w-4 h-4" />
+                    <a href={existingAttachment} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Ver adjunto actual</a>
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Referencia</label>
                 <input type="text" value={form.reference} onChange={(e) => setForm({...form, reference: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
@@ -227,8 +303,9 @@ export default function Expenses() {
             </div>
             <div className="flex gap-3 mt-6">
               <button onClick={() => setShowForm(false)} className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50">Cancelar</button>
-              <button onClick={handleSave} className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                {editing ? 'Actualizar' : 'Guardar'}
+              <button onClick={handleSave} disabled={uploading} className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2">
+                {uploading && <Loader2 className="w-4 h-4 animate-spin" />}
+                {uploading ? 'Subiendo...' : editing ? 'Actualizar' : 'Guardar'}
               </button>
             </div>
           </div>

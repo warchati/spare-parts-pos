@@ -83,7 +83,7 @@ export function expenseRoutes(prisma: PrismaClient) {
 
   router.post('/', requirePermission(prisma, 'expenses', 'edit'), async (req: AuthRequest, res, next) => {
     try {
-      const { description, amount, category, paymentMethod, reference, notes } = req.body
+      const { description, amount, category, paymentMethod, reference, notes, attachmentUrl } = req.body
       if (!description || amount === undefined) {
         return res.status(400).json({ error: 'Description and amount are required' })
       }
@@ -96,6 +96,7 @@ export function expenseRoutes(prisma: PrismaClient) {
           paymentMethod: paymentMethod || 'cash',
           reference: reference || '',
           notes: notes || '',
+          attachmentUrl: attachmentUrl || '',
           userId: req.user!.id,
         },
       })
@@ -108,7 +109,7 @@ export function expenseRoutes(prisma: PrismaClient) {
 
   router.put('/:id', requirePermission(prisma, 'expenses', 'edit'), async (req: AuthRequest, res, next) => {
     try {
-      const { description, amount, category, paymentMethod, reference, notes } = req.body
+      const { description, amount, category, paymentMethod, reference, notes, attachmentUrl } = req.body
       const data: any = {}
       if (description !== undefined) data.description = description
       if (amount !== undefined) data.amount = amount
@@ -116,6 +117,7 @@ export function expenseRoutes(prisma: PrismaClient) {
       if (paymentMethod !== undefined) data.paymentMethod = paymentMethod
       if (reference !== undefined) data.reference = reference
       if (notes !== undefined) data.notes = notes
+      if (attachmentUrl !== undefined) data.attachmentUrl = attachmentUrl
 
       const expense = await prisma.expense.update({
         where: { id: Number(req.params.id) },
