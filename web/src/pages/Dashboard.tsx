@@ -4,7 +4,7 @@ import { formatCurrency } from '../lib/currency'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { can } from '../lib/permissions'
-import { BarChart3, DollarSign, Package, ShoppingCart, AlertTriangle, Receipt, CreditCard, Building2, Landmark, TrendingUp, Calendar } from 'lucide-react'
+import { BarChart3, DollarSign, Package, ShoppingCart, AlertTriangle, Receipt, CreditCard, Building2, Landmark, TrendingUp, Calendar, TrendingDown, Wallet } from 'lucide-react'
 
 const payMethodLabel: Record<string, string> = { cash: 'Efectivo', card: 'Tarjeta', transfer: 'Transferencia', credit: 'Crédito' }
 const payMethodColor: Record<string, string> = { cash: 'bg-green-500', card: 'bg-blue-500', transfer: 'bg-purple-500', credit: 'bg-orange-500' }
@@ -14,6 +14,7 @@ export default function Dashboard() {
   const { user } = useAuth()
   const [data, setData] = useState<any>(null)
   const [dailySales, setDailySales] = useState<any[]>([])
+  const [todayExpenses, setTodayExpenses] = useState<number>(0)
   const [loading, setLoading] = useState(true)
   const [period, setPeriod] = useState<'week' | 'month'>('week')
   const navigate = useNavigate()
@@ -22,12 +23,16 @@ export default function Dashboard() {
 
   const loadData = async () => {
     try {
-      const [reportsRes, salesRes] = await Promise.all([
+      const today = new Date()
+      const dateStr = today.toISOString().slice(0, 10)
+      const [reportsRes, salesRes, expensesRes] = await Promise.all([
         api.get('/reports'),
         api.get('/reports/sales'),
+        api.get(`/expenses/summary?startDate=${dateStr}&endDate=${dateStr}`),
       ])
       setData(reportsRes.data)
       setDailySales(salesRes.data)
+      setTodayExpenses(expensesRes.data.totalExpenses ?? 0)
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
   }
@@ -69,7 +74,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm text-gray-500">Ventas hoy</p>
@@ -83,6 +88,13 @@ export default function Dashboard() {
             <TrendingUp className="w-5 h-5 text-green-500" />
           </div>
           <p className="text-3xl font-bold text-gray-800">{formatCurrency(today.revenue ?? 0)}</p>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm text-gray-500">Gastos hoy</p>
+            <TrendingDown className="w-5 h-5 text-red-500" />
+          </div>
+          <p className="text-3xl font-bold text-gray-800">{formatCurrency(todayExpenses)}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <div className="flex items-center justify-between mb-2">

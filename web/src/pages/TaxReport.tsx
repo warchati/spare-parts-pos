@@ -2,11 +2,17 @@ import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
 import { formatCurrency, getSymbol } from '../lib/currency'
 import { useAuth } from '../contexts/AuthContext'
-import { BarChart3, DollarSign, Receipt, TrendingUp, TrendingDown, Percent, Package, Download } from 'lucide-react'
+import { BarChart3, DollarSign, Receipt, TrendingUp, TrendingDown, Percent, Package, Download, Wallet } from 'lucide-react'
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 
 const methodLabel: Record<string, string> = { cash: 'Efectivo', card: 'Tarjeta', transfer: 'Transferencia', credit: 'Crédito' }
+
+const CATEGORY_LABELS: Record<string, string> = {
+  rent: 'Alquiler', utilities: 'Servicios', salaries: 'Sueldos',
+  supplies: 'Insumos', maintenance: 'Mantenimiento', transport: 'Transporte',
+  marketing: 'Marketing', taxes: 'Impuestos', insurance: 'Seguros', other: 'Otros',
+}
 
 export default function TaxReport() {
   useAuth()
@@ -57,7 +63,10 @@ export default function TaxReport() {
       ['Ingresos Totales', `${sym} ${summary.totalRevenue.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`],
       ['Costo de Ventas', `${sym} ${summary.totalCost.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`],
       ['Ganancia Bruta', `${sym} ${summary.grossProfit.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`],
-      ['Margen', `${summary.profitMargin.toFixed(1)}%`],
+      ['Margen Bruto', `${summary.profitMargin.toFixed(1)}%`],
+      ['Gastos Operativos', `${sym} ${summary.totalExpenses.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`],
+      ['Ganancia Neta', `${sym} ${summary.netProfit.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`],
+      ['Margen Neto', `${summary.netMargin.toFixed(1)}%`],
       ['TVA a Pagar (Hacienda)', `${sym} ${summary.totalTax.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`],
       ['Ventas Realizadas', String(summary.salesCount)],
       ['Artículos Vendidos', String(summary.itemsSold)],
@@ -74,28 +83,57 @@ export default function TaxReport() {
     })
     y = (doc as any).lastAutoTable.finalY + 10
 
-    if (data.byPaymentMethod?.length) {
-      doc.setFontSize(12)
-      doc.text('Desglose por Método de Pago', 10, y)
-      y += 7
+      if (data.byPaymentMethod?.length) {
+        doc.setFontSize(12)
+        doc.text('Desglose por Método de Pago', 10, y)
+        y += 7
 
-      const payRows = data.byPaymentMethod.map((pm: any) => [
-        methodLabel[pm.method] || pm.method,
-        `${sym} ${pm.total.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`,
-        `${((pm.total / summary.totalRevenue) * 100).toFixed(1)}%`,
-      ])
+        const payRows = data.byPaymentMethod.map((pm: any) => [
+          methodLabel[pm.method] || pm.method,
+          `${sym} ${pm.total.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`,
+          `${((pm.total / summary.totalRevenue) * 100).toFixed(1)}%`,
+        ])
 
-      autoTable(doc, {
-        startY: y,
-        head: [['Método', 'Total', '%']],
-        body: payRows,
-        theme: 'grid',
-        headStyles: { fillColor: [59, 130, 246], textColor: 255, fontStyle: 'bold' },
-        styles: { fontSize: 10 },
-        columnStyles: { 0: { cellWidth: 80 }, 1: { cellWidth: 60, halign: 'right' }, 2: { cellWidth: 40, halign: 'right' } },
-      })
-      y = (doc as any).lastAutoTable.finalY + 10
-    }
+        autoTable(doc, {
+          startY: y,
+          head: [['Método', 'Total', '%']],
+          body: payRows,
+          theme: 'grid',
+          headStyles: { fillColor: [59, 130, 246], textColor: 255, fontStyle: 'bold' },
+          styles: { fontSize: 10 },
+          columnStyles: { 0: { cellWidth: 80 }, 1: { cellWidth: 60, halign: 'right' }, 2: { cellWidth: 40, halign: 'right' } },
+        })
+        y = (doc as any).lastAutoTable.finalY + 10
+      }
+
+      if (data.expensesByCategory?.length) {
+        doc.setFontSize(12)
+        doc.text('Desglose de Gastos por Categoría', 10, y)
+        y += 7
+
+        const catLabels: Record<string, string> = {
+          rent: 'Alquiler', utilities: 'Servicios', salaries: 'Sueldos',
+          supplies: 'Insumos', maintenance: 'Mantenimiento', transport: 'Transporte',
+          marketing: 'Marketing', taxes: 'Impuestos', insurance: 'Seguros', other: 'Otros',
+        }
+
+        const catRows = data.expensesByCategory.map((c: any) => [
+          catLabels[c.category] || c.category,
+          `${sym} ${c.total.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`,
+          String(c.count),
+        ])
+
+        autoTable(doc, {
+          startY: y,
+          head: [['Categoría', 'Total', 'Cantidad']],
+          body: catRows,
+          theme: 'grid',
+          headStyles: { fillColor: [220, 38, 38], textColor: 255, fontStyle: 'bold' },
+          styles: { fontSize: 10 },
+          columnStyles: { 0: { cellWidth: 80 }, 1: { cellWidth: 60, halign: 'right' }, 2: { cellWidth: 40, halign: 'right' } },
+        })
+        y = (doc as any).lastAutoTable.finalY + 10
+      }
 
     doc.setFontSize(8)
     doc.text('Documento generado automáticamente por AutoRepuestos - POS', pageW / 2, 285, { align: 'center' })
@@ -146,13 +184,14 @@ export default function TaxReport() {
             <SummaryCard title="Ingresos" value={formatCurrency(data.summary.totalRevenue)} icon={TrendingUp} color="text-green-500" />
             <SummaryCard title="Costo de Ventas" value={formatCurrency(data.summary.totalCost)} icon={TrendingDown} color="text-red-500" />
             <SummaryCard title="Ganancia Bruta" value={formatCurrency(data.summary.grossProfit)} icon={DollarSign} color="text-blue-500" />
-            <SummaryCard title="Margen" value={`${data.summary.profitMargin.toFixed(1)}%`} icon={Percent} color="text-purple-500" />
+            <SummaryCard title="Margen Bruto" value={`${data.summary.profitMargin.toFixed(1)}%`} icon={Percent} color="text-purple-500" />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <SummaryCard title="Ventas" value={data.summary.salesCount} icon={Receipt} color="text-gray-500" />
-            <SummaryCard title="Artículos Vendidos" value={data.summary.itemsSold} icon={Package} color="text-gray-500" />
-            <SummaryCard title="TVA a Pagar (Hacienda)" value={formatCurrency(data.summary.totalTax)} icon={Percent} color="text-orange-500" />
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <SummaryCard title="Gastos Operativos" value={formatCurrency(data.summary.totalExpenses)} icon={Wallet} color="text-red-500" />
+            <SummaryCard title="Ganancia Neta" value={formatCurrency(data.summary.netProfit)} icon={DollarSign} color="text-green-600" />
+            <SummaryCard title="Margen Neto" value={`${data.summary.netMargin.toFixed(1)}%`} icon={Percent} color="text-blue-600" />
+            <SummaryCard title="TVA a Pagar" value={formatCurrency(data.summary.totalTax)} icon={Percent} color="text-orange-500" />
           </div>
 
           <div className="bg-white rounded-xl border border-gray-200 p-5">
@@ -176,6 +215,30 @@ export default function TaxReport() {
               </tbody>
             </table>
           </div>
+
+          {data.expensesByCategory?.length > 0 && (
+            <div className="bg-white rounded-xl border border-gray-200 p-5 mt-6">
+              <h2 className="text-lg font-bold text-gray-800 mb-4">Desglose de Gastos por Categoría</h2>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-gray-500 border-b border-gray-100">
+                    <th className="text-left pb-2">Categoría</th>
+                    <th className="text-right pb-2">Total</th>
+                    <th className="text-right pb-2">Cantidad</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.expensesByCategory?.map((c: any) => (
+                    <tr key={c.category} className="border-b border-gray-50">
+                      <td className="py-2 font-medium">{CATEGORY_LABELS[c.category] || c.category}</td>
+                      <td className="py-2 text-right font-mono text-red-600">{formatCurrency(c.total)}</td>
+                      <td className="py-2 text-right text-gray-500">{c.count}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </>
       )}
     </div>

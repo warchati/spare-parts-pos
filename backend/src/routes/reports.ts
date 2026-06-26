@@ -239,6 +239,32 @@ export function reportRoutes(prisma: PrismaClient) {
 
       const grossProfit = totalRevenue - totalCost
 
+      // Aggregate expenses in the same period
+      const expenseWhere: any = {}
+      if (startDate || endDate) {
+        expenseWhere.createdAt = {}
+        if (startDate) expenseWhere.createdAt.gte = new Date(startDate as string)
+        if (endDate) {
+          const d = new Date(endDate as string)
+          d.setHours(23, 59, 59, 999)
+          expenseWhere.createdAt.lte = d
+        }
+      }
+
+      const [totalExpenseResult, expensesByCategory] = await Promise.all([
+        prisma.expense.aggregate({ where: expenseWhere, _sum: { amount: true } }),
+        prisma.expense.groupBy({
+          by: ['category'],
+          where: expenseWhere,
+          _sum: { amount: true },
+          _count: true,
+          orderBy: { category: 'asc' },
+        }),
+      ])
+
+      const totalExpenses = totalExpenseResult._sum.amount || 0
+      const netProfit = grossProfit - totalExpenses
+
       res.json({
         period: {
           start: startDate || null,
@@ -250,10 +276,18 @@ export function reportRoutes(prisma: PrismaClient) {
           totalRevenue,
           totalCost,
           grossProfit,
+          totalExpenses,
+          netProfit,
           totalTax,
           profitMargin: totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0,
+          netMargin: totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0,
         },
         byPaymentMethod: Object.entries(byPaymentMethod).map(([method, total]) => ({ method, total })),
+        expensesByCategory: expensesByCategory.map(c => ({
+          category: c.category,
+          total: c._sum.amount || 0,
+          count: c._count,
+        })),
       })
     } catch (e) { next(e) }
   })
