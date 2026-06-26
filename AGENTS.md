@@ -47,44 +47,45 @@ Ver README.md sección "Cómo Hacer Cambios y Desplegar"
 ## Session History
 
 ### Goal
-Make the site fully responsive and add professional traceability features (expenses, audit log, price history).
+Responsive + traceability + SiteConfig + sidebar dinámico + (next: lo que pida el usuario).
 
-### Constraints & Preferences
-- All responsive changes must be CSS/layout only — zero impact on logic, APIs, state, routing, or data.
-- New traceability features must be additive only — no changes to existing sales/purchases/inventory flows.
+### Current State (26/06/2026)
+- **SiteConfig page** done: name, description, logo (Cloudinary upload), live sidebar preview.
+- **Layout.tsx** loads `storeConfig` dynamically + listens for `store-changed` event.
+- Nav item `Config. Sitio` at `/site-config`, admin-only (`storeConfig:edit`).
+- All previous modules fully functional: responsive sidebar, expenses, audit log, price history, file attachments, tax report with IVA deduction, product images, loyalty points, returns module, reactive permissions.
 
-### Done (Sprint 1 — Responsive)
-- **Sidebar responsive**: Layout.tsx — hamburger menu (+ overlay) in mobile, fixed sidebar in lg+; useState(false) toggle; sticky top bar with store name.
-- **POS apilable**: flex-col lg:flex-row; right panel w-full lg:w-80; price column w-20 lg:w-24 text-sm lg:text-base.
-- **Table scroll horizontal**: overflow-x-auto + min-w[N]px en Sales, Clients, Products, Suppliers, Purchases, Users, Vehicles, CreditPayments, Taxes, Currencies, Loyalty (clients + history), Permissions, TaxReport.
-- **Headers con flex-wrap**: Sales, Clients, Products, Suppliers, Purchases, Users, Vehicles, Permissions.
-- **Tabs/roles scroll**: Permissions.tsx + Loyalty.tsx tabs → overflow-x-auto pb-1.
-- **Grids responsive**: CreditPayments → `grid-cols-1 sm:grid-cols-3`; StoreConfig → `flex-col md:flex-row`, inputs `grid-cols-1 sm:grid-cols-2` (both instances).
-- **Build**: npm run build exits 0; commit c3bf278 pushed to main → auto-deploy Vercel.
+### Key Architecture
+- **Frontend**: React 19 + Vite 6 + Tailwind 4 + React Router 7 + Axios
+- **Backend**: Express 4 + TypeScript + Prisma 5 + PostgreSQL (Neon)
+- **Deploy**: GitHub Actions → Vercel (push to `main` = auto-deploy)
+- **Cloudinary**: `vidcanal`, unsigned preset `m5vtjzdl` — folders: `expenses/`, `logos/`, `products/`
+- **DB**: Neon PostgreSQL — `postgresql://neondb_owner:npg_JG4cvObBfL7e@ep-empty-tree-aj6afcj9-pooler.c-3.us-east-2.aws.neon.tech/neondb?sslmode=require`
+- **Local .env**: points to localhost — switch to Neon URL for `prisma db push` then revert
 
-### Done (Sprint 2 — Traceability)
-- **Schema models added**: Expense, AuditLog, PriceHistory; unitCost Float? on SaleItem.
-- **Opposite relations added**: User model → expenses[], auditLogs[], priceHistoryChanges[]; Product model → priceHistories[].
-- **Backend lib/audit.ts**: helper logAudit() — creates AuditLog record, never fails the request.
-- **Backend routes/expenses.ts**: CRUD + categories list + summary endpoint; uses requirePermission(expenses, edit), requireAnyPermission(expenses, [view, edit]), calls logAudit.
-- **Backend routes/products.ts**: POST/UPDATE now call logAudit; UPDATE tracks buyPrice/sellPrice/wholesalePrice changes → PriceHistory.
-- **Backend routes/sales.ts**: sale creation now persists unitCost: product.buyPrice in each SaleItem.
-- **Backend routes/reports.ts**: uses item.unitCost ?? item.product?.buyPrice ?? 0 for cost calculation.
-- **Backend middleware/auth.ts**: added expenses: ['view', 'edit'] to admin, expenses: ['view'] to supervisor, expenses: [] to cashier/seller.
-- **Backend server.ts**: registered app.use('/api/expenses', expenseRoutes(prisma)).
-- **Backend prisma/seed.ts**: added expenses to all four role permission maps.
-- **Prisma generate + db push**: executed with Neon URL — schema synced to production DB.
-- **Frontend Expenses.tsx**: full page with CRUD table, form modal, category filter, date range, summary cards, permission-gated actions.
-- **Frontend Layout.tsx**: nav item for /expenses with TrendingDown icon.
-- **Frontend App.tsx**: route for /expenses with PermissionGuard.
-- **Frontend permissions.ts**: expenses: ['view', 'edit'] for admin, ['view'] for supervisor, [] for cashier/seller.
-- **Frontend Permissions.tsx**: expenses added to MODULES / MODULE_LABELS / MODULE_ACTIONS.
-- **Frontend Users.tsx**: expenses added to MODULES / MODULE_LABELS.
-- **Builds exit 0**: both frontend (vite) and backend (tsc --noEmit).
-- **Commit a9afff7** pushed to main → auto-deploy Vercel.
+### Permissions (per `/api/permissions/mine`)
+- Reactivo: `_latestPermissions` global ref + `AuthContext` with visibilitychange + polling 60s
+- `/mine` returns ONLY DB records + user overrides (no hardcoded merge)
+- Permissions page has visual indicators for recommended actions per module
 
-### Key Decisions
-- Sidebar uses translate-x + overlay instead of a CSS-only peer-checked approach because React Router NavLink needs programmatic close on navigate.
-- Audit logging is a fire-and-forget helper, not Express middleware, to keep route handlers clean and avoid accidentally blocking responses if audit DB write fails.
-- unitCost nullable on SaleItem (backward-compatible: existing rows stay null, reports fallback to current product.buyPrice).
-- PriceHistory logged per-field (one row per changed price field) for granular cost tracking.
+### Credentials
+| User | Password | Role |
+|------|----------|------|
+| admin | admin123 | admin |
+| cajero | cajero123 | cashier |
+| 15198 | 11598545 | supervisor |
+| vendedor | vendedor123 | seller |
+
+### Last commit
+`7ffca8e` — "feat: SiteConfig - store name, description, logo with Cloudinary + live sidebar preview" (pushed to main → auto-deploy Vercel)
+
+### Important Notes
+- Always run `npm run build` (frontend) and `npx tsc --noEmit` (backend) before committing.
+- For schema changes: edit `schema.prisma`, switch `.env` to Neon URL, run `prisma generate && prisma db push`, revert `.env` to localhost.
+- For feature permissions: add to `backend/src/middleware/auth.ts` (PERMISSIONS map), `backend/prisma/seed.ts`, `web/src/lib/permissions.ts`.
+- Cloudinary uploads go direct browser→Cloudinary (unsigned preset), NOT through backend.
+- SiteConfig page is separate from StoreConfig (invoice config).
+
+### Reference files
+- Full session notes: `C:\Users\admin\Desktop\postventa\Para continuar\`
+- Tokens: `C:\Users\admin\Desktop\postventa\token.xlsx`
