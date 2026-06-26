@@ -4,7 +4,7 @@ import { formatCurrency } from '../lib/currency'
 import { downloadExport } from '../lib/download'
 import { useAuth } from '../contexts/AuthContext'
 import { can } from '../lib/permissions'
-import { Search, Plus, Pencil, Package, Download, Image, Car, Upload, Trash2 } from 'lucide-react'
+import { Search, Plus, Pencil, Package, Download, Image, Car, Upload, Trash2, X, Eye } from 'lucide-react'
 
 interface Product {
   id: number
@@ -33,6 +33,7 @@ export default function Products() {
   const [editing, setEditing] = useState<Product | null>(null)
   const [form, setForm] = useState({ code: '', barcode: '', name: '', description: '', category: '', brand: '', vehicleType: '', oemNumber: '', buyPrice: 0, sellPrice: 0, wholesalePrice: 0, stock: 0, minStock: 5, location: '' })
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+  const [viewImage, setViewImage] = useState<string | null>(null)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploadingImage, setUploadingImage] = useState(false)
@@ -183,7 +184,9 @@ export default function Products() {
                 <td className="px-4 py-3 text-center">
                   {p.images && p.images.length > 0 ? (
                     <div className="flex items-center justify-center">
-                      <img src={p.images[0].url} alt="" className="w-8 h-8 object-cover rounded" />
+                      <button onClick={() => setViewImage(p.images[0].url)} className="hover:opacity-80 transition-opacity">
+                        <img src={p.images[0].url} alt="" className="w-8 h-8 object-cover rounded" />
+                      </button>
                     </div>
                   ) : (
                     <Image className="w-4 h-4 text-gray-300 mx-auto" />
@@ -307,7 +310,9 @@ export default function Products() {
                   <div className="flex flex-wrap gap-2 mb-2">
                     {editing.images?.map(img => (
                       <div key={img.id} className="relative group">
-                        <img src={img.url} alt="" className="w-16 h-16 object-cover rounded-lg border" />
+                        <button onClick={() => setViewImage(img.url)} className="hover:opacity-80 transition-opacity">
+                          <img src={img.url} alt="" className="w-16 h-16 object-cover rounded-lg border" />
+                        </button>
                         <button
                           onClick={() => deleteImage(img.id)}
                           className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -338,6 +343,17 @@ export default function Products() {
               <button onClick={() => setShowForm(false)} className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50">Cancelar</button>
               <button onClick={handleSave} className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700">{editing ? 'Actualizar' : 'Guardar'}</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {viewImage && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50" onClick={() => setViewImage(null)}>
+          <div className="relative max-w-[90vw] max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => setViewImage(null)} className="absolute -top-3 -right-3 bg-white rounded-full p-1 shadow-lg z-10">
+              <X className="w-5 h-5" />
+            </button>
+            <img src={viewImage} alt="" className="max-w-full max-h-[90vh] rounded-lg shadow-2xl" />
           </div>
         </div>
       )}
