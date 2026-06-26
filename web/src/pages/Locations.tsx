@@ -60,9 +60,9 @@ export default function Locations() {
         ...form,
         warehouseId: Number(form.warehouseId),
         parentId: form.parentId ? Number(form.parentId) : null,
-        sortOrder: Number(form.sortOrder),
+        sortOrder: Number(form.sortOrder) || 0,
       }
-      if (editing) await api.put(`/locations/${editing.id}`, payload)
+      if (editing?.id) await api.put(`/locations/${editing.id}`, payload)
       else await api.post('/locations', payload)
       setShowForm(false); setEditing(null); loadLocations()
     } catch (e: any) { alert(e.response?.data?.error || 'Error') }
@@ -77,8 +77,9 @@ export default function Locations() {
   }
 
   const openForm = (loc?: any) => {
-    setEditing(loc || null)
-    setForm(loc ? {
+    const isEdit = loc?.id != null
+    setEditing(isEdit ? loc : null)
+    setForm(isEdit ? {
       warehouseId: loc.warehouseId,
       parentId: loc.parentId || '',
       name: loc.name,
@@ -86,8 +87,8 @@ export default function Locations() {
       type: loc.type,
       sortOrder: loc.sortOrder,
     } : {
-      warehouseId: Number(selectedWarehouse),
-      parentId: '',
+      warehouseId: loc?.warehouseId || Number(selectedWarehouse),
+      parentId: loc?.parentId || '',
       name: '', code: '', type: 'BIN', sortOrder: 0,
     })
     setShowForm(true)

@@ -120,7 +120,23 @@ export default function Products() {
 
   const editProduct = (p: Product) => {
     setEditing(p)
-    setForm({ ...(p as any), defaultLocationId: p.defaultLocationId ?? 0 })
+    setForm({
+      code: p.code,
+      barcode: p.barcode,
+      name: p.name,
+      description: p.description,
+      category: p.category,
+      brand: p.brand,
+      vehicleType: p.vehicleType,
+      oemNumber: p.oemNumber,
+      buyPrice: p.buyPrice,
+      sellPrice: p.sellPrice,
+      wholesalePrice: p.wholesalePrice,
+      stock: p.stock,
+      minStock: p.minStock,
+      location: p.location || '',
+      defaultLocationId: p.defaultLocationId ?? 0,
+    })
     setShowForm(true)
   }
 
