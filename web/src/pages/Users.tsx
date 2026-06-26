@@ -26,13 +26,13 @@ const roleLabel: Record<string, string> = {
   cashier: 'Cajero',
 }
 
-const MODULES = ['pos', 'products', 'clients', 'suppliers', 'sales', 'purchases', 'dashboard', 'cashRegister', 'users', 'vehicles', 'credit', 'exports', 'taxes', 'currencies']
+const MODULES = ['pos', 'products', 'clients', 'suppliers', 'sales', 'purchases', 'dashboard', 'cashRegister', 'users', 'vehicles', 'credit', 'exports', 'taxes', 'currencies', 'expenses']
 const ACTIONS = ['view', 'create', 'edit', 'delete', 'sell', 'receive', 'open', 'close', 'movements', 'pay']
 const MODULE_LABELS: Record<string, string> = {
   pos: 'POS', products: 'Productos', clients: 'Clientes', suppliers: 'Proveedores',
   sales: 'Ventas', purchases: 'Compras', dashboard: 'Dashboard',
   cashRegister: 'Caja', users: 'Usuarios', vehicles: 'Vehículos',
-  credit: 'Crédito', exports: 'Exportaciones', taxes: 'Impuestos', currencies: 'Monedas',
+  credit: 'Crédito', exports: 'Exportaciones', taxes: 'Impuestos', currencies: 'Monedas', expenses: 'Gastos',
 }
 const ACTION_LABELS: Record<string, string> = {
   view: 'Ver', create: 'Crear', edit: 'Editar', delete: 'Eliminar',

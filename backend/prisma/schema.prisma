@@ -38,8 +38,11 @@ model User {
   cashRegisters  CashRegister[]
   userPermissions    UserPermission[]
   loyaltyTransactions LoyaltyTransaction[]
-  createdAt          DateTime              @default(now())
-  updatedAt          DateTime              @updatedAt
+  expenses            Expense[]
+  auditLogs           AuditLog[]
+  priceHistoryChanges PriceHistory[]
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
 }
 
 model Tax {
@@ -91,6 +94,7 @@ model Product {
   vehicleLinks   ProductVehicle[]
   images         ProductImage[]
   returns        SaleReturnItem[]
+  priceHistories PriceHistory[]
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 }
@@ -192,6 +196,7 @@ model SaleItem {
   productName String
   quantity    Int      @default(1)
   unitPrice   Float
+  unitCost    Float?
   totalPrice  Float
 }
 
@@ -318,5 +323,52 @@ model LoyaltyTransaction {
   expiresAt     DateTime?
 
   @@index([clientId])
+  @@index([createdAt])
+}
+
+model Expense {
+  id            Int      @id @default(autoincrement())
+  description   String
+  amount        Float
+  category      String   @default("other")
+  paymentMethod String   @default("cash")
+  reference     String   @default("")
+  notes         String   @default("")
+  userId        Int
+  user          User     @relation(fields: [userId], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([category])
+  @@index([createdAt])
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int?
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String
+  entity    String
+  entityId  Int?
+  metadata  Json?
+  ip        String   @default("")
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
+  @@index([createdAt])
+}
+
+model PriceHistory {
+  id          Int      @id @default(autoincrement())
+  productId   Int
+  product     Product  @relation(fields: [productId], references: [id])
+  field       String
+  oldValue    Float
+  newValue    Float
+  changedById Int?
+  changedBy   User?    @relation(fields: [changedById], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@index([productId])
   @@index([createdAt])
 }

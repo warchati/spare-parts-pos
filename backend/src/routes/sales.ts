@@ -194,6 +194,7 @@ export function saleRoutes(prisma: PrismaClient) {
             productName: product.name,
             quantity: item.quantity,
             unitPrice: product.sellPrice,
+            unitCost: product.buyPrice,
             totalPrice,
           })
         }

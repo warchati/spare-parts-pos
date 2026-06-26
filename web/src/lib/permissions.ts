@@ -24,6 +24,7 @@ const PERMISSIONS: Record<string, Record<string, string[]>> = {
     returns: ['view', 'edit'],
     loyalty: ['view', 'edit', 'redeem'],
     storeConfig: ['view', 'edit'],
+    expenses: ['view', 'edit'],
   },
   supervisor: {
     pos: ['sell'],
@@ -44,6 +45,7 @@ const PERMISSIONS: Record<string, Record<string, string[]>> = {
     returns: ['view', 'edit'],
     loyalty: ['view', 'redeem'],
     storeConfig: [],
+    expenses: ['view'],
   },
   cashier: {
     pos: ['sell'],

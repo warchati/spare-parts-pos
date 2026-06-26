@@ -3,14 +3,14 @@ import api from '../lib/api'
 import { Shield, Save, Check } from 'lucide-react'
 
 const ROLES = ['admin', 'supervisor', 'cashier', 'seller']
-const MODULES = ['pos', 'products', 'clients', 'suppliers', 'sales', 'purchases', 'dashboard', 'cashRegister', 'users', 'vehicles', 'credit', 'exports', 'taxes', 'currencies', 'returns']
+const MODULES = ['pos', 'products', 'clients', 'suppliers', 'sales', 'purchases', 'dashboard', 'cashRegister', 'users', 'vehicles', 'credit', 'exports', 'taxes', 'currencies', 'returns', 'expenses']
 const ACTIONS = ['view', 'create', 'edit', 'delete', 'sell', 'receive', 'open', 'close', 'movements', 'pay', 'redeem']
 
 const MODULE_LABELS: Record<string, string> = {
   pos: 'POS', products: 'Productos', clients: 'Clientes', suppliers: 'Proveedores',
   sales: 'Ventas', purchases: 'Compras', dashboard: 'Dashboard',
   cashRegister: 'Caja', users: 'Usuarios', vehicles: 'Vehículos',
-  credit: 'Crédito', exports: 'Exportaciones', taxes: 'Impuestos', currencies: 'Monedas', returns: 'Devoluciones',
+  credit: 'Crédito', exports: 'Exportaciones', taxes: 'Impuestos', currencies: 'Monedas', returns: 'Devoluciones', expenses: 'Gastos',
 }
 const ACTION_LABELS: Record<string, string> = {
   view: 'Ver', create: 'Crear', edit: 'Editar', delete: 'Eliminar',
@@ -36,6 +36,7 @@ const MODULE_ACTIONS: Record<string, string[]> = {
   permissions: ['edit'],
   loyalty: ['view', 'edit', 'redeem'],
   returns: ['view', 'edit'],
+  expenses: ['view', 'edit'],
 }
 
 export default function Permissions() {

@@ -230,8 +230,8 @@ export function reportRoutes(prisma: PrismaClient) {
 
         for (const item of sale.items) {
           totalItems += item.quantity
-          const buyPrice = item.product?.buyPrice || 0
-          totalCost += buyPrice * item.quantity
+          const costPrice = item.unitCost ?? item.product?.buyPrice ?? 0
+          totalCost += costPrice * item.quantity
         }
 
         byPaymentMethod[sale.paymentMethod] = (byPaymentMethod[sale.paymentMethod] || 0) + sale.total

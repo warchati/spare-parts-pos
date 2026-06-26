@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { PrismaClient } from '@prisma/client'
-import { requirePermission } from '../middleware/auth'
+import { requirePermission, AuthRequest } from '../middleware/auth'
+import { logAudit } from '../lib/audit'
 
 export function productRoutes(prisma: PrismaClient) {
   const router = Router()
@@ -66,7 +67,7 @@ export function productRoutes(prisma: PrismaClient) {
     } catch (e) { next(e) }
   })
 
-  router.post('/', requirePermission(prisma, 'products', 'create'), async (req, res, next) => {
+  router.post('/', requirePermission(prisma, 'products', 'create'), async (req: AuthRequest, res, next) => {
     try {
       const { code, barcode, name, description, category, brand, vehicleType, oemNumber, buyPrice, sellPrice, wholesalePrice, minStock, location, taxId, active } = req.body
       if (!code || !name) return res.status(400).json({ error: 'Code and name are required' })
@@ -74,11 +75,14 @@ export function productRoutes(prisma: PrismaClient) {
       const product = await prisma.product.create({
         data: { code, barcode, name, description, category, brand, vehicleType, oemNumber, buyPrice, sellPrice, wholesalePrice, minStock: minStock ?? 0, location, taxId: taxId || null, active: active ?? true },
       })
+
+      await logAudit(prisma, req, 'CREATE', 'Product', product.id, { name: product.name, code: product.code })
+
       res.status(201).json(product)
     } catch (e) { next(e) }
   })
 
-  router.put('/:id', requirePermission(prisma, 'products', 'edit'), async (req, res, next) => {
+  router.put('/:id', requirePermission(prisma, 'products', 'edit'), async (req: AuthRequest, res, next) => {
     try {
       const { code, barcode, name, description, category, brand, vehicleType, oemNumber, buyPrice, sellPrice, wholesalePrice, minStock, location, taxId, active } = req.body
       const data: any = {}
@@ -98,10 +102,31 @@ export function productRoutes(prisma: PrismaClient) {
       if (taxId !== undefined) data.taxId = taxId
       if (active !== undefined) data.active = active
 
+      const old = await prisma.product.findUnique({ where: { id: Number(req.params.id) } })
+      if (!old) return res.status(404).json({ error: 'Product not found' })
+
       const product = await prisma.product.update({
         where: { id: Number(req.params.id) },
         data,
       })
+
+      const priceFields = ['buyPrice', 'sellPrice', 'wholesalePrice'] as const
+      for (const field of priceFields) {
+        if (data[field] !== undefined && data[field] !== (old as any)[field]) {
+          await prisma.priceHistory.create({
+            data: {
+              productId: product.id,
+              field,
+              oldValue: (old as any)[field] || 0,
+              newValue: data[field],
+              changedById: req.user?.id || null,
+            },
+          })
+        }
+      }
+
+      await logAudit(prisma, req, 'UPDATE', 'Product', product.id, { changes: data })
+
       res.json(product)
     } catch (e) { next(e) }
   })
