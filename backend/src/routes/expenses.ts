@@ -21,6 +21,7 @@ export function expenseRoutes(prisma: PrismaClient) {
         if (end) {
           const d = new Date(end as string)
           if (isNaN(d.getTime())) return res.status(400).json({ error: 'Invalid end date' })
+          d.setHours(23, 59, 59, 999)
           where.createdAt.lte = d
         }
       }
@@ -54,7 +55,11 @@ export function expenseRoutes(prisma: PrismaClient) {
       if (start || end) {
         where.createdAt = {}
         if (start) where.createdAt.gte = new Date(start as string)
-        if (end) where.createdAt.lte = new Date(end as string)
+        if (end) {
+          const d = new Date(end as string)
+          d.setHours(23, 59, 59, 999)
+          where.createdAt.lte = d
+        }
       }
 
       const [totalResult, byCategory, totalCount] = await Promise.all([
