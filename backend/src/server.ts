@@ -22,6 +22,10 @@ import { permissionRoutes } from './routes/permissions'
 import { loyaltyRoutes } from './routes/loyalty'
 import { storeConfigRoutes } from './routes/storeConfig'
 import { expenseRoutes } from './routes/expenses'
+import { warehouseRoutes } from './routes/warehouses'
+import { locationRoutes } from './routes/locations'
+import { stockMovementRoutes } from './routes/stockMovements'
+import { inventoryRoutes } from './routes/inventory'
 import { errorHandler } from './middleware/errorHandler'
 import { requireAuth } from './middleware/auth'
 
@@ -65,6 +69,10 @@ export function createServer(prisma: PrismaClient) {
   app.use('/api/loyalty', loyaltyRoutes(prisma))
   app.use('/api/store-config', storeConfigRoutes(prisma))
   app.use('/api/expenses', expenseRoutes(prisma))
+  app.use('/api/warehouses', warehouseRoutes(prisma))
+  app.use('/api/locations', locationRoutes(prisma))
+  app.use('/api/stock-movements', stockMovementRoutes(prisma))
+  app.use('/api/inventory', inventoryRoutes(prisma))
 
   app.use(errorHandler)
   return app

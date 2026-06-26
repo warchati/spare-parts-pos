@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { ShoppingCart, Package, Users, Truck, Receipt, ClipboardList, LogOut, Store, LayoutDashboard, DollarSign, UserCog, Car, CreditCard, Percent, Shield, BarChart3, Award, RotateCcw, FileText, TrendingDown } from 'lucide-react'
+import { ShoppingCart, Package, Users, Truck, Receipt, ClipboardList, LogOut, Store, LayoutDashboard, DollarSign, UserCog, Car, CreditCard, Percent, Shield, BarChart3, Award, RotateCcw, FileText, TrendingDown, Warehouse, MapPin, ClipboardCheck, ArrowUpDown } from 'lucide-react'
 import { can } from '../lib/permissions'
 import api from '../lib/api'
 
@@ -26,6 +26,10 @@ const navItems = [
   { to: '/expenses', label: 'Gastos', icon: TrendingDown, module: 'expenses', action: 'view' },
   { to: '/invoice-config', label: 'Config. Factura', icon: FileText, module: 'storeConfig', action: 'edit' },
   { to: '/site-config', label: 'Config. Sitio', icon: Store, module: 'storeConfig', action: 'edit' },
+  { to: '/warehouses', label: 'Almacenes', icon: Warehouse, module: 'warehouses', action: 'view' },
+  { to: '/locations', label: 'Ubicaciones', icon: MapPin, module: 'warehouses', action: 'view' },
+  { to: '/inventory', label: 'Inventario', icon: ClipboardCheck, module: 'inventory', action: 'view' },
+  { to: '/stock-movements', label: 'Mov. Stock', icon: ArrowUpDown, module: 'inventory', action: 'view' },
 ]
 
 export default function Layout() {

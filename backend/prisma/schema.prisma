@@ -41,6 +41,9 @@ model User {
   expenses            Expense[]
   auditLogs           AuditLog[]
   priceHistoryChanges PriceHistory[]
+  stockMovements         StockMovement[]
+  inventoryAdjustments   InventoryAdjustment[]   @relation("CreatedAdjustments")
+  approvedAdjustments    InventoryAdjustment[]   @relation("ApprovedAdjustments")
   createdAt           DateTime        @default(now())
   updatedAt           DateTime        @updatedAt
 }
@@ -85,6 +88,8 @@ model Product {
   stock          Int            @default(0)
   minStock       Int            @default(5)
   location       String         @default("")
+  defaultLocationId Int?
+  defaultLocation    Location?  @relation("DefaultProductLocation", fields: [defaultLocationId], references: [id])
   imageUrl       String         @default("")
   active         Boolean        @default(true)
   taxId          Int?
@@ -95,6 +100,9 @@ model Product {
   images         ProductImage[]
   returns        SaleReturnItem[]
   priceHistories PriceHistory[]
+  productLocations   ProductLocation[]
+  stockMovements     StockMovement[]
+  inventoryAdjustmentItems InventoryAdjustmentItem[]
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 }
@@ -106,6 +114,116 @@ model ProductImage {
   url       String
   altText   String  @default("")
   sortOrder Int     @default(0)
+}
+
+model Warehouse {
+  id        Int        @id @default(autoincrement())
+  name      String
+  code      String     @unique
+  address   String     @default("")
+  isActive  Boolean    @default(true)
+  locations Location[]
+  adjustments InventoryAdjustment[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model Location {
+  id                Int               @id @default(autoincrement())
+  warehouseId       Int
+  warehouse         Warehouse         @relation(fields: [warehouseId], references: [id])
+  parentId          Int?
+  parent            Location?         @relation("LocationHierarchy", fields: [parentId], references: [id])
+  children          Location[]        @relation("LocationHierarchy")
+  name              String
+  code              String
+  type              String            @default("BIN")  // ZONE, AISLE, RACK, SHELF, BIN
+  barcode           String            @default("")
+  sortOrder         Int               @default(0)
+  isActive          Boolean           @default(true)
+  defaultProducts   Product[]         @relation("DefaultProductLocation")
+  productLocations  ProductLocation[]
+  stockMovements    StockMovement[]
+  adjustmentItems   InventoryAdjustmentItem[]
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@unique([warehouseId, code])
+  @@index([parentId])
+}
+
+model ProductLocation {
+  id         Int      @id @default(autoincrement())
+  productId  Int
+  product    Product  @relation(fields: [productId], references: [id])
+  locationId Int
+  location   Location @relation(fields: [locationId], references: [id])
+  stock      Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([productId, locationId])
+  @@index([locationId])
+  @@index([productId])
+}
+
+model StockMovement {
+  id            Int      @id @default(autoincrement())
+  productId     Int
+  product       Product  @relation(fields: [productId], references: [id])
+  locationId    Int?
+  location      Location? @relation(fields: [locationId], references: [id])
+  type          String   // SALE, PURCHASE_RECEIVE, SALE_CANCEL, RETURN, ADJUSTMENT, MANUAL, TRANSFER
+  quantity      Int      // positivo=entrada, negativo=salida
+  beforeStock   Int      // stock total del producto antes
+  afterStock    Int      // stock total del producto después
+  beforeLocStock Int?    // stock en esa ubicación antes (si aplica)
+  afterLocStock  Int?    // stock en esa ubicación después (si aplica)
+  referenceType String?
+  referenceId   Int?
+  reason        String   @default("")
+  userId        Int?
+  user          User?    @relation(fields: [userId], references: [id])
+  createdAt     DateTime @default(now())
+
+  @@index([productId])
+  @@index([locationId])
+  @@index([type])
+  @@index([createdAt])
+  @@index([referenceType, referenceId])
+}
+
+model InventoryAdjustment {
+  id           Int                      @id @default(autoincrement())
+  type         String                   // COUNT, ADJUSTMENT
+  status       String                   @default("draft") // draft, pending, approved, rejected
+  warehouseId  Int
+  warehouse    Warehouse                @relation(fields: [warehouseId], references: [id])
+  notes        String                   @default("")
+  createdById  Int
+  createdBy    User                     @relation("CreatedAdjustments", fields: [createdById], references: [id])
+  approvedById Int?
+  approvedBy   User?                    @relation("ApprovedAdjustments", fields: [approvedById], references: [id])
+  approvedAt   DateTime?
+  items        InventoryAdjustmentItem[]
+  createdAt    DateTime                 @default(now())
+}
+
+model InventoryAdjustmentItem {
+  id           Int                  @id @default(autoincrement())
+  adjustmentId Int
+  adjustment   InventoryAdjustment  @relation(fields: [adjustmentId], references: [id])
+  productId    Int
+  product      Product              @relation(fields: [productId], references: [id])
+  locationId   Int
+  location     Location             @relation(fields: [locationId], references: [id])
+  expectedQty  Int                  @default(0)
+  actualQty    Int                  @default(0)
+  difference   Int                  @default(0)
+  notes        String               @default("")
+
+  @@index([adjustmentId])
+  @@index([productId])
 }
 
 model Client {

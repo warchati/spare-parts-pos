@@ -73,6 +73,41 @@ async function main() {
     })
   }
 
+  // Default warehouse and location
+  const defaultWarehouse = await prisma.warehouse.upsert({
+    where: { code: 'WH-001' },
+    update: {},
+    create: { name: 'Almacén Principal', code: 'WH-001', address: 'Av. Principal 1234' },
+  })
+
+  const defaultBin = await prisma.location.upsert({
+    where: { warehouseId_code: { warehouseId: defaultWarehouse.id, code: 'BIN-DEF' } },
+    update: {},
+    create: {
+      warehouseId: defaultWarehouse.id,
+      name: 'Ubicación General',
+      code: 'BIN-DEF',
+      type: 'BIN',
+      sortOrder: 1,
+    },
+  })
+
+  // Link each seed product to the default location
+  for (const product of products) {
+    const dbProduct = await prisma.product.findUnique({ where: { code: product.code } })
+    if (dbProduct) {
+      await prisma.product.update({
+        where: { id: dbProduct.id },
+        data: { defaultLocationId: defaultBin.id },
+      })
+      await prisma.productLocation.upsert({
+        where: { productId_locationId: { productId: dbProduct.id, locationId: defaultBin.id } },
+        update: { stock: dbProduct.stock },
+        create: { productId: dbProduct.id, locationId: defaultBin.id, stock: dbProduct.stock },
+      })
+    }
+  }
+
   const iva = await prisma.tax.upsert({
     where: { id: 1 },
     update: {},
@@ -120,6 +155,8 @@ async function main() {
       loyalty: ['view', 'edit', 'redeem'],
       storeConfig: ['view', 'edit'],
       expenses: ['view', 'edit'],
+      warehouses: ['view', 'create', 'edit', 'delete'],
+      inventory: ['view', 'create', 'edit'],
     },
     supervisor: {
       pos: ['sell'],
@@ -140,6 +177,8 @@ async function main() {
       loyalty: ['view', 'redeem'],
       storeConfig: [],
       expenses: ['view'],
+      warehouses: ['view'],
+      inventory: ['view'],
     },
     cashier: {
       pos: ['sell'],
