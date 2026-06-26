@@ -335,6 +335,8 @@ model Expense {
   reference     String   @default("")
   notes         String   @default("")
   attachmentUrl String   @default("")
+  taxAmount     Float    @default(0)
+  taxDeductible Boolean  @default(true)
   userId        Int
   user          User     @relation(fields: [userId], references: [id])
   createdAt     DateTime @default(now())

@@ -61,7 +61,7 @@ export default function TaxReport() {
     const summary = data.summary
     const summaryRows = [
       ['Ingresos (sin IVA)', `${sym} ${summary.revenueExcludingTax.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`],
-      ['IVA Cobrado', `${sym} ${summary.totalTax.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`],
+      ['IVA Cobrado (Ventas)', `${sym} ${summary.totalTax.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`],
       ['Ingresos + IVA', `${sym} ${summary.totalRevenue.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`],
       ['Costo de Ventas', `${sym} ${summary.totalCost.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`],
       ['Ganancia Bruta', `${sym} ${summary.grossProfit.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`],
@@ -69,7 +69,8 @@ export default function TaxReport() {
       ['Gastos Operativos', `${sym} ${summary.totalExpenses.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`],
       ['Ganancia Neta', `${sym} ${summary.netProfit.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`],
       ['Margen Neto', `${summary.netMargin.toFixed(1)}%`],
-      ['TVA a Pagar (Hacienda)', `${sym} ${summary.totalTax.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`],
+      ['IVA Deducible (Gastos)', `${sym} ${summary.tvaDeducible.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`],
+      ['TVA a Pagar (Hacienda)', `${sym} ${summary.tvaDue.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`],
       ['Ventas Realizadas', String(summary.salesCount)],
       ['Artículos Vendidos', String(summary.itemsSold)],
     ]
@@ -122,17 +123,18 @@ export default function TaxReport() {
         const catRows = data.expensesByCategory.map((c: any) => [
           catLabels[c.category] || c.category,
           `${sym} ${c.total.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`,
+          `${sym} ${c.taxAmount.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`,
           String(c.count),
         ])
 
         autoTable(doc, {
           startY: y,
-          head: [['Categoría', 'Total', 'Cantidad']],
+          head: [['Categoría', 'Total', 'IVA', 'Cantidad']],
           body: catRows,
           theme: 'grid',
           headStyles: { fillColor: [220, 38, 38], textColor: 255, fontStyle: 'bold' },
           styles: { fontSize: 10 },
-          columnStyles: { 0: { cellWidth: 80 }, 1: { cellWidth: 60, halign: 'right' }, 2: { cellWidth: 40, halign: 'right' } },
+          columnStyles: { 0: { cellWidth: 70 }, 1: { cellWidth: 50, halign: 'right' }, 2: { cellWidth: 40, halign: 'right' }, 3: { cellWidth: 30, halign: 'right' } },
         })
         y = (doc as any).lastAutoTable.finalY + 10
       }
@@ -184,19 +186,20 @@ export default function TaxReport() {
         <>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <SummaryCard title="Ingresos (sin IVA)" value={formatCurrency(data.summary.revenueExcludingTax)} icon={TrendingUp} color="text-green-500" />
-            <SummaryCard title="IVA Cobrado" value={formatCurrency(data.summary.totalTax)} icon={Percent} color="text-orange-500" />
-            <SummaryCard title="Ingresos + IVA" value={formatCurrency(data.summary.totalRevenue)} icon={TrendingUp} color="text-green-600" />
-            <SummaryCard title="Costo de Ventas" value={formatCurrency(data.summary.totalCost)} icon={TrendingDown} color="text-red-500" />
+            <SummaryCard title="IVA Cobrado (Ventas)" value={formatCurrency(data.summary.totalTax)} icon={TrendingUp} color="text-orange-500" />
+            <SummaryCard title="IVA Deducible (Gastos)" value={formatCurrency(data.summary.tvaDeducible)} icon={TrendingDown} color="text-red-500" />
+            <SummaryCard title="TVA a Pagar (Hacienda)" value={formatCurrency(data.summary.tvaDue)} icon={Percent} color="text-red-600" />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <SummaryCard title="Costo de Ventas" value={formatCurrency(data.summary.totalCost)} icon={TrendingDown} color="text-red-500" />
             <SummaryCard title="Ganancia Bruta" value={formatCurrency(data.summary.grossProfit)} icon={DollarSign} color="text-blue-500" />
-            <SummaryCard title="Margen Bruto" value={`${data.summary.profitMargin.toFixed(1)}%`} icon={Percent} color="text-purple-500" />
             <SummaryCard title="Gastos Operativos" value={formatCurrency(data.summary.totalExpenses)} icon={Wallet} color="text-red-500" />
             <SummaryCard title="Ganancia Neta" value={formatCurrency(data.summary.netProfit)} icon={DollarSign} color="text-green-600" />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <SummaryCard title="Margen Bruto" value={`${data.summary.profitMargin.toFixed(1)}%`} icon={Percent} color="text-purple-500" />
             <SummaryCard title="Margen Neto" value={`${data.summary.netMargin.toFixed(1)}%`} icon={Percent} color="text-blue-600" />
             <SummaryCard title="Ventas" value={data.summary.salesCount} icon={Receipt} color="text-gray-500" />
             <SummaryCard title="Artículos Vendidos" value={data.summary.itemsSold} icon={Package} color="text-gray-500" />
@@ -232,6 +235,7 @@ export default function TaxReport() {
                   <tr className="text-gray-500 border-b border-gray-100">
                     <th className="text-left pb-2">Categoría</th>
                     <th className="text-right pb-2">Total</th>
+                    <th className="text-right pb-2">IVA</th>
                     <th className="text-right pb-2">Cantidad</th>
                   </tr>
                 </thead>
@@ -240,6 +244,7 @@ export default function TaxReport() {
                     <tr key={c.category} className="border-b border-gray-50">
                       <td className="py-2 font-medium">{CATEGORY_LABELS[c.category] || c.category}</td>
                       <td className="py-2 text-right font-mono text-red-600">{formatCurrency(c.total)}</td>
+                      <td className="py-2 text-right font-mono text-orange-600">{formatCurrency(c.taxAmount)}</td>
                       <td className="py-2 text-right text-gray-500">{c.count}</td>
                     </tr>
                   ))}

@@ -3,6 +3,16 @@ import { PrismaClient } from '@prisma/client'
 import { requirePermission, requireAnyPermission, AuthRequest } from '../middleware/auth'
 import { logAudit } from '../lib/audit'
 
+async function getDefaultTaxRate(prisma: PrismaClient) {
+  const tax = await prisma.tax.findFirst({ where: { isDefault: true, isActive: true } })
+  return tax?.percentage ?? 0
+}
+
+function calcTaxAmount(amount: number, rate: number): number {
+  if (rate <= 0 || amount <= 0) return 0
+  return Math.round((amount * rate / (100 + rate)) * 100) / 100
+}
+
 export function expenseRoutes(prisma: PrismaClient) {
   const router = Router()
 
@@ -62,7 +72,7 @@ export function expenseRoutes(prisma: PrismaClient) {
         }
       }
 
-      const [totalResult, byCategory, totalCount] = await Promise.all([
+      const [totalResult, byCategory, totalCount, taxResult] = await Promise.all([
         prisma.expense.aggregate({ where, _sum: { amount: true } }),
         prisma.expense.groupBy({
           by: ['category'],
@@ -72,11 +82,13 @@ export function expenseRoutes(prisma: PrismaClient) {
           orderBy: { category: 'asc' },
         }),
         prisma.expense.count({ where }),
+        prisma.expense.aggregate({ where, _sum: { taxAmount: true } }),
       ])
 
       res.json({
         total: totalResult._sum.amount || 0,
         count: totalCount,
+        totalTaxAmount: taxResult._sum.taxAmount || 0,
         byCategory: byCategory.map(c => ({
           category: c.category,
           total: c._sum.amount || 0,
@@ -88,10 +100,13 @@ export function expenseRoutes(prisma: PrismaClient) {
 
   router.post('/', requirePermission(prisma, 'expenses', 'edit'), async (req: AuthRequest, res, next) => {
     try {
-      const { description, amount, category, paymentMethod, reference, notes, attachmentUrl } = req.body
+      const { description, amount, category, paymentMethod, reference, notes, attachmentUrl, taxDeductible } = req.body
       if (!description || amount === undefined) {
         return res.status(400).json({ error: 'Description and amount are required' })
       }
+
+      const rate = await getDefaultTaxRate(prisma)
+      const taxAmount = calcTaxAmount(Number(amount), rate)
 
       const expense = await prisma.expense.create({
         data: {
@@ -102,11 +117,13 @@ export function expenseRoutes(prisma: PrismaClient) {
           reference: reference || '',
           notes: notes || '',
           attachmentUrl: attachmentUrl || '',
+          taxAmount,
+          taxDeductible: taxDeductible !== undefined ? taxDeductible : true,
           userId: req.user!.id,
         },
       })
 
-      await logAudit(prisma, req, 'CREATE', 'Expense', expense.id, { amount, category, description })
+      await logAudit(prisma, req, 'CREATE', 'Expense', expense.id, { amount, taxAmount, category, description })
 
       res.status(201).json(expense)
     } catch (e) { next(e) }
@@ -114,7 +131,7 @@ export function expenseRoutes(prisma: PrismaClient) {
 
   router.put('/:id', requirePermission(prisma, 'expenses', 'edit'), async (req: AuthRequest, res, next) => {
     try {
-      const { description, amount, category, paymentMethod, reference, notes, attachmentUrl } = req.body
+      const { description, amount, category, paymentMethod, reference, notes, attachmentUrl, taxDeductible } = req.body
       const data: any = {}
       if (description !== undefined) data.description = description
       if (amount !== undefined) data.amount = amount
@@ -123,6 +140,12 @@ export function expenseRoutes(prisma: PrismaClient) {
       if (reference !== undefined) data.reference = reference
       if (notes !== undefined) data.notes = notes
       if (attachmentUrl !== undefined) data.attachmentUrl = attachmentUrl
+      if (taxDeductible !== undefined) data.taxDeductible = taxDeductible
+
+      if (amount !== undefined) {
+        const rate = await getDefaultTaxRate(prisma)
+        data.taxAmount = calcTaxAmount(Number(amount), rate)
+      }
 
       const expense = await prisma.expense.update({
         where: { id: Number(req.params.id) },

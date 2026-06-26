@@ -3,7 +3,7 @@ import api from '../lib/api'
 import { formatCurrency } from '../lib/currency'
 import { useAuth } from '../contexts/AuthContext'
 import { can } from '../lib/permissions'
-import { Search, Plus, Pencil, Trash2, TrendingDown, X, FileText, Eye, Loader2, Upload } from 'lucide-react'
+import { Search, Plus, Pencil, Trash2, TrendingDown, X, FileText, Eye, Loader2, Upload, Check, Ban } from 'lucide-react'
 
 const CATEGORIES = [
   'rent', 'utilities', 'salaries', 'supplies', 'maintenance',
@@ -35,7 +35,7 @@ export default function Expenses() {
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<any>(null)
   const [uploading, setUploading] = useState(false)
-  const [form, setForm] = useState({ description: '', amount: 0, category: 'other', paymentMethod: 'cash', reference: '', notes: '' })
+  const [form, setForm] = useState({ description: '', amount: 0, category: 'other', paymentMethod: 'cash', reference: '', notes: '', taxDeductible: true })
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null)
   const [attachmentPreview, setAttachmentPreview] = useState('')
   const [existingAttachment, setExistingAttachment] = useState('')
@@ -92,7 +92,7 @@ export default function Expenses() {
         url = await uploadFile(attachmentFile)
       }
 
-      const payload = { ...form, attachmentUrl: url }
+      const payload = { ...form, attachmentUrl: url, taxDeductible: form.taxDeductible }
 
       if (editing) {
         await api.put(`/expenses/${editing.id}`, payload)
@@ -102,7 +102,7 @@ export default function Expenses() {
 
       setShowForm(false)
       setEditing(null)
-      setForm({ description: '', amount: 0, category: 'other', paymentMethod: 'cash', reference: '', notes: '' })
+      setForm({ description: '', amount: 0, category: 'other', paymentMethod: 'cash', reference: '', notes: '', taxDeductible: true })
       setAttachmentFile(null)
       setAttachmentPreview('')
       setExistingAttachment('')
@@ -140,7 +140,7 @@ export default function Expenses() {
 
   const openForm = (expense?: any) => {
     setEditing(expense || null)
-    setForm(expense ? { description: expense.description, amount: expense.amount, category: expense.category, paymentMethod: expense.paymentMethod, reference: expense.reference, notes: expense.notes } : { description: '', amount: 0, category: 'other', paymentMethod: 'cash', reference: '', notes: '' })
+    setForm(expense ? { description: expense.description, amount: expense.amount, category: expense.category, paymentMethod: expense.paymentMethod, reference: expense.reference, notes: expense.notes, taxDeductible: expense.taxDeductible } : { description: '', amount: 0, category: 'other', paymentMethod: 'cash', reference: '', notes: '', taxDeductible: true })
     setAttachmentFile(null)
     setAttachmentPreview('')
     setExistingAttachment(expense?.attachmentUrl || '')
@@ -171,10 +171,14 @@ export default function Expenses() {
             <p className="text-2xl font-bold text-red-600">{formatCurrency(summary.total)}</p>
           </div>
           <div className="bg-white rounded-xl border border-gray-200 p-4">
+            <p className="text-sm text-gray-500">IVA Total</p>
+            <p className="text-2xl font-bold text-orange-600">{formatCurrency(summary.totalTaxAmount)}</p>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-200 p-4">
             <p className="text-sm text-gray-500">Cantidad</p>
             <p className="text-2xl font-bold text-gray-800">{summary.count}</p>
           </div>
-          {summary.byCategory?.slice(0, 2).map((c: any) => (
+          {summary.byCategory?.slice(0, 1).map((c: any) => (
             <div key={c.category} className="bg-white rounded-xl border border-gray-200 p-4">
               <p className="text-sm text-gray-500">{CATEGORY_LABELS[c.category] || c.category}</p>
               <p className="text-xl font-bold text-gray-800">{formatCurrency(c.total)}</p>
@@ -199,12 +203,14 @@ export default function Expenses() {
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-        <table className="w-full min-w-[700px]">
+        <table className="w-full min-w-[900px]">
           <thead>
             <tr className="bg-gray-50 text-sm text-gray-500">
               <th className="text-left px-4 py-3">Descripción</th>
               <th className="text-left px-4 py-3">Categoría</th>
               <th className="text-right px-4 py-3">Monto</th>
+              <th className="text-right px-4 py-3">IVA</th>
+              <th className="text-center px-4 py-3">Deducible</th>
               <th className="text-left px-4 py-3">Pago</th>
               <th className="text-left px-4 py-3">Factura</th>
               <th className="text-left px-4 py-3">Ref.</th>
@@ -223,6 +229,18 @@ export default function Expenses() {
                   </span>
                 </td>
                 <td className="px-4 py-3 text-right font-mono font-bold text-red-600">{formatCurrency(e.amount)}</td>
+                <td className="px-4 py-3 text-right font-mono text-orange-600 text-sm">{formatCurrency(e.taxAmount)}</td>
+                <td className="px-4 py-3 text-center">
+                  {e.taxDeductible ? (
+                    <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-100 px-2 py-0.5 rounded-full">
+                      <Check className="w-3 h-3" /> Sí
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-xs font-medium text-red-700 bg-red-100 px-2 py-0.5 rounded-full">
+                      <Ban className="w-3 h-3" /> No
+                    </span>
+                  )}
+                </td>
                 <td className="px-4 py-3 text-sm text-gray-500">{METHOD_LABELS[e.paymentMethod] || e.paymentMethod}</td>
                 <td className="px-4 py-3">
                   {e.attachmentUrl ? (
@@ -252,7 +270,7 @@ export default function Expenses() {
               </tr>
             ))}
             {expenses.length === 0 && (
-              <tr><td colSpan={9} className="text-center py-8 text-gray-400">No hay gastos</td></tr>
+              <tr><td colSpan={11} className="text-center py-8 text-gray-400">No hay gastos</td></tr>
             )}
           </tbody>
         </table>
@@ -311,6 +329,11 @@ export default function Expenses() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Notas</label>
                 <textarea value={form.notes} onChange={(e) => setForm({...form, notes: e.target.value})} rows={2} className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="checkbox" checked={form.taxDeductible} onChange={(e) => setForm({...form, taxDeductible: e.target.checked})} className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
+                <span className="text-gray-700 font-medium">IVA Deducible</span>
+                <span className="text-gray-400 text-xs">(Vehículos y gastos de representación no son deducibles)</span>
+              </label>
             </div>
             <div className="flex gap-3 mt-6">
               <button onClick={() => setShowForm(false)} className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50">Cancelar</button>

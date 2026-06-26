@@ -252,18 +252,21 @@ export function reportRoutes(prisma: PrismaClient) {
         }
       }
 
-      const [totalExpenseResult, expensesByCategory] = await Promise.all([
+      const [totalExpenseResult, expensesByCategory, deductibleTaxResult] = await Promise.all([
         prisma.expense.aggregate({ where: expenseWhere, _sum: { amount: true } }),
         prisma.expense.groupBy({
           by: ['category'],
           where: expenseWhere,
-          _sum: { amount: true },
+          _sum: { amount: true, taxAmount: true },
           _count: true,
           orderBy: { category: 'asc' },
         }),
+        prisma.expense.aggregate({ where: { ...expenseWhere, taxDeductible: true }, _sum: { taxAmount: true } }),
       ])
 
       const totalExpenses = totalExpenseResult._sum.amount || 0
+      const tvaDeducible = deductibleTaxResult._sum.taxAmount || 0
+      const tvaDue = totalTax - tvaDeducible
       const netProfit = grossProfit - totalExpenses
 
       res.json({
@@ -281,6 +284,8 @@ export function reportRoutes(prisma: PrismaClient) {
           totalExpenses,
           netProfit,
           totalTax,
+          tvaDeducible,
+          tvaDue,
           profitMargin: revenueExcludingTax > 0 ? (grossProfit / revenueExcludingTax) * 100 : 0,
           netMargin: revenueExcludingTax > 0 ? (netProfit / revenueExcludingTax) * 100 : 0,
         },
@@ -288,6 +293,7 @@ export function reportRoutes(prisma: PrismaClient) {
         expensesByCategory: expensesByCategory.map(c => ({
           category: c.category,
           total: c._sum.amount || 0,
+          taxAmount: c._sum.taxAmount || 0,
           count: c._count,
         })),
       })
