@@ -53,11 +53,11 @@ export function storeConfigRoutes(prisma: PrismaClient) {
 
   router.put('/', requirePermission(prisma, 'storeConfig', 'edit'), async (req, res, next) => {
     try {
-      const { companyName, rnc, address, phone, email, ncf } = req.body
+      const { companyName, description, rnc, address, phone, email, ncf, logoUrl } = req.body
       const config = await prisma.storeConfig.upsert({
         where: { id: 1 },
-        update: { companyName, rnc, address, phone, email, ncf },
-        create: { id: 1, companyName, rnc, address, phone, email, ncf },
+        update: { companyName, description, rnc, address, phone, email, ncf, ...(logoUrl !== undefined && { logoUrl }) },
+        create: { id: 1, companyName, description, rnc, address, phone, email, ncf, ...(logoUrl !== undefined && { logoUrl }) },
       })
       res.json(config)
     } catch (e) { next(e) }

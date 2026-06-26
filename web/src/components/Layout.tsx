@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { ShoppingCart, Package, Users, Truck, Receipt, ClipboardList, LogOut, Store, LayoutDashboard, DollarSign, UserCog, Car, CreditCard, Percent, Shield, BarChart3, Award, RotateCcw, FileText, TrendingDown } from 'lucide-react'
 import { can } from '../lib/permissions'
+import api from '../lib/api'
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, module: 'dashboard', action: 'view' },
@@ -24,6 +25,7 @@ const navItems = [
   { to: '/returns', label: 'Devoluciones', icon: RotateCcw, module: 'returns', action: 'view' },
   { to: '/expenses', label: 'Gastos', icon: TrendingDown, module: 'expenses', action: 'view' },
   { to: '/invoice-config', label: 'Config. Factura', icon: FileText, module: 'storeConfig', action: 'edit' },
+  { to: '/site-config', label: 'Config. Sitio', icon: Store, module: 'storeConfig', action: 'edit' },
 ]
 
 export default function Layout() {
@@ -31,6 +33,16 @@ export default function Layout() {
   const navigate = useNavigate()
   const userRole = user?.role
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [storeConfig, setStoreConfig] = useState<any>(null)
+
+  useEffect(() => {
+    api.get('/store-config').then(res => setStoreConfig(res.data)).catch(() => {})
+    const handler = () => {
+      api.get('/store-config').then(res => setStoreConfig(res.data)).catch(() => {})
+    }
+    window.addEventListener('store-changed', handler)
+    return () => window.removeEventListener('store-changed', handler)
+  }, [])
 
   const visibleItems = navItems.filter(item => {
     if (permissions.length > 0) {
@@ -53,10 +65,14 @@ export default function Layout() {
       <aside className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 flex flex-col transition-transform duration-200`}>
         <div className="p-4 border-b border-gray-200">
           <div className="flex items-center gap-2">
-            <Store className="w-6 h-6 text-blue-600" />
-            <h1 className="text-lg font-bold text-gray-800">AutoRepuestos</h1>
+            {storeConfig?.logoUrl ? (
+              <img src={storeConfig.logoUrl} alt="" className="w-6 h-6 object-contain" />
+            ) : (
+              <Store className="w-6 h-6 text-blue-600" />
+            )}
+            <h1 className="text-lg font-bold text-gray-800">{storeConfig?.companyName || 'AutoRepuestos'}</h1>
           </div>
-          <p className="text-xs text-gray-500 mt-1">Sistema de Postventa</p>
+          <p className="text-xs text-gray-500 mt-1">{storeConfig?.description || 'Sistema de Postventa'}</p>
         </div>
 
         <nav className="flex-1 p-2 space-y-1 overflow-auto">
@@ -100,8 +116,12 @@ export default function Layout() {
             </svg>
           </button>
           <div className="flex items-center gap-2">
-            <Store className="w-5 h-5 text-blue-600" />
-            <h1 className="text-base font-bold text-gray-800">AutoRepuestos</h1>
+            {storeConfig?.logoUrl ? (
+              <img src={storeConfig.logoUrl} alt="" className="w-5 h-5 object-contain" />
+            ) : (
+              <Store className="w-5 h-5 text-blue-600" />
+            )}
+            <h1 className="text-base font-bold text-gray-800">{storeConfig?.companyName || 'AutoRepuestos'}</h1>
           </div>
         </div>
         <Outlet />

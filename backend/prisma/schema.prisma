@@ -297,6 +297,7 @@ model LoyaltyConfig {
 model StoreConfig {
   id           Int      @id @default(1)
   companyName  String   @default("")
+  description  String   @default("")
   rnc          String   @default("")
   address      String   @default("")
   phone        String   @default("")

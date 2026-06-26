@@ -24,6 +24,7 @@ import Loyalty from './pages/Loyalty'
 import Returns from './pages/Returns'
 import StoreConfig from './pages/StoreConfig'
 import Expenses from './pages/Expenses'
+import SiteConfig from './pages/SiteConfig'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth()
@@ -67,6 +68,7 @@ export default function App() {
         <Route path="returns" element={<PermissionGuard module="returns" action="view"><Returns /></PermissionGuard>} />
         <Route path="invoice-config" element={<PermissionGuard module="storeConfig" action="edit"><StoreConfig /></PermissionGuard>} />
         <Route path="expenses" element={<PermissionGuard module="expenses" action="view"><Expenses /></PermissionGuard>} />
+        <Route path="site-config" element={<PermissionGuard module="storeConfig" action="edit"><SiteConfig /></PermissionGuard>} />
       </Route>
     </Routes>
   )
