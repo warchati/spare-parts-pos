@@ -22,6 +22,9 @@ interface Product {
   vehicles?: { id: number, brand: string, model: string, year: number }[]
 }
 
+const CLOUDINARY_CLOUD = 'vidcanal'
+const CLOUDINARY_PRESET = 'm5vtjzdl'
+
 export default function Products() {
   const { user } = useAuth()
   const [products, setProducts] = useState<Product[]>([])
@@ -62,25 +65,34 @@ export default function Products() {
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file || !editing) return
-    const reader = new FileReader()
-    reader.onload = async () => {
-      try {
-        setUploadingImage(true)
-        await api.post(`/uploads/product-image/${editing.id}`, { dataUrl: reader.result })
-        loadProducts()
-      } catch (err: any) {
-        alert(err.response?.data?.error || 'Error al subir imagen')
-      } finally {
-        setUploadingImage(false)
+    try {
+      setUploadingImage(true)
+      const fd = new FormData()
+      fd.append('file', file)
+      fd.append('upload_preset', CLOUDINARY_PRESET)
+      fd.append('folder', 'products')
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/auto/upload`, {
+        method: 'POST',
+        body: fd,
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error?.message || 'Error al subir imagen')
       }
+      const data = await res.json()
+      await api.post(`/images/product/${editing.id}`, { url: data.secure_url })
+      loadProducts()
+    } catch (err: any) {
+      alert(err.message || 'Error al subir imagen')
+    } finally {
+      setUploadingImage(false)
     }
-    reader.readAsDataURL(file)
   }
 
   const deleteImage = async (imageId: number) => {
     if (!editing) return
     try {
-      await api.delete(`/uploads/product-image/${editing.id}/${imageId}`)
+      await api.delete(`/images/${imageId}`)
       loadProducts()
     } catch (err: any) {
       alert(err.response?.data?.error || 'Error al eliminar imagen')
