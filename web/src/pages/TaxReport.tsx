@@ -60,7 +60,9 @@ export default function TaxReport() {
 
     const summary = data.summary
     const summaryRows = [
-      ['Ingresos Totales', `${sym} ${summary.totalRevenue.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`],
+      ['Ingresos (sin IVA)', `${sym} ${summary.revenueExcludingTax.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`],
+      ['IVA Cobrado', `${sym} ${summary.totalTax.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`],
+      ['Ingresos + IVA', `${sym} ${summary.totalRevenue.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`],
       ['Costo de Ventas', `${sym} ${summary.totalCost.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`],
       ['Ganancia Bruta', `${sym} ${summary.grossProfit.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`],
       ['Margen Bruto', `${summary.profitMargin.toFixed(1)}%`],
@@ -181,17 +183,23 @@ export default function TaxReport() {
       {data && (
         <>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <SummaryCard title="Ingresos" value={formatCurrency(data.summary.totalRevenue)} icon={TrendingUp} color="text-green-500" />
+            <SummaryCard title="Ingresos (sin IVA)" value={formatCurrency(data.summary.revenueExcludingTax)} icon={TrendingUp} color="text-green-500" />
+            <SummaryCard title="IVA Cobrado" value={formatCurrency(data.summary.totalTax)} icon={Percent} color="text-orange-500" />
+            <SummaryCard title="Ingresos + IVA" value={formatCurrency(data.summary.totalRevenue)} icon={TrendingUp} color="text-green-600" />
             <SummaryCard title="Costo de Ventas" value={formatCurrency(data.summary.totalCost)} icon={TrendingDown} color="text-red-500" />
-            <SummaryCard title="Ganancia Bruta" value={formatCurrency(data.summary.grossProfit)} icon={DollarSign} color="text-blue-500" />
-            <SummaryCard title="Margen Bruto" value={`${data.summary.profitMargin.toFixed(1)}%`} icon={Percent} color="text-purple-500" />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <SummaryCard title="Ganancia Bruta" value={formatCurrency(data.summary.grossProfit)} icon={DollarSign} color="text-blue-500" />
+            <SummaryCard title="Margen Bruto" value={`${data.summary.profitMargin.toFixed(1)}%`} icon={Percent} color="text-purple-500" />
             <SummaryCard title="Gastos Operativos" value={formatCurrency(data.summary.totalExpenses)} icon={Wallet} color="text-red-500" />
             <SummaryCard title="Ganancia Neta" value={formatCurrency(data.summary.netProfit)} icon={DollarSign} color="text-green-600" />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <SummaryCard title="Margen Neto" value={`${data.summary.netMargin.toFixed(1)}%`} icon={Percent} color="text-blue-600" />
-            <SummaryCard title="TVA a Pagar" value={formatCurrency(data.summary.totalTax)} icon={Percent} color="text-orange-500" />
+            <SummaryCard title="Ventas" value={data.summary.salesCount} icon={Receipt} color="text-gray-500" />
+            <SummaryCard title="Artículos Vendidos" value={data.summary.itemsSold} icon={Package} color="text-gray-500" />
           </div>
 
           <div className="bg-white rounded-xl border border-gray-200 p-5">

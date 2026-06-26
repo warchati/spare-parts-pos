@@ -237,7 +237,8 @@ export function reportRoutes(prisma: PrismaClient) {
         byPaymentMethod[sale.paymentMethod] = (byPaymentMethod[sale.paymentMethod] || 0) + sale.total
       }
 
-      const grossProfit = totalRevenue - totalCost
+      const revenueExcludingTax = totalRevenue - totalTax
+      const grossProfit = revenueExcludingTax - totalCost
 
       // Aggregate expenses in the same period
       const expenseWhere: any = {}
@@ -274,13 +275,14 @@ export function reportRoutes(prisma: PrismaClient) {
           salesCount: sales.length,
           itemsSold: totalItems,
           totalRevenue,
+          revenueExcludingTax,
           totalCost,
           grossProfit,
           totalExpenses,
           netProfit,
           totalTax,
-          profitMargin: totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0,
-          netMargin: totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0,
+          profitMargin: revenueExcludingTax > 0 ? (grossProfit / revenueExcludingTax) * 100 : 0,
+          netMargin: revenueExcludingTax > 0 ? (netProfit / revenueExcludingTax) * 100 : 0,
         },
         byPaymentMethod: Object.entries(byPaymentMethod).map(([method, total]) => ({ method, total })),
         expensesByCategory: expensesByCategory.map(c => ({
