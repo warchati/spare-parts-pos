@@ -18,6 +18,7 @@ export default function Locations() {
   const [selectedWarehouse, setSelectedWarehouse] = useState(warehouseIdParam || '')
   const [locations, setLocations] = useState<any[]>([])
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
+  const [childrenMap, setChildrenMap] = useState<Record<number, any[]>>({})
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<any>(null)
   const [form, setForm] = useState({ warehouseId: 0, parentId: '', name: '', code: '', type: 'BIN', sortOrder: 0 })
@@ -27,7 +28,7 @@ export default function Locations() {
   }, [])
 
   useEffect(() => {
-    if (selectedWarehouse) loadLocations()
+    if (selectedWarehouse) { loadLocations(); setChildrenMap({}) }
     else setLocations([])
   }, [selectedWarehouse])
 
@@ -46,12 +47,17 @@ export default function Locations() {
   }
 
   const toggleExpand = async (id: number) => {
-    setExpanded(prev => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
+    const next = new Set(expanded)
+    if (next.has(id)) {
+      next.delete(id)
+    } else {
+      next.add(id)
+      if (!childrenMap[id]) {
+        const children = await loadChildren(id)
+        setChildrenMap(prev => ({ ...prev, [id]: children }))
+      }
+    }
+    setExpanded(next)
   }
 
   const handleSave = async () => {
@@ -62,9 +68,23 @@ export default function Locations() {
         parentId: form.parentId ? Number(form.parentId) : null,
         sortOrder: Number(form.sortOrder) || 0,
       }
-      if (editing?.id) await api.put(`/locations/${editing.id}`, payload)
-      else await api.post('/locations', payload)
-      setShowForm(false); setEditing(null); loadLocations()
+      if (editing?.id) {
+        await api.put(`/locations/${editing.id}`, payload)
+        setShowForm(false); setEditing(null)
+        loadLocations()
+        setChildrenMap({})
+      } else {
+        await api.post('/locations', payload)
+        setShowForm(false); setEditing(null)
+        if (payload.parentId) {
+          await loadLocations()
+          const children = await loadChildren(payload.parentId)
+          setChildrenMap(prev => ({ ...prev, [payload.parentId!]: children }))
+          setExpanded(prev => new Set(prev).add(payload.parentId!))
+        } else {
+          loadLocations()
+        }
+      }
     } catch (e: any) { alert(e.response?.data?.error || 'Error') }
   }
 
@@ -73,6 +93,7 @@ export default function Locations() {
     try {
       await api.delete(`/locations/${id}`)
       loadLocations()
+      setChildrenMap({})
     } catch (e: any) { alert(e.response?.data?.error || 'Error') }
   }
 
@@ -94,37 +115,47 @@ export default function Locations() {
     setShowForm(true)
   }
 
-  const renderLocationRow = (loc: any, depth = 0) => (
-    <tr key={loc.id} className="border-t border-gray-100 hover:bg-gray-50">
-      <td className="px-4 py-3" style={{ paddingLeft: `${16 + depth * 24}px` }}>
-        <div className="flex items-center gap-1">
-          {loc._count?.children > 0 ? (
-            <button onClick={() => toggleExpand(loc.id)} className="p-0.5 hover:bg-gray-100 rounded">
-              {expanded.has(loc.id) ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
-            </button>
-          ) : <span className="w-5" />}
-          <Layers className="w-4 h-4 text-gray-400" />
-          <span className="font-medium">{loc.name}</span>
-        </div>
-      </td>
-      <td className="px-4 py-3 font-mono text-sm text-gray-500">{loc.code}</td>
-      <td className="px-4 py-3"><span className="px-2 py-0.5 text-xs font-medium bg-blue-50 text-blue-700 rounded-full">{TYPE_LABELS[loc.type] || loc.type}</span></td>
-      <td className="px-4 py-3 text-sm text-gray-500">{loc._count?.productLocations || 0}</td>
-      <td className="px-4 py-3 text-right">
-        <div className="flex items-center justify-end gap-1">
-          {can(user?.role, 'warehouses', 'create') && (
-            <button onClick={() => openForm({ warehouseId: Number(selectedWarehouse), parentId: String(loc.id) })} className="p-1.5 hover:bg-gray-100 rounded" title="Añadir sub-ubicación"><Plus className="w-4 h-4 text-gray-400" /></button>
-          )}
-          {can(user?.role, 'warehouses', 'edit') && (
-            <button onClick={() => openForm(loc)} className="p-1.5 hover:bg-gray-100 rounded"><Pencil className="w-4 h-4 text-gray-400" /></button>
-          )}
-          {can(user?.role, 'warehouses', 'delete') && loc._count?.children === 0 && (
-            <button onClick={() => handleDelete(loc.id)} className="p-1.5 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4 text-red-400" /></button>
-          )}
-        </div>
-      </td>
-    </tr>
-  )
+  const renderLocationRows = (loc: any, depth = 0): JSX.Element[] => {
+    const rows: JSX.Element[] = [
+      <tr key={loc.id} className="border-t border-gray-100 hover:bg-gray-50">
+        <td className="px-4 py-3" style={{ paddingLeft: `${16 + depth * 24}px` }}>
+          <div className="flex items-center gap-1">
+            {loc._count?.children > 0 ? (
+              <button onClick={() => toggleExpand(loc.id)} className="p-0.5 hover:bg-gray-100 rounded">
+                {expanded.has(loc.id) ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
+              </button>
+            ) : <span className="w-5" />}
+            <Layers className="w-4 h-4 text-gray-400" />
+            <span className="font-medium">{loc.name}</span>
+          </div>
+        </td>
+        <td className="px-4 py-3 font-mono text-sm text-gray-500">{loc.code}</td>
+        <td className="px-4 py-3"><span className="px-2 py-0.5 text-xs font-medium bg-blue-50 text-blue-700 rounded-full">{TYPE_LABELS[loc.type] || loc.type}</span></td>
+        <td className="px-4 py-3 text-sm text-gray-500">{loc._count?.productLocations || 0}</td>
+        <td className="px-4 py-3 text-right">
+          <div className="flex items-center justify-end gap-1">
+            {can(user?.role, 'warehouses', 'create') && (
+              <button onClick={() => openForm({ warehouseId: Number(selectedWarehouse), parentId: String(loc.id) })} className="p-1.5 hover:bg-gray-100 rounded" title="Añadir sub-ubicación"><Plus className="w-4 h-4 text-gray-400" /></button>
+            )}
+            {can(user?.role, 'warehouses', 'edit') && (
+              <button onClick={() => openForm(loc)} className="p-1.5 hover:bg-gray-100 rounded"><Pencil className="w-4 h-4 text-gray-400" /></button>
+            )}
+            {can(user?.role, 'warehouses', 'delete') && loc._count?.children === 0 && (
+              <button onClick={() => handleDelete(loc.id)} className="p-1.5 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4 text-red-400" /></button>
+            )}
+          </div>
+        </td>
+      </tr>,
+    ]
+
+    if (expanded.has(loc.id) && childrenMap[loc.id]) {
+      for (const child of childrenMap[loc.id]) {
+        rows.push(...renderLocationRows(child, depth + 1))
+      }
+    }
+
+    return rows
+  }
 
   return (
     <div className="p-6">
@@ -157,7 +188,7 @@ export default function Locations() {
               </tr>
             </thead>
             <tbody>
-              {locations.map(loc => renderLocationRow(loc))}
+              {locations.flatMap(loc => renderLocationRows(loc))}
               {locations.length === 0 && (
                 <tr><td colSpan={5} className="text-center py-8 text-gray-400">No hay ubicaciones en este almacén</td></tr>
               )}
