@@ -14,6 +14,8 @@ export interface Product {
   stock: number;
   minStock: number;
   location: string;
+  defaultLocationId: number | null;
+  defaultLocation?: { id: number; name: string; code: string } | null;
   imageUrl: string;
   active: boolean;
   createdAt: string;

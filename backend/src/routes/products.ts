@@ -69,12 +69,20 @@ export function productRoutes(prisma: PrismaClient) {
 
   router.post('/', requirePermission(prisma, 'products', 'create'), async (req: AuthRequest, res, next) => {
     try {
-      const { code, barcode, name, description, category, brand, vehicleType, oemNumber, buyPrice, sellPrice, wholesalePrice, minStock, location, taxId, active } = req.body
+      const { code, barcode, name, description, category, brand, vehicleType, oemNumber, buyPrice, sellPrice, wholesalePrice, minStock, location, taxId, active, defaultLocationId } = req.body
       if (!code || !name) return res.status(400).json({ error: 'Code and name are required' })
 
       const product = await prisma.product.create({
-        data: { code, barcode, name, description, category, brand, vehicleType, oemNumber, buyPrice, sellPrice, wholesalePrice, minStock: minStock ?? 0, location, taxId: taxId || null, active: active ?? true },
+        data: { code, barcode, name, description, category, brand, vehicleType, oemNumber, buyPrice, sellPrice, wholesalePrice, minStock: minStock ?? 0, location, taxId: taxId || null, active: active ?? true, defaultLocationId: defaultLocationId > 0 ? defaultLocationId : null },
       })
+
+      if (defaultLocationId > 0) {
+        await prisma.productLocation.upsert({
+          where: { productId_locationId: { productId: product.id, locationId: defaultLocationId } },
+          update: { stock: product.stock },
+          create: { productId: product.id, locationId: defaultLocationId, stock: product.stock },
+        })
+      }
 
       await logAudit(prisma, req, 'CREATE', 'Product', product.id, { name: product.name, code: product.code })
 
@@ -84,7 +92,7 @@ export function productRoutes(prisma: PrismaClient) {
 
   router.put('/:id', requirePermission(prisma, 'products', 'edit'), async (req: AuthRequest, res, next) => {
     try {
-      const { code, barcode, name, description, category, brand, vehicleType, oemNumber, buyPrice, sellPrice, wholesalePrice, minStock, location, taxId, active } = req.body
+      const { code, barcode, name, description, category, brand, vehicleType, oemNumber, buyPrice, sellPrice, wholesalePrice, minStock, location, taxId, active, defaultLocationId } = req.body
       const data: any = {}
       if (code !== undefined) data.code = code
       if (barcode !== undefined) data.barcode = barcode
@@ -101,6 +109,7 @@ export function productRoutes(prisma: PrismaClient) {
       if (location !== undefined) data.location = location
       if (taxId !== undefined) data.taxId = taxId
       if (active !== undefined) data.active = active
+      if (defaultLocationId !== undefined) data.defaultLocationId = defaultLocationId > 0 ? defaultLocationId : null
 
       const old = await prisma.product.findUnique({ where: { id: Number(req.params.id) } })
       if (!old) return res.status(404).json({ error: 'Product not found' })
@@ -109,6 +118,14 @@ export function productRoutes(prisma: PrismaClient) {
         where: { id: Number(req.params.id) },
         data,
       })
+
+      if (defaultLocationId !== undefined && defaultLocationId > 0) {
+        await prisma.productLocation.upsert({
+          where: { productId_locationId: { productId: product.id, locationId: defaultLocationId } },
+          update: { stock: product.stock },
+          create: { productId: product.id, locationId: defaultLocationId, stock: product.stock },
+        })
+      }
 
       const priceFields = ['buyPrice', 'sellPrice', 'wholesalePrice'] as const
       for (const field of priceFields) {

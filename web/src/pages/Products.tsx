@@ -18,8 +18,18 @@ interface Product {
   sellPrice: number
   buyPrice: number
   wholesalePrice: number
+  location: string
+  defaultLocationId: number | null
+  defaultLocation?: { id: number; name: string; code: string } | null
   images?: { id: number, url: string }[]
   vehicles?: { id: number, brand: string, model: string, year: number }[]
+}
+
+interface LocationOption {
+  id: number
+  name: string
+  code: string
+  warehouse?: { name: string }
 }
 
 const CLOUDINARY_CLOUD = 'vidcanal'
@@ -31,14 +41,19 @@ export default function Products() {
   const [search, setSearch] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Product | null>(null)
-  const [form, setForm] = useState({ code: '', barcode: '', name: '', description: '', category: '', brand: '', vehicleType: '', oemNumber: '', buyPrice: 0, sellPrice: 0, wholesalePrice: 0, stock: 0, minStock: 5, location: '' })
+  const [form, setForm] = useState({ code: '', barcode: '', name: '', description: '', category: '', brand: '', vehicleType: '', oemNumber: '', buyPrice: 0, sellPrice: 0, wholesalePrice: 0, stock: 0, minStock: 5, location: '', defaultLocationId: 0 })
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [viewImage, setViewImage] = useState<string | null>(null)
+  const [locations, setLocations] = useState<LocationOption[]>([])
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploadingImage, setUploadingImage] = useState(false)
 
   useEffect(() => { loadProducts() }, [search])
+
+  useEffect(() => {
+    api.get('/locations').then(r => setLocations(r.data)).catch(() => {})
+  }, [])
 
   const loadProducts = async () => {
     try {
@@ -49,10 +64,11 @@ export default function Products() {
 
   const handleSave = async () => {
     try {
+      const payload = { ...form, defaultLocationId: form.defaultLocationId > 0 ? form.defaultLocationId : null }
       if (editing) {
-        await api.put(`/products/${editing.id}`, form)
+        await api.put(`/products/${editing.id}`, payload)
       } else {
-        await api.post('/products', form)
+        await api.post('/products', payload)
       }
       setShowForm(false)
       setEditing(null)
@@ -100,11 +116,11 @@ export default function Products() {
     }
   }
 
-  const resetForm = () => setForm({ code: '', barcode: '', name: '', description: '', category: '', brand: '', vehicleType: '', oemNumber: '', buyPrice: 0, sellPrice: 0, wholesalePrice: 0, stock: 0, minStock: 5, location: '' })
+  const resetForm = () => setForm({ code: '', barcode: '', name: '', description: '', category: '', brand: '', vehicleType: '', oemNumber: '', buyPrice: 0, sellPrice: 0, wholesalePrice: 0, stock: 0, minStock: 5, location: '', defaultLocationId: 0 })
 
   const editProduct = (p: Product) => {
     setEditing(p)
-    setForm(p as any)
+    setForm({ ...(p as any), defaultLocationId: p.defaultLocationId ?? 0 })
     setShowForm(true)
   }
 
@@ -158,6 +174,7 @@ export default function Products() {
               <th className="text-right px-4 py-3">Costo</th>
               <th className="text-right px-4 py-3">Precio</th>
               <th className="text-right px-4 py-3">Por Mayor</th>
+              <th className="text-left px-4 py-3">Ubicación</th>
               <th className="text-center px-4 py-3">Img</th>
               <th className="text-center px-4 py-3">Veh.</th>
               <th className="text-right px-4 py-3"></th>
@@ -181,6 +198,7 @@ export default function Products() {
                 <td className="px-4 py-3 text-right font-mono">{formatCurrency(p.buyPrice)}</td>
                 <td className="px-4 py-3 text-right font-mono font-bold">{formatCurrency(p.sellPrice)}</td>
                 <td className="px-4 py-3 text-right font-mono text-gray-500">{p.wholesalePrice ? formatCurrency(p.wholesalePrice) : '-'}</td>
+                <td className="px-4 py-3 text-sm text-gray-500">{p.defaultLocation?.name || p.location || '-'}</td>
                 <td className="px-4 py-3 text-center">
                   {p.images && p.images.length > 0 ? (
                     <div className="flex items-center justify-center">
@@ -216,7 +234,7 @@ export default function Products() {
             ))}
             {products.length === 0 && (
               <tr>
-                <td colSpan={10} className="text-center py-8 text-gray-400">No hay productos</td>
+                <td colSpan={11} className="text-center py-8 text-gray-400">No hay productos</td>
               </tr>
             )}
           </tbody>
@@ -278,7 +296,18 @@ export default function Products() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Ubicación</label>
-                <input type="text" value={form.location} onChange={(e) => setForm({...form, location: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" />
+                <select value={form.defaultLocationId} onChange={(e) => {
+                  const id = Number(e.target.value)
+                  const loc = locations.find(l => l.id === id)
+                  setForm({...form, defaultLocationId: id, location: loc ? `${loc.name} (${loc.code})` : '' })
+                }} className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                  <option value={0}>Sin ubicación</option>
+                  {locations.map(loc => (
+                    <option key={loc.id} value={loc.id}>
+                      {loc.warehouse?.name ? `${loc.warehouse.name} / ` : ''}{loc.name} ({loc.code})
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Precio Compra</label>
