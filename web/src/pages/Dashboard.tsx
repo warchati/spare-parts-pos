@@ -32,7 +32,7 @@ export default function Dashboard() {
       ])
       setData(reportsRes.data)
       setDailySales(salesRes.data)
-      setTodayExpenses(expensesRes.data.totalExpenses ?? 0)
+      setTodayExpenses(expensesRes.data.total ?? 0)
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
   }
