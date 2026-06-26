@@ -3,7 +3,7 @@ import api from '../lib/api'
 import { formatCurrency } from '../lib/currency'
 import { useAuth } from '../contexts/AuthContext'
 import { can } from '../lib/permissions'
-import { Search, Plus, Pencil, Trash2, TrendingDown, X, FileText, Eye, Loader2 } from 'lucide-react'
+import { Search, Plus, Pencil, Trash2, TrendingDown, X, FileText, Eye, Loader2, Upload } from 'lucide-react'
 
 const CATEGORIES = [
   'rent', 'utilities', 'salaries', 'supplies', 'maintenance',
@@ -19,6 +19,9 @@ const CATEGORY_LABELS: Record<string, string> = {
 const METHOD_LABELS: Record<string, string> = {
   cash: 'Efectivo', card: 'Tarjeta', transfer: 'Transferencia',
 }
+
+const CLOUDINARY_CLOUD = 'vidcanal'
+const CLOUDINARY_PRESET = 'm5vtjzdl'
 
 export default function Expenses() {
   const { user } = useAuth()
@@ -66,8 +69,18 @@ export default function Expenses() {
   const uploadFile = async (file: File): Promise<string> => {
     const fd = new FormData()
     fd.append('file', file)
-    const res = await api.post('/uploads', fd)
-    return res.data.url
+    fd.append('upload_preset', CLOUDINARY_PRESET)
+    fd.append('folder', 'expenses')
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/auto/upload`, {
+      method: 'POST',
+      body: fd,
+    })
+    if (!res.ok) {
+      const err = await res.json()
+      throw new Error(err.error?.message || 'Error al subir archivo')
+    }
+    const data = await res.json()
+    return data.secure_url
   }
 
   const handleSave = async () => {
