@@ -66,9 +66,7 @@ export default function Expenses() {
   const uploadFile = async (file: File): Promise<string> => {
     const fd = new FormData()
     fd.append('file', file)
-    const res = await api.post('/uploads', fd, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
+    const res = await api.post('/uploads', fd)
     return res.data.url
   }
 
