@@ -81,7 +81,7 @@ export default function Vehicles() {
 
   return (
     <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
         <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
           <Car className="w-6 h-6" /> Vehículos
         </h1>
@@ -97,8 +97,8 @@ export default function Vehicles() {
         <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por marca o modelo..." className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" />
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <table className="w-full">
+      <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
+        <table className="w-full min-w-[500px]">
           <thead>
             <tr className="bg-gray-50 text-sm text-gray-500">
               <th className="text-left px-4 py-3">Marca</th>

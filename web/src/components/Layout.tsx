@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { ShoppingCart, Package, Users, Truck, Receipt, ClipboardList, LogOut, Store, LayoutDashboard, DollarSign, UserCog, Car, CreditCard, Percent, Shield, BarChart3, Award, RotateCcw, FileText } from 'lucide-react'
@@ -28,6 +29,7 @@ export default function Layout() {
   const { user, logout, permissions } = useAuth()
   const navigate = useNavigate()
   const userRole = user?.role
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const visibleItems = navItems.filter(item => {
     if (permissions.length > 0) {
@@ -43,7 +45,11 @@ export default function Layout() {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
+      {sidebarOpen && (
+        <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />
+      )}
+
+      <aside className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 flex flex-col transition-transform duration-200`}>
         <div className="p-4 border-b border-gray-200">
           <div className="flex items-center gap-2">
             <Store className="w-6 h-6 text-blue-600" />
@@ -57,6 +63,7 @@ export default function Layout() {
             <NavLink
               key={to}
               to={to}
+              onClick={() => setSidebarOpen(false)}
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                   isActive
@@ -84,7 +91,18 @@ export default function Layout() {
         </div>
       </aside>
 
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-auto min-w-0">
+        <div className="lg:hidden flex items-center gap-2 p-3 bg-white border-b border-gray-200 sticky top-0 z-30">
+          <button onClick={() => setSidebarOpen(true)} className="p-1.5 hover:bg-gray-100 rounded-lg">
+            <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+          <div className="flex items-center gap-2">
+            <Store className="w-5 h-5 text-blue-600" />
+            <h1 className="text-base font-bold text-gray-800">AutoRepuestos</h1>
+          </div>
+        </div>
         <Outlet />
       </main>
     </div>

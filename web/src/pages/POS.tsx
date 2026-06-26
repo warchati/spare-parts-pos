@@ -212,7 +212,7 @@ export default function POS() {
 
 
   return (
-    <div className="h-full flex">
+    <div className="h-full flex flex-col lg:flex-row">
       <div className="flex-1 flex flex-col p-4">
         <div className="relative mb-4">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -270,7 +270,7 @@ export default function POS() {
                       <Plus className="w-4 h-4" />
                     </button>
                   </div>
-                  <p className="font-bold text-gray-800 w-24 text-right">{formatCurrency(item.totalPrice)}</p>
+                  <p className="font-bold text-gray-800 w-20 lg:w-24 text-right text-sm lg:text-base">{formatCurrency(item.totalPrice)}</p>
                   <button onClick={() => removeItem(item.productId)} className="p-1 hover:bg-red-50 rounded text-red-400">
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -281,7 +281,7 @@ export default function POS() {
         )}
       </div>
 
-      <div className="w-80 bg-white border-l border-gray-200 p-4 flex flex-col">
+      <div className="w-full lg:w-80 bg-white border-l border-gray-200 p-4 flex flex-col">
         {success && (
           <div className="bg-green-50 text-green-700 p-3 rounded-lg mb-4 text-center font-medium">
             Venta completada con éxito!

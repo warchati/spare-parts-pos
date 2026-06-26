@@ -75,7 +75,7 @@ export default function Sales() {
 
   return (
     <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
         <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2"><Receipt className="w-6 h-6" /> Ventas</h1>
           <button onClick={() => downloadExport('/exports/sales/csv', 'ventas.xlsx')} className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm">
             <Download className="w-4 h-4" /> Exportar CSV
@@ -140,8 +140,8 @@ export default function Sales() {
         </div>
       )}
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <table className="w-full">
+      <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
+        <table className="w-full min-w-[700px]">
           <thead>
             <tr className="bg-gray-50 text-sm text-gray-500">
               <th className="text-left px-4 py-3">#</th>

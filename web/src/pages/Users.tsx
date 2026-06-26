@@ -159,7 +159,7 @@ export default function Users() {
 
   return (
     <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
         <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
           <UserCog className="w-6 h-6" /> Usuarios
         </h1>
@@ -175,8 +175,8 @@ export default function Users() {
         <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nombre o usuario..." className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" />
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <table className="w-full">
+      <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
+        <table className="w-full min-w-[700px]">
           <thead>
             <tr className="bg-gray-50 text-sm text-gray-500">
               <th className="text-left px-4 py-3">Usuario</th>
@@ -241,7 +241,8 @@ export default function Users() {
               <button onClick={() => { setShowPermsFor(null); setUserPerms({}) }}><X className="w-5 h-5" /></button>
             </div>
             <p className="text-sm text-gray-500 mb-4">Rol base: <span className="font-medium capitalize">{showPermsFor.role}</span> — los cambios crean sobre-escrituras para este usuario específico</p>
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto">
+            <table className="w-full text-sm min-w-[600px]">
               <thead>
                 <tr className="bg-gray-50 text-xs text-gray-500">
                   <th className="text-left px-3 py-2 w-32">Módulo</th>
@@ -271,6 +272,7 @@ export default function Users() {
                 ))}
               </tbody>
             </table>
+            </div>
             <div className="flex gap-3 mt-6">
               <button onClick={() => { setShowPermsFor(null); setUserPerms({}) }} className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50">Cancelar</button>
               <button onClick={savePermissions} disabled={savingPerms} className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">

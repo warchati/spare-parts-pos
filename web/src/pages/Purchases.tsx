@@ -105,7 +105,7 @@ export default function Purchases() {
 
   return (
     <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
         <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2"><ClipboardList className="w-6 h-6" /> Órdenes de Compra</h1>
         <div className="flex items-center gap-2">
             <button onClick={() => downloadExport('/exports/stock/csv', 'stock.xlsx')} className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm">
@@ -121,8 +121,8 @@ export default function Purchases() {
         <input type="date" value={receivedDateFilter} onChange={(e) => { setReceivedDateFilter(e.target.value); setTimeout(loadPurchases, 0) }} className="px-3 py-2.5 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm" />
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <table className="w-full">
+      <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
+        <table className="w-full min-w-[800px]">
           <thead>
             <tr className="bg-gray-50 text-sm text-gray-500">
               <th className="text-left px-4 py-3">#</th>

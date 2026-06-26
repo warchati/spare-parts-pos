@@ -67,8 +67,8 @@ export default function CreditPayments() {
         <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar clientes..." className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" />
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden mb-6">
-        <table className="w-full">
+      <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto mb-6">
+        <table className="w-full min-w-[600px]">
           <thead>
             <tr className="bg-gray-50 text-sm text-gray-500">
               <th className="text-left px-4 py-3">Cliente</th>
@@ -114,7 +114,7 @@ export default function CreditPayments() {
               <button onClick={() => { setSelectedClient(null); setClientDetail(null) }}><X className="w-5 h-5" /></button>
             </div>
 
-            <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
               <div className="bg-gray-50 rounded-lg p-3 text-center">
                 <p className="text-sm text-gray-500">Límite</p>
                 <p className="text-lg font-bold">{formatCurrency(selectedClient.creditLimit)}</p>

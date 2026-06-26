@@ -138,7 +138,7 @@ export default function Loyalty() {
         </h1>
       </div>
 
-      <div className="flex gap-2 mb-6">
+      <div className="flex gap-2 mb-6 overflow-x-auto pb-1">
         {[
           { id: 'clients' as const, label: 'Clientes', icon: Award },
           { id: 'history' as const, label: 'Historial', icon: History },
@@ -156,7 +156,7 @@ export default function Loyalty() {
         ))}
       </div>
 
-      {tab === 'clients' && (
+          {tab === 'clients' && (
         <div>
           <div className="relative mb-4">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -168,8 +168,8 @@ export default function Loyalty() {
               className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-yellow-500"
             />
           </div>
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <table className="w-full">
+          <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
+            <table className="w-full min-w-[500px]">
               <thead>
                 <tr className="bg-gray-50 text-sm text-gray-500">
                   <th className="text-left px-4 py-3">Cliente</th>
@@ -270,12 +270,11 @@ export default function Loyalty() {
               Filtrar
             </button>
           </div>
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <table className="w-full">
+          <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
+            <table className="w-full min-w-[800px]">
               <thead>
                 <tr className="bg-gray-50 text-sm text-gray-500">
                   <th className="text-left px-4 py-3">Fecha</th>
-                  <th className="text-left px-4 py-3">Cliente</th>
                   <th className="text-left px-4 py-3">Tipo</th>
                   <th className="text-right px-4 py-3">Puntos</th>
                   <th className="text-right px-4 py-3">Saldo Anterior</th>

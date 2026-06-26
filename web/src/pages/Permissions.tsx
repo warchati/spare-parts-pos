@@ -81,7 +81,7 @@ export default function Permissions() {
 
   return (
     <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
         <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2"><Shield className="w-6 h-6" /> Gestión de Permisos</h1>
         <div className="flex items-center gap-3">
           {saved && <span className="text-green-600 text-sm flex items-center gap-1"><Check className="w-4 h-4" /> Guardado</span>}
@@ -91,7 +91,7 @@ export default function Permissions() {
         </div>
       </div>
 
-      <div className="flex gap-2 mb-6">
+      <div className="flex gap-2 mb-6 overflow-x-auto pb-1">
         {ROLES.map(role => (
           <button
             key={role}
@@ -105,8 +105,8 @@ export default function Permissions() {
         ))}
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <table className="w-full">
+      <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
+        <table className="w-full min-w-[900px]">
           <thead>
             <tr className="bg-gray-50 text-sm text-gray-500">
               <th className="text-left px-4 py-3 w-40">Módulo</th>

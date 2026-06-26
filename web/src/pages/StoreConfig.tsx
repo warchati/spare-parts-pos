@@ -61,7 +61,7 @@ export default function StoreConfig() {
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
-        <div className="flex items-start gap-6">
+        <div className="flex flex-col md:flex-row items-start gap-6">
           <div className="flex-shrink-0">
             {config.logoUrl ? (
               <div className="relative">
@@ -82,7 +82,7 @@ export default function StoreConfig() {
               <label className="block text-sm font-medium text-gray-700 mb-1">Nombre de la empresa</label>
               <input type="text" value={config.companyName} onChange={(e) => setConfig({ ...config, companyName: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm" />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">RNC</label>
                 <input type="text" value={config.rnc} onChange={(e) => setConfig({ ...config, rnc: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm" />
@@ -96,7 +96,7 @@ export default function StoreConfig() {
               <label className="block text-sm font-medium text-gray-700 mb-1">Dirección</label>
               <input type="text" value={config.address} onChange={(e) => setConfig({ ...config, address: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm" />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                 <input type="email" value={config.email} onChange={(e) => setConfig({ ...config, email: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm" />
