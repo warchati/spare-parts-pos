@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { PrismaClient } from '@prisma/client'
-import { requirePermission } from '../middleware/auth'
+import bcrypt from 'bcryptjs'
+import { requirePermission, AuthRequest } from '../middleware/auth'
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024
 const ALLOWED_IMAGE_TYPES = ['data:image/jpeg', 'data:image/png', 'data:image/webp', 'data:image/gif', 'data:image/avif']
@@ -77,6 +78,77 @@ export function storeConfigRoutes(prisma: PrismaClient) {
       })
       res.json(config)
     } catch (e) { next(e) }
+  })
+
+  async function verifyAdmin(req: AuthRequest, password: string) {
+    if (req.user?.role !== 'admin') {
+      throw Object.assign(new Error('Solo administradores pueden resetear los datos'), { status: 403 })
+    }
+    if (!password) {
+      throw Object.assign(new Error('Contraseña requerida'), { status: 400 })
+    }
+    const user = await prisma.user.findUnique({ where: { id: req.user.id } })
+    if (!user) {
+      throw Object.assign(new Error('Usuario no encontrado'), { status: 404 })
+    }
+    const valid = await bcrypt.compare(password, user.password)
+    if (!valid) {
+      throw Object.assign(new Error('Contraseña incorrecta'), { status: 401 })
+    }
+  }
+
+  router.post('/reset-transactional', async (req: AuthRequest, res, next) => {
+    try {
+      await verifyAdmin(req, req.body.password)
+
+      await prisma.$transaction([
+        prisma.auditLog.deleteMany(),
+        prisma.priceHistory.deleteMany(),
+        prisma.stockMovement.deleteMany(),
+        prisma.loyaltyTransaction.deleteMany(),
+        prisma.inventoryAdjustmentItem.deleteMany(),
+        prisma.inventoryAdjustment.deleteMany(),
+        prisma.saleReturnItem.deleteMany(),
+        prisma.saleReturn.deleteMany(),
+        prisma.creditPayment.deleteMany(),
+        prisma.saleItem.deleteMany(),
+        prisma.sale.deleteMany(),
+        prisma.cashMovement.deleteMany(),
+        prisma.cashRegister.deleteMany(),
+        prisma.purchaseItem.deleteMany(),
+        prisma.purchaseOrder.deleteMany(),
+        prisma.expense.deleteMany(),
+      ])
+
+      res.json({ message: 'Datos transaccionales eliminados correctamente' })
+    } catch (e: any) {
+      if (e.status) return res.status(e.status).json({ error: e.message })
+      next(e)
+    }
+  })
+
+  router.post('/reset-master', async (req: AuthRequest, res, next) => {
+    try {
+      await verifyAdmin(req, req.body.password)
+
+      await prisma.$transaction([
+        prisma.productImage.deleteMany(),
+        prisma.productVehicle.deleteMany(),
+        prisma.productLocation.deleteMany(),
+        prisma.product.updateMany({ where: { defaultLocationId: { not: null } }, data: { defaultLocationId: null } }),
+        prisma.product.deleteMany(),
+        prisma.client.deleteMany(),
+        prisma.supplier.deleteMany(),
+        prisma.vehicle.deleteMany(),
+        prisma.location.deleteMany(),
+        prisma.warehouse.deleteMany(),
+      ])
+
+      res.json({ message: 'Datos maestros eliminados correctamente' })
+    } catch (e: any) {
+      if (e.status) return res.status(e.status).json({ error: e.message })
+      next(e)
+    }
   })
 
   return router

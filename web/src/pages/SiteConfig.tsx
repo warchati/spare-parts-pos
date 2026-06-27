@@ -1,16 +1,24 @@
 import { useState, useEffect } from 'react'
 import api from '../lib/api'
-import { Save, Upload, Store, X } from 'lucide-react'
+import { useAuth } from '../contexts/AuthContext'
+import { Save, Upload, Store, X, AlertTriangle, Database, Package } from 'lucide-react'
 
 const CLOUDINARY_CLOUD = 'vidcanal'
 const CLOUDINARY_PRESET = 'm5vtjzdl'
 
+type ResetMode = 'transactional' | 'master' | null
+
 export default function SiteConfig() {
+  const { user } = useAuth()
   const [config, setConfig] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [resetMode, setResetMode] = useState<ResetMode>(null)
+  const [resetPassword, setResetPassword] = useState('')
+  const [resetting, setResetting] = useState(false)
+  const [resetError, setResetError] = useState('')
 
   useEffect(() => {
     api.get('/store-config').then(res => setConfig(res.data)).catch(() => {}).finally(() => setLoading(false))
@@ -60,6 +68,23 @@ export default function SiteConfig() {
 
   const removeLogo = () => {
     setConfig({ ...config, logoUrl: '' })
+  }
+
+  const handleReset = async () => {
+    if (!resetPassword || !resetMode) return
+    setResetting(true)
+    setResetError('')
+    try {
+      await api.post(`/store-config/reset-${resetMode}`, { password: resetPassword })
+      setResetMode(null)
+      setResetPassword('')
+      alert('Datos eliminados correctamente')
+      window.location.reload()
+    } catch (e: any) {
+      setResetError(e.response?.data?.error || 'Error al resetear datos')
+    } finally {
+      setResetting(false)
+    }
   }
 
   if (loading) return <div className="p-6 text-gray-500">Cargando...</div>
@@ -147,6 +172,44 @@ export default function SiteConfig() {
                 {saving ? 'Guardando...' : saved ? 'Guardado' : 'Guardar'}
               </button>
             </div>
+
+            {user?.role === 'admin' && (
+              <div className="border-t border-red-200 pt-5">
+                <div className="bg-red-50 rounded-lg border border-red-200 p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-red-600" />
+                    <h3 className="text-sm font-semibold text-red-700">Zona de Peligro</h3>
+                  </div>
+                  <p className="text-xs text-red-600">Estas acciones no se pueden deshacer. Requieren tu contraseña de administrador.</p>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <button
+                      onClick={() => setResetMode('transactional')}
+                      className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white text-sm rounded-lg hover:bg-orange-700 transition-colors"
+                    >
+                      <Database className="w-4 h-4" />
+                      Resetear Datos Transaccionales
+                    </button>
+                    <button
+                      onClick={() => setResetMode('master')}
+                      className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition-colors"
+                    >
+                      <Package className="w-4 h-4" />
+                      Resetear Datos Maestros
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-red-700">
+                    <div className="bg-red-100 rounded p-2">
+                      <strong className="block mb-1">📊 Transaccionales</strong>
+                      Ventas, compras, gastos, caja, movimientos de stock, ajustes de inventario, devoluciones, crédito, loyalty, auditoría
+                    </div>
+                    <div className="bg-red-100 rounded p-2">
+                      <strong className="block mb-1">📦 Maestros</strong>
+                      Productos, clientes, proveedores, vehículos, almacenes y ubicaciones
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -173,6 +236,55 @@ export default function SiteConfig() {
           </div>
         </div>
       </div>
+
+      {resetMode && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <AlertTriangle className="w-5 h-5 text-red-600" />
+              <h2 className="text-lg font-bold text-gray-800">
+                {resetMode === 'transactional' ? 'Resetear Datos Transaccionales' : 'Resetear Datos Maestros'}
+              </h2>
+            </div>
+            <p className="text-sm text-gray-600 mb-4">
+              {resetMode === 'transactional'
+                ? 'Esta acción eliminará permanentemente ventas, compras, gastos, movimientos de caja, ajustes de inventario, devoluciones, crédito, transacciones de loyalty y registros de auditoría. Se mantendrán productos, clientes, proveedores, vehículos, almacenes y ubicaciones.'
+                : 'Esta acción eliminará permanentemente productos, clientes, proveedores, vehículos, almacenes y ubicaciones. Se mantendrán las ventas, compras, gastos y demás datos transaccionales.'}
+              Para confirmar, ingresa tu contraseña de administrador.
+            </p>
+            <input
+              type="password"
+              value={resetPassword}
+              onChange={(e) => { setResetPassword(e.target.value); setResetError('') }}
+              placeholder="Tu contraseña de administrador"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-red-500 text-sm mb-3"
+              autoFocus
+              onKeyDown={(e) => e.key === 'Enter' && handleReset()}
+            />
+            {resetError && (
+              <p className="text-sm text-red-600 mb-3">{resetError}</p>
+            )}
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => { setResetMode(null); setResetPassword(''); setResetError('') }}
+                disabled={resetting}
+                className="px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleReset}
+                disabled={resetting || !resetPassword}
+                className={`flex items-center gap-2 px-4 py-2 text-sm text-white rounded-lg disabled:opacity-50 transition-colors ${
+                  resetMode === 'transactional' ? 'bg-orange-600 hover:bg-orange-700' : 'bg-red-600 hover:bg-red-700'
+                }`}
+              >
+                {resetting ? 'Eliminando...' : `Sí, resetear ${resetMode === 'transactional' ? 'transaccionales' : 'maestros'}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
