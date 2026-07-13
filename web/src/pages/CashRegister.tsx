@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import api from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import { can } from '../lib/permissions'
 import { formatCurrency } from '../lib/currency'
-import { DollarSign, Plus, History, Receipt, ArrowUpRight, ArrowDownRight } from 'lucide-react'
+import { DollarSign, Plus, History, Receipt, ArrowUpRight, ArrowDownRight, Download, Filter, X } from 'lucide-react'
 
 export default function CashRegister() {
   const { user } = useAuth()
@@ -16,6 +16,9 @@ export default function CashRegister() {
   const [movementForm, setMovementForm] = useState({ type: 'income', amount: 0, description: '' })
   const [showCloseForm, setShowCloseForm] = useState(false)
   const [closeForm, setCloseForm] = useState({ closingBalance: 0, notes: '' })
+  const [filterStart, setFilterStart] = useState('')
+  const [filterEnd, setFilterEnd] = useState('')
+  const [filterUser, setFilterUser] = useState('')
 
   useEffect(() => { loadData() }, [])
 
@@ -61,6 +64,58 @@ export default function CashRegister() {
   }
 
   const formatDate = (d: string) => new Date(d).toLocaleString('es-AR')
+
+  const uniqueUsers = useMemo(() => {
+    const names = history.map((h: any) => h.user?.name).filter(Boolean)
+    return [...new Set(names)]
+  }, [history])
+
+  const filteredHistory = useMemo(() => {
+    return history.filter((h: any) => {
+      if (filterStart) {
+        const openDate = new Date(h.openingDate)
+        if (openDate < new Date(filterStart)) return false
+      }
+      if (filterEnd) {
+        const openDate = new Date(h.openingDate)
+        const end = new Date(filterEnd)
+        end.setHours(23, 59, 59, 999)
+        if (openDate > end) return false
+      }
+      if (filterUser && h.user?.name !== filterUser) return false
+      return true
+    })
+  }, [history, filterStart, filterEnd, filterUser])
+
+  const clearFilters = () => {
+    setFilterStart('')
+    setFilterEnd('')
+    setFilterUser('')
+  }
+
+  const hasFilters = filterStart || filterEnd || filterUser
+
+  const exportCSV = () => {
+    const headers = ['Apertura', 'Cierre', 'Usuario', 'Monto Apertura', 'Saldo Final', 'Diferencia', 'Notas']
+    const rows = filteredHistory.map((h: any) => [
+      new Date(h.openingDate).toLocaleString('es-AR'),
+      h.closingDate ? new Date(h.closingDate).toLocaleString('es-AR') : '',
+      h.user?.name || '',
+      h.openingBalance.toFixed(2),
+      (h.closingBalance ?? 0).toFixed(2),
+      h.closingBalance != null ? (h.closingBalance - h.openingBalance).toFixed(2) : '',
+      h.notes || '',
+    ])
+
+    const csvContent = [headers, ...rows].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n')
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `historial-caja-${new Date().toISOString().slice(0, 10)}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+  }
 
   if (loading) return <div className="p-6 text-center text-gray-400">Cargando...</div>
 
@@ -193,11 +248,59 @@ export default function CashRegister() {
       )}
 
       <div className="bg-white rounded-xl border border-gray-200 p-5 mt-6">
-        <div className="flex items-center gap-2 mb-4">
-          <History className="w-5 h-5 text-gray-500" />
-          <h2 className="text-lg font-bold text-gray-800">Historial de Cierres</h2>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <History className="w-5 h-5 text-gray-500" />
+            <h2 className="text-lg font-bold text-gray-800">Historial de Cierres</h2>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                if (hasFilters) clearFilters()
+                else document.getElementById('history-filters')?.classList.toggle('hidden')
+              }}
+              className={`flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg border ${hasFilters ? 'bg-blue-50 border-blue-300 text-blue-700' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}
+            >
+              <Filter className="w-4 h-4" />
+              Filtros{hasFilters ? ' (activos)' : ''}
+            </button>
+            <button
+              onClick={exportCSV}
+              className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50"
+            >
+              <Download className="w-4 h-4" /> Excel
+            </button>
+          </div>
         </div>
-        {history.length > 0 ? (
+
+        <div id="history-filters" className={`${hasFilters ? '' : 'hidden'} mb-4 bg-gray-50 rounded-lg p-3`}>
+          <div className="flex items-center gap-3 flex-wrap">
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Desde</label>
+              <input type="date" value={filterStart} onChange={(e) => setFilterStart(e.target.value)} className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Hasta</label>
+              <input type="date" value={filterEnd} onChange={(e) => setFilterEnd(e.target.value)} className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Usuario</label>
+              <select value={filterUser} onChange={(e) => setFilterUser(e.target.value)} className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">Todos</option>
+                {uniqueUsers.map((name: string) => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
+            </div>
+            {hasFilters && (
+              <button onClick={clearFilters} className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 mt-4">
+                <X className="w-3.5 h-3.5" /> Limpiar
+              </button>
+            )}
+          </div>
+        </div>
+
+        {filteredHistory.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -210,7 +313,7 @@ export default function CashRegister() {
                 </tr>
               </thead>
               <tbody>
-                {history.map((h: any) => (
+                {filteredHistory.map((h: any) => (
                   <tr key={h.id} className="border-b border-gray-50">
                     <td className="py-2 text-sm">{formatDate(h.openingDate)}</td>
                     <td className="py-2 text-sm">{h.closingDate ? formatDate(h.closingDate) : '-'}</td>
@@ -225,7 +328,7 @@ export default function CashRegister() {
             </table>
           </div>
         ) : (
-          <p className="text-sm text-gray-400">No hay cierres registrados</p>
+          <p className="text-sm text-gray-400">{hasFilters ? 'No hay resultados para los filtros seleccionados' : 'No hay cierres registrados'}</p>
         )}
       </div>
 
