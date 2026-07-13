@@ -100,8 +100,11 @@ export default function CashRegister() {
                 <p className="font-bold">{formatCurrency(current.openingBalance)}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Ingresos</p>
-                <p className="font-bold text-green-600">{formatCurrency(current.movements?.filter((m: any) => m.type === 'income').reduce((sum: number, m: any) => sum + m.amount, 0) || 0)}</p>
+                <p className="text-sm text-gray-500">Ingresos (ventas + movimientos)</p>
+                <p className="font-bold text-green-600">{formatCurrency(
+                  (current.sales?.reduce((sum: number, s: any) => sum + s.total, 0) || 0)
+                  + (current.movements?.filter((m: any) => m.type === 'income').reduce((sum: number, m: any) => sum + m.amount, 0) || 0)
+                )}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-500">Egresos</p>
@@ -111,6 +114,7 @@ export default function CashRegister() {
                 <p className="text-sm text-gray-500">Saldo Esperado</p>
                 <p className="font-bold">{formatCurrency(
                   (current.openingBalance || 0)
+                  + (current.sales?.reduce((sum: number, s: any) => sum + s.total, 0) || 0)
                   + (current.movements?.filter((m: any) => m.type === 'income').reduce((sum: number, m: any) => sum + m.amount, 0) || 0)
                   - (current.movements?.filter((m: any) => m.type === 'expense').reduce((sum: number, m: any) => sum + m.amount, 0) || 0)
                 )}</p>
@@ -281,15 +285,17 @@ export default function CashRegister() {
           <div className="bg-white rounded-2xl w-full max-w-sm p-6 mx-4">
             <h2 className="text-lg font-bold mb-4">Cerrar Caja</h2>
             {(() => {
+              const salesTotal = current.sales?.reduce((sum: number, s: any) => sum + s.total, 0) || 0
               const totalIncome = current.movements?.filter((m: any) => m.type === 'income').reduce((sum: number, m: any) => sum + m.amount, 0) || 0
               const totalExpense = current.movements?.filter((m: any) => m.type === 'expense').reduce((sum: number, m: any) => sum + m.amount, 0) || 0
-              const expected = (current.openingBalance || 0) + totalIncome - totalExpense
+              const expected = (current.openingBalance || 0) + salesTotal + totalIncome - totalExpense
               const diff = closeForm.closingBalance - expected
               return (
                 <>
                   <div className="bg-gray-50 rounded-lg p-3 mb-4 space-y-1.5 text-sm">
                     <div className="flex justify-between"><span className="text-gray-500">Apertura:</span><span className="font-medium">{formatCurrency(current.openingBalance)}</span></div>
-                    <div className="flex justify-between"><span className="text-gray-500">+ Ingresos:</span><span className="font-medium text-green-600">{formatCurrency(totalIncome)}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-500">+ Ventas:</span><span className="font-medium text-green-600">{formatCurrency(salesTotal)}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-500">+ Otros ingresos:</span><span className="font-medium text-green-600">{formatCurrency(totalIncome)}</span></div>
                     <div className="flex justify-between"><span className="text-gray-500">- Egresos:</span><span className="font-medium text-red-600">{formatCurrency(totalExpense)}</span></div>
                     <div className="flex justify-between border-t border-gray-200 pt-1.5"><span className="font-bold">Saldo Esperado:</span><span className="font-bold">{formatCurrency(expected)}</span></div>
                   </div>
