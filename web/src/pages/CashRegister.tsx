@@ -95,24 +95,76 @@ export default function CashRegister() {
 
   const hasFilters = filterStart || filterEnd || filterUser
 
-  const exportCSV = () => {
-    const headers = ['Apertura', 'Cierre', 'Usuario', 'Monto Apertura', 'Saldo Final', 'Diferencia', 'Notas']
-    const rows = filteredHistory.map((h: any) => [
-      new Date(h.openingDate).toLocaleString('es-AR'),
-      h.closingDate ? new Date(h.closingDate).toLocaleString('es-AR') : '',
-      h.user?.name || '',
-      h.openingBalance.toFixed(2),
-      (h.closingBalance ?? 0).toFixed(2),
-      h.closingBalance != null ? (h.closingBalance - h.openingBalance).toFixed(2) : '',
-      h.notes || '',
-    ])
+  const exportExcel = () => {
+    const fmt = (n: number) => n.toLocaleString('es-DO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    const fmtDate = (d: string) => new Date(d).toLocaleString('es-DO')
+    const totalSaldoFinal = filteredHistory.reduce((s: number, h: any) => s + (h.closingBalance ?? 0), 0)
+    const totalDiferencia = filteredHistory.reduce((s: number, h: any) => s + (h.closingBalance != null ? h.closingBalance - h.openingBalance : 0), 0)
+    const totalApertura = filteredHistory.reduce((s: number, h: any) => s + h.openingBalance, 0)
 
-    const csvContent = [headers, ...rows].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n')
-    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' })
+    const rows = filteredHistory.map((h: any) => {
+      const diff = h.closingBalance != null ? h.closingBalance - h.openingBalance : 0
+      const diffColor = diff === 0 ? '#166534' : diff > 0 ? '#1e40af' : '#b91c1c'
+      return `<tr>
+        <td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;">${fmtDate(h.openingDate)}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;">${h.closingDate ? fmtDate(h.closingDate) : '-'}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;">${h.user?.name || ''}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;text-align:right;font-family:Consolas,monospace;">${fmt(h.openingBalance)}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;text-align:right;font-family:Consolas,monospace;">${fmt(h.closingBalance ?? 0)}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;text-align:right;font-family:Consolas,monospace;color:${diffColor};font-weight:600;">${h.closingBalance != null ? fmt(diff) : '-'}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;">${h.notes || ''}</td>
+      </tr>`
+    }).join('')
+
+    const diffTotalColor = totalDiferencia === 0 ? '#166534' : totalDiferencia > 0 ? '#1e40af' : '#b91c1c'
+
+    const html = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body>
+<table style="border-collapse:collapse;font-family:Calibri,Arial,sans-serif;font-size:11pt;width:100%;">
+  <thead>
+    <tr>
+      <td colspan="7" style="padding:12px 10px;font-size:16pt;font-weight:bold;color:#1e3a5f;border-bottom:3px solid #1e3a5f;">
+        Historial de Cierres de Caja
+      </td>
+    </tr>
+    <tr>
+      <td colspan="7" style="padding:2px 10px 10px;font-size:10pt;color:#6b7280;">
+        Generado: ${new Date().toLocaleString('es-DO')} | Registros: ${filteredHistory.length}
+      </td>
+    </tr>
+    <tr style="background-color:#1e3a5f;color:#ffffff;">
+      <th style="padding:8px 10px;text-align:left;font-weight:600;">Apertura</th>
+      <th style="padding:8px 10px;text-align:left;font-weight:600;">Cierre</th>
+      <th style="padding:8px 10px;text-align:left;font-weight:600;">Usuario</th>
+      <th style="padding:8px 10px;text-align:right;font-weight:600;">Monto Apertura</th>
+      <th style="padding:8px 10px;text-align:right;font-weight:600;">Saldo Final</th>
+      <th style="padding:8px 10px;text-align:right;font-weight:600;">Diferencia</th>
+      <th style="padding:8px 10px;text-align:left;font-weight:600;">Notas</th>
+    </tr>
+  </thead>
+  <tbody>
+    ${rows}
+  </tbody>
+  <tfoot>
+    <tr style="background-color:#f3f4f6;font-weight:bold;border-top:2px solid #1e3a5f;">
+      <td colspan="3" style="padding:8px 10px;font-size:10pt;">TOTALES (${filteredHistory.length} sesiones)</td>
+      <td style="padding:8px 10px;text-align:right;font-family:Consolas,monospace;">${fmt(totalApertura)}</td>
+      <td style="padding:8px 10px;text-align:right;font-family:Consolas,monospace;">${fmt(totalSaldoFinal)}</td>
+      <td style="padding:8px 10px;text-align:right;font-family:Consolas,monospace;color:${diffTotalColor};">${fmt(totalDiferencia)}</td>
+      <td style="padding:8px 10px;"></td>
+    </tr>
+  </tfoot>
+</table>
+</body>
+</html>`
+
+    const blob = new Blob(['\uFEFF' + html], { type: 'application/vnd.ms-excel;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `historial-caja-${new Date().toISOString().slice(0, 10)}.csv`
+    link.download = `historial-caja-${new Date().toISOString().slice(0, 10)}.xls`
     link.click()
     URL.revokeObjectURL(url)
   }
@@ -265,7 +317,7 @@ export default function CashRegister() {
               Filtros{hasFilters ? ' (activos)' : ''}
             </button>
             <button
-              onClick={exportCSV}
+              onClick={exportExcel}
               className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50"
             >
               <Download className="w-4 h-4" /> Excel
