@@ -15,7 +15,7 @@ export function cashRegisterRoutes(prisma: PrismaClient) {
     } catch (e) { next(e) }
   })
 
-  router.get('/current', requirePermission(prisma, 'cashRegister', 'movements'), async (req, res, next) => {
+  router.get('/current', requirePermission(prisma, 'cashRegister', 'open'), async (req, res, next) => {
     try {
       const register = await prisma.cashRegister.findFirst({
         where: { status: 'open' },
@@ -41,8 +41,6 @@ export function cashRegisterRoutes(prisma: PrismaClient) {
       const { openingBalance, notes } = req.body
       const userId = req.user!.id
 
-      // Atomic check-and-create: try to create with a unique constraint on open status
-      // Use a transaction to prevent race condition
       const register = await prisma.$transaction(async (tx) => {
         const openRegister = await tx.cashRegister.findFirst({ where: { status: 'open' } })
         if (openRegister) throw new Error('Already an open register exists')
@@ -61,6 +59,7 @@ export function cashRegisterRoutes(prisma: PrismaClient) {
       const { closingBalance, notes } = req.body
       const existing = await prisma.cashRegister.findUnique({ where: { id: Number(req.params.id) } })
       if (!existing) return res.status(404).json({ error: 'Cash register not found' })
+      if (existing.status !== 'open') return res.status(400).json({ error: 'This cash register is already closed' })
 
       const register = await prisma.cashRegister.update({
         where: { id: Number(req.params.id) },
@@ -70,15 +69,24 @@ export function cashRegisterRoutes(prisma: PrismaClient) {
     } catch (e) { next(e) }
   })
 
-  router.post('/:id/movements', requirePermission(prisma, 'cashRegister', 'movements'), async (req, res, next) => {
+  router.post('/:id/movements', requirePermission(prisma, 'cashRegister', 'open'), async (req, res, next) => {
     try {
       const { type, amount, description } = req.body
+      const id = Number(req.params.id)
+
+      const existing = await prisma.cashRegister.findUnique({ where: { id } })
+      if (!existing) return res.status(404).json({ error: 'Cash register not found' })
+      if (existing.status !== 'open') return res.status(400).json({ error: 'Cannot add movements to a closed cash register' })
+
+      if (!amount || amount <= 0) return res.status(400).json({ error: 'Amount must be greater than 0' })
+      if (!description || !description.trim()) return res.status(400).json({ error: 'Description is required' })
+
       const movement = await prisma.cashMovement.create({
         data: {
-          cashRegisterId: Number(req.params.id),
+          cashRegisterId: id,
           type: type || 'income',
           amount,
-          description,
+          description: description.trim(),
         },
       })
       res.status(201).json(movement)

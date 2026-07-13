@@ -61,6 +61,7 @@ export default function POS() {
   const [showInvoice, setShowInvoice] = useState(false)
   const [lastSale, setLastSale] = useState<any>(null)
   const [storeConfig, setStoreConfig] = useState<any>(null)
+  const [currentRegister, setCurrentRegister] = useState<any>(null)
   const searchRef = useRef<HTMLInputElement>(null)
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
@@ -69,7 +70,15 @@ export default function POS() {
     loadCurrencies()
     loadDefaultTax()
     loadLoyaltyConfig()
+    loadCurrentRegister()
   }, [])
+
+  const loadCurrentRegister = async () => {
+    try {
+      const res = await api.get('/cash-register/current')
+      setCurrentRegister(res.data)
+    } catch { setCurrentRegister(null) }
+  }
 
   const loadDefaultTax = async () => {
     try {
@@ -179,6 +188,7 @@ export default function POS() {
         clientId: client?.id || null,
         userId: user!.id,
         paymentMethod,
+        cashRegisterId: currentRegister?.id || null,
         currencyId: selectedCurrency?.id || null,
         pointsToRedeem: pointsToRedeem || 0,
       })

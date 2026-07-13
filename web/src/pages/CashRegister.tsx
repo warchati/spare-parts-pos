@@ -27,7 +27,7 @@ export default function CashRegister() {
         api.get('/cash-register'),
       ])
       setCurrent(curRes?.data || null)
-      setHistory(histRes.data)
+      setHistory(histRes.data.filter((r: any) => r.status === 'closed'))
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
   }
@@ -101,15 +101,19 @@ export default function CashRegister() {
               </div>
               <div>
                 <p className="text-sm text-gray-500">Ingresos</p>
-                <p className="font-bold text-green-600">{formatCurrency(current.totalIncome)}</p>
+                <p className="font-bold text-green-600">{formatCurrency(current.movements?.filter((m: any) => m.type === 'income').reduce((sum: number, m: any) => sum + m.amount, 0) || 0)}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-500">Egresos</p>
-                <p className="font-bold text-red-600">{formatCurrency(current.totalExpense)}</p>
+                <p className="font-bold text-red-600">{formatCurrency(current.movements?.filter((m: any) => m.type === 'expense').reduce((sum: number, m: any) => sum + m.amount, 0) || 0)}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-500">Saldo Esperado</p>
-                <p className="font-bold">{formatCurrency((current.openingBalance || 0) + (current.totalIncome || 0) - (current.totalExpense || 0))}</p>
+                <p className="font-bold">{formatCurrency(
+                  (current.openingBalance || 0)
+                  + (current.movements?.filter((m: any) => m.type === 'income').reduce((sum: number, m: any) => sum + m.amount, 0) || 0)
+                  - (current.movements?.filter((m: any) => m.type === 'expense').reduce((sum: number, m: any) => sum + m.amount, 0) || 0)
+                )}</p>
               </div>
             </div>
             <div className="mt-3 text-sm text-gray-500">

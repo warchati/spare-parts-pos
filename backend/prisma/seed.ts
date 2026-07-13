@@ -188,7 +188,7 @@ async function main() {
       sales: ['view'],
       purchases: [],
       dashboard: [],
-      cashRegister: [],
+      cashRegister: ['open', 'close', 'movements'],
       users: [],
       vehicles: [],
       credit: [],

@@ -65,7 +65,7 @@ export const PERMISSIONS: Record<string, Record<string, string[]>> = {
     sales: ['view'],
     purchases: [],
     dashboard: [],
-    cashRegister: [],
+    cashRegister: ['open', 'close', 'movements'],
     users: [],
     vehicles: [],
     credit: [],

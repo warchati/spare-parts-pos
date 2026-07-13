@@ -14,8 +14,9 @@ model User {
   password String
   role     String   @default("cashier")
   active   Boolean  @default(true)
-  sales    Sale[]
-  purchases PurchaseOrder[]
+  sales          Sale[]
+  purchases      PurchaseOrder[]
+  cashRegisters  CashRegister[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -87,6 +88,8 @@ model Sale {
   paymentMethod  String     @default("cash")
   paymentDetails String     @default("")
   status         String     @default("completed")
+  cashRegisterId Int?
+  cashRegister   CashRegister? @relation(fields: [cashRegisterId], references: [id])
   createdAt      DateTime   @default(now())
 }
 
@@ -100,6 +103,33 @@ model SaleItem {
   quantity   Int      @default(1)
   unitPrice  Float
   totalPrice Float
+}
+
+model CashRegister {
+  id             Int             @id @default(autoincrement())
+  userId         Int
+  user           User            @relation(fields: [userId], references: [id])
+  openingBalance Float           @default(0)
+  closingBalance Float?
+  openingDate    DateTime        @default(now())
+  closingDate    DateTime?
+  status         String          @default("open")
+  notes          String          @default("")
+  sales          Sale[]
+  movements      CashMovement[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+}
+
+model CashMovement {
+  id             Int          @id @default(autoincrement())
+  cashRegisterId Int
+  cashRegister   CashRegister @relation(fields: [cashRegisterId], references: [id])
+  type           String       @default("income")
+  amount         Float
+  description    String
+  reference      String       @default("")
+  createdAt      DateTime     @default(now())
 }
 
 model PurchaseOrder {

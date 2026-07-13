@@ -53,6 +53,7 @@ export interface Sale {
   id: number;
   clientId: number | null;
   userId: number;
+  cashRegisterId: number | null;
   items: SaleItem[];
   subtotal: number;
   discount: number;
@@ -106,4 +107,30 @@ export interface User {
   name: string;
   role: 'admin' | 'cashier' | 'viewer';
   active: boolean;
+}
+
+export interface CashRegister {
+  id: number;
+  userId: number;
+  user?: { id: number; username: string; name: string };
+  openingBalance: number;
+  closingBalance: number | null;
+  openingDate: string;
+  closingDate: string | null;
+  status: 'open' | 'closed';
+  notes: string;
+  sales: Sale[];
+  movements: CashMovement[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CashMovement {
+  id: number;
+  cashRegisterId: number;
+  type: 'income' | 'expense';
+  amount: number;
+  description: string;
+  reference: string;
+  createdAt: string;
 }

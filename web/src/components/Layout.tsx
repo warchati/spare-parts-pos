@@ -13,7 +13,7 @@ const navItems = [
   { to: '/suppliers', label: 'Proveedores', icon: Truck, module: 'suppliers', action: 'view' },
   { to: '/sales', label: 'Ventas', icon: Receipt, module: 'sales', action: 'view' },
   { to: '/purchases', label: 'Compras', icon: ClipboardList, module: 'purchases', action: 'view' },
-  { to: '/cash-register', label: 'Caja', icon: DollarSign, module: 'cashRegister', action: 'movements' },
+  { to: '/cash-register', label: 'Caja', icon: DollarSign, module: 'cashRegister', action: 'open' },
   { to: '/users', label: 'Usuarios', icon: UserCog, module: 'users', action: 'view' },
   { to: '/permissions', label: 'Permisos', icon: Shield, module: 'permissions', action: 'edit' },
   { to: '/vehicles', label: 'Vehículos', icon: Car, module: 'vehicles', action: 'view' },
