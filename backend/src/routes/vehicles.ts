@@ -12,8 +12,8 @@ export function vehicleRoutes(prisma: PrismaClient) {
 
       if (q) {
         where.OR = [
-          { brand: { contains: q as string } },
-          { model: { contains: q as string } },
+          { brand: { contains: q as string, mode: 'insensitive' } },
+          { model: { contains: q as string, mode: 'insensitive' } },
         ]
       }
 

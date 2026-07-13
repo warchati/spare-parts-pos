@@ -12,9 +12,9 @@ export function supplierRoutes(prisma: PrismaClient) {
 
       if (q) {
         where.OR = [
-          { name: { contains: q as string } },
-          { contact: { contains: q as string } },
-          { phone: { contains: q as string } },
+          { name: { contains: q as string, mode: 'insensitive' } },
+          { contact: { contains: q as string, mode: 'insensitive' } },
+          { phone: { contains: q as string, mode: 'insensitive' } },
         ]
       }
 

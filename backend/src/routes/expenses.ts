@@ -36,7 +36,7 @@ export function expenseRoutes(prisma: PrismaClient) {
         }
       }
       if (category) where.category = category
-      if (q) where.description = { contains: q as string }
+      if (q) where.description = { contains: q as string, mode: 'insensitive' as const }
 
       const expenses = await prisma.expense.findMany({
         where,

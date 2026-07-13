@@ -12,10 +12,10 @@ export function clientRoutes(prisma: PrismaClient) {
 
       if (q) {
         where.OR = [
-          { name: { contains: q as string } },
-          { phone: { contains: q as string } },
-          { document: { contains: q as string } },
-          { vehicle: { contains: q as string } },
+          { name: { contains: q as string, mode: 'insensitive' } },
+          { phone: { contains: q as string, mode: 'insensitive' } },
+          { document: { contains: q as string, mode: 'insensitive' } },
+          { vehicle: { contains: q as string, mode: 'insensitive' } },
         ]
       }
 

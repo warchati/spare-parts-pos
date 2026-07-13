@@ -13,10 +13,10 @@ export function productRoutes(prisma: PrismaClient) {
 
       if (q) {
         where.OR = [
-          { name: { contains: q as string } },
-          { code: { contains: q as string } },
-          { barcode: { contains: q as string } },
-          { oemNumber: { contains: q as string } },
+          { name: { contains: q as string, mode: 'insensitive' } },
+          { code: { contains: q as string, mode: 'insensitive' } },
+          { barcode: { contains: q as string, mode: 'insensitive' } },
+          { oemNumber: { contains: q as string, mode: 'insensitive' } },
         ]
       }
       if (category) where.category = category
