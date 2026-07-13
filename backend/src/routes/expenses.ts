@@ -108,19 +108,37 @@ export function expenseRoutes(prisma: PrismaClient) {
       const rate = await getDefaultTaxRate(prisma)
       const taxAmount = calcTaxAmount(Number(amount), rate)
 
-      const expense = await prisma.expense.create({
-        data: {
-          description,
-          amount: Number(amount),
-          category: category || 'other',
-          paymentMethod: paymentMethod || 'cash',
-          reference: reference || '',
-          notes: notes || '',
-          attachmentUrl: attachmentUrl || '',
-          taxAmount,
-          taxDeductible: taxDeductible !== undefined ? taxDeductible : true,
-          userId: req.user!.id,
-        },
+      const expense = await prisma.$transaction(async (tx) => {
+        const result = await tx.expense.create({
+          data: {
+            description,
+            amount: Number(amount),
+            category: category || 'other',
+            paymentMethod: paymentMethod || 'cash',
+            reference: reference || '',
+            notes: notes || '',
+            attachmentUrl: attachmentUrl || '',
+            taxAmount,
+            taxDeductible: taxDeductible !== undefined ? taxDeductible : true,
+            userId: req.user!.id,
+          },
+        })
+
+        if ((paymentMethod || 'cash') === 'cash') {
+          const openRegister = await tx.cashRegister.findFirst({ where: { status: 'open' } })
+          if (openRegister) {
+            await tx.cashMovement.create({
+              data: {
+                cashRegisterId: openRegister.id,
+                type: 'expense',
+                amount: Number(amount),
+                description: `Gasto: ${description}`,
+              },
+            })
+          }
+        }
+
+        return result
       })
 
       await logAudit(prisma, req, 'CREATE', 'Expense', expense.id, { amount, taxAmount, category, description })
