@@ -3,7 +3,7 @@ import api from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import { can } from '../lib/permissions'
 import { formatCurrency } from '../lib/currency'
-import { DollarSign, Plus, X, History, Receipt, ArrowUpRight, ArrowDownRight } from 'lucide-react'
+import { DollarSign, Plus, History, Receipt, ArrowUpRight, ArrowDownRight } from 'lucide-react'
 
 export default function CashRegister() {
   const { user } = useAuth()
@@ -280,18 +280,40 @@ export default function CashRegister() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl w-full max-w-sm p-6 mx-4">
             <h2 className="text-lg font-bold mb-4">Cerrar Caja</h2>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Saldo Final</label>
-                <input type="number" value={closeForm.closingBalance} onChange={(e) => setCloseForm({...closeForm, closingBalance: Number(e.target.value)})} className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Notas</label>
-                <input type="text" value={closeForm.notes} onChange={(e) => setCloseForm({...closeForm, notes: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-            </div>
+            {(() => {
+              const totalIncome = current.movements?.filter((m: any) => m.type === 'income').reduce((sum: number, m: any) => sum + m.amount, 0) || 0
+              const totalExpense = current.movements?.filter((m: any) => m.type === 'expense').reduce((sum: number, m: any) => sum + m.amount, 0) || 0
+              const expected = (current.openingBalance || 0) + totalIncome - totalExpense
+              const diff = closeForm.closingBalance - expected
+              return (
+                <>
+                  <div className="bg-gray-50 rounded-lg p-3 mb-4 space-y-1.5 text-sm">
+                    <div className="flex justify-between"><span className="text-gray-500">Apertura:</span><span className="font-medium">{formatCurrency(current.openingBalance)}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-500">+ Ingresos:</span><span className="font-medium text-green-600">{formatCurrency(totalIncome)}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-500">- Egresos:</span><span className="font-medium text-red-600">{formatCurrency(totalExpense)}</span></div>
+                    <div className="flex justify-between border-t border-gray-200 pt-1.5"><span className="font-bold">Saldo Esperado:</span><span className="font-bold">{formatCurrency(expected)}</span></div>
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Saldo Real (contado)</label>
+                      <input type="number" value={closeForm.closingBalance} onChange={(e) => setCloseForm({...closeForm, closingBalance: Number(e.target.value)})} className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" />
+                    </div>
+                    {closeForm.closingBalance > 0 && (
+                      <div className={`flex justify-between text-sm font-bold px-1 ${diff === 0 ? 'text-green-600' : diff > 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                        <span>{diff === 0 ? 'Cuadra' : diff > 0 ? 'Sobrante:' : 'Faltante:'}</span>
+                        <span>{formatCurrency(Math.abs(diff))}</span>
+                      </div>
+                    )}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Notas</label>
+                      <input type="text" value={closeForm.notes} onChange={(e) => setCloseForm({...closeForm, notes: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" />
+                    </div>
+                  </div>
+                </>
+              )
+            })()}
             <div className="flex gap-3 mt-6">
-              <button onClick={() => setShowCloseForm(false)} className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50">Cancelar</button>
+              <button onClick={() => { setShowCloseForm(false); setCloseForm({ closingBalance: 0, notes: '' }) }} className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50">Cancelar</button>
               <button onClick={closeRegister} className="flex-1 px-4 py-2.5 bg-orange-500 text-white rounded-lg hover:bg-orange-600">Cerrar</button>
             </div>
           </div>

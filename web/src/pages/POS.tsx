@@ -224,6 +224,12 @@ export default function POS() {
   return (
     <div className="h-full flex flex-col lg:flex-row">
       <div className="flex-1 flex flex-col p-4">
+        {!currentRegister && can(user?.role, 'cashRegister', 'open') && (
+          <div className="bg-amber-50 border border-amber-300 text-amber-800 px-4 py-2.5 rounded-xl mb-4 text-sm flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+            No hay caja abierta. Las ventas no se vincularán a una sesión de caja.
+          </div>
+        )}
         <div className="relative mb-4">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
           <input
