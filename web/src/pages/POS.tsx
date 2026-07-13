@@ -3,7 +3,7 @@ import api from '../lib/api'
 import { formatCurrency } from '../lib/currency'
 import { useAuth } from '../contexts/AuthContext'
 import { can } from '../lib/permissions'
-import { Search, Plus, Minus, Trash2, X, User, CreditCard, DollarSign, Building2, Award, Gift } from 'lucide-react'
+import { Search, Plus, Minus, Trash2, X, User, CreditCard, DollarSign, Building2, Award, Gift, AlertTriangle } from 'lucide-react'
 import InvoiceReceipt from './InvoiceReceipt'
 
 interface Product {
