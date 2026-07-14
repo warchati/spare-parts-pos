@@ -152,7 +152,7 @@ export default function AuditLog() {
                     </td>
                     <td className="px-4 py-2.5">{ENTITY_LABELS[log.entity] || log.entity}</td>
                     <td className="px-4 py-2.5 font-mono text-gray-500">#{log.entityId || '-'}</td>
-                    <td className="px-4 py-2.5 text-xs text-gray-500 max-w-xs truncate">{formatMetadata(log.metadata)}</td>
+                    <td className="px-4 py-2.5 text-xs text-gray-500 whitespace-normal">{formatMetadata(log.metadata)}</td>
                     <td className="px-4 py-2.5 text-xs text-gray-400 font-mono">{log.ip || '-'}</td>
                   </tr>
                 ))}
