@@ -8,10 +8,28 @@ export function cashRegisterRoutes(prisma: PrismaClient) {
   router.get('/', requirePermission(prisma, 'cashRegister', 'movements'), async (req, res, next) => {
     try {
       const registers = await prisma.cashRegister.findMany({
-        include: { user: { select: { id: true, username: true, name: true } } },
+        include: {
+          user: { select: { id: true, username: true, name: true } },
+          sales: { select: { total: true, paymentMethod: true, status: true } },
+          movements: { select: { type: true, amount: true } },
+        },
         orderBy: { openingDate: 'desc' },
       })
-      res.json(registers)
+      const result = registers.map(r => {
+        const cashSales = r.sales
+          .filter((s: any) => s.paymentMethod === 'cash' && s.status === 'completed')
+          .reduce((sum: number, s: any) => sum + s.total, 0)
+        const totalIncome = r.movements
+          .filter((m: any) => m.type === 'income')
+          .reduce((sum: number, m: any) => sum + m.amount, 0)
+        const totalExpense = r.movements
+          .filter((m: any) => m.type === 'expense')
+          .reduce((sum: number, m: any) => sum + m.amount, 0)
+        const expectedBalance = r.openingBalance + cashSales + totalIncome - totalExpense
+        const difference = r.closingBalance != null ? r.closingBalance - expectedBalance : null
+        return { ...r, totalIncome, totalExpense, cashSales, expectedBalance, difference }
+      })
+      res.json(result)
     } catch (e) { next(e) }
   })
 

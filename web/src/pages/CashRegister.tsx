@@ -99,11 +99,11 @@ export default function CashRegister() {
     const fmt = (n: number) => n.toLocaleString('es-DO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
     const fmtDate = (d: string) => new Date(d).toLocaleString('es-DO')
     const totalSaldoFinal = filteredHistory.reduce((s: number, h: any) => s + (h.closingBalance ?? 0), 0)
-    const totalDiferencia = filteredHistory.reduce((s: number, h: any) => s + (h.closingBalance != null ? h.closingBalance - h.openingBalance : 0), 0)
+    const totalDiferencia = filteredHistory.reduce((s: number, h: any) => s + (h.difference ?? 0), 0)
     const totalApertura = filteredHistory.reduce((s: number, h: any) => s + h.openingBalance, 0)
 
     const rows = filteredHistory.map((h: any) => {
-      const diff = h.closingBalance != null ? h.closingBalance - h.openingBalance : 0
+      const diff = h.difference ?? 0
       const diffColor = diff === 0 ? '#166534' : diff > 0 ? '#1e40af' : '#b91c1c'
       return `<tr>
         <td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;">${fmtDate(h.openingDate)}</td>
@@ -371,8 +371,8 @@ export default function CashRegister() {
                     <td className="py-2 text-sm">{h.closingDate ? formatDate(h.closingDate) : '-'}</td>
                     <td className="py-2">{h.user?.name}</td>
                     <td className="py-2 text-right font-mono">{formatCurrency(h.closingBalance)}</td>
-                    <td className={`py-2 text-right font-mono ${((h.closingBalance ?? 0) - h.openingBalance) !== 0 ? 'text-red-600' : 'text-green-600'}`}>
-                      {h.closingBalance != null ? formatCurrency(h.closingBalance - h.openingBalance) : '-'}
+                    <td className={`py-2 text-right font-mono ${h.difference != null && h.difference > 0 ? 'text-blue-600' : h.difference != null && h.difference < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                      {h.difference != null ? formatCurrency(h.difference) : '-'}
                     </td>
                   </tr>
                 ))}
