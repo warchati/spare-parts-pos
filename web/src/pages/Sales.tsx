@@ -18,6 +18,7 @@ export default function Sales() {
   const [endDate, setEndDate] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [paymentFilter, setPaymentFilter] = useState('')
+  const [userFilter, setUserFilter] = useState('')
   const [clientFilter, setClientFilter] = useState('')
   const [clientResults, setClientResults] = useState<any[]>([])
   const [selectedClient, setSelectedClient] = useState<{ id: number; name: string } | null>(null)
@@ -38,7 +39,7 @@ export default function Sales() {
     }
   }
 
-  useEffect(() => { loadSales() }, [])
+  useEffect(() => { loadSales() }, [statusFilter, paymentFilter, userFilter, startDate, endDate, selectedClient])
 
   const loadSales = async () => {
     try {
@@ -47,6 +48,7 @@ export default function Sales() {
       if (endDate) params.end = endDate
       if (statusFilter) params.status = statusFilter
       if (paymentFilter) params.paymentMethod = paymentFilter
+      if (userFilter) params.userId = userFilter
       if (selectedClient) params.clientId = selectedClient.id
       const res = await api.get('/sales', { params })
       setSales(res.data)
@@ -70,8 +72,11 @@ export default function Sales() {
   const filteredSales = sales.filter(s =>
     !search ||
     s.client?.name?.toLowerCase().includes(search.toLowerCase()) ||
+    s.user?.name?.toLowerCase().includes(search.toLowerCase()) ||
     s.items?.some((i: any) => i.productName.toLowerCase().includes(search.toLowerCase()))
   )
+
+  const uniqueUsers = [...new Map(sales.filter(s => s.user).map(s => [s.user.id, s.user])).values()]
 
   return (
     <div className="p-6">
@@ -101,6 +106,10 @@ export default function Sales() {
           <option value="card">Tarjeta</option>
           <option value="transfer">Transferencia</option>
           <option value="credit">Crédito</option>
+        </select>
+        <select value={userFilter} onChange={(e) => setUserFilter(e.target.value)} className="px-3 py-2.5 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+          <option value="">Todos los vendedores</option>
+          {uniqueUsers.map((u: any) => <option key={u.id} value={u.id}>{u.name}</option>)}
         </select>
         <button onClick={() => setShowClientModal(true)} className="flex items-center gap-2 px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm">
           <User className="w-4 h-4" />
@@ -147,6 +156,7 @@ export default function Sales() {
               <th className="text-left px-4 py-3">#</th>
               <th className="text-left px-4 py-3">Factura</th>
               <th className="text-left px-4 py-3">Cliente</th>
+              <th className="text-left px-4 py-3">Vendedor</th>
               <th className="text-left px-4 py-3">Concepto</th>
               <th className="text-left px-4 py-3">Fecha</th>
               <th className="text-left px-4 py-3">Pago</th>
@@ -160,6 +170,7 @@ export default function Sales() {
                 <td className="px-4 py-3 font-mono text-sm text-gray-500">#{s.id}</td>
                 <td className="px-4 py-3 font-mono text-sm text-blue-600">{s.invoiceNumber || formatInvoice(s.id)}</td>
                 <td className="px-4 py-3 font-medium">{s.client?.name || 'Consumidor Final'}</td>
+                <td className="px-4 py-3 text-sm text-gray-600">{s.user?.name || '-'}</td>
                 <td className="px-4 py-3 text-sm text-gray-500 max-w-[200px] truncate">
                   {s.items?.map((i: any) => i.productName).join(', ')}
                 </td>
@@ -186,7 +197,7 @@ export default function Sales() {
               </tr>
             ))}
             {filteredSales.length === 0 && (
-              <tr><td colSpan={8} className="text-center py-8 text-gray-400">No hay ventas</td></tr>
+              <tr><td colSpan={9} className="text-center py-8 text-gray-400">No hay ventas</td></tr>
             )}
           </tbody>
         </table>

@@ -7,7 +7,7 @@ export function saleRoutes(prisma: PrismaClient) {
 
   router.get('/', requirePermission(prisma, 'sales', 'view'), async (req, res, next) => {
     try {
-      const { start, end, clientId, status, paymentMethod } = req.query
+      const { start, end, clientId, status, paymentMethod, userId } = req.query
       const where: any = {}
 
       if (start || end) {
@@ -26,6 +26,7 @@ export function saleRoutes(prisma: PrismaClient) {
       if (clientId) where.clientId = Number(clientId)
       if (status) where.status = status
       if (paymentMethod) where.paymentMethod = paymentMethod
+      if (userId) where.userId = Number(userId)
 
       const sales = await prisma.sale.findMany({
         where,
