@@ -209,7 +209,7 @@ export default function CashRegister() {
               <div>
                 <p className="text-sm text-gray-500">Ingresos (ventas + movimientos)</p>
                 <p className="font-bold text-green-600">{formatCurrency(
-                  (current.sales?.reduce((sum: number, s: any) => sum + s.total, 0) || 0)
+                  (current.sales?.filter((s: any) => s.paymentMethod === 'cash').reduce((sum: number, s: any) => sum + s.total, 0) || 0)
                   + (current.movements?.filter((m: any) => m.type === 'income').reduce((sum: number, m: any) => sum + m.amount, 0) || 0)
                 )}</p>
               </div>
@@ -221,7 +221,7 @@ export default function CashRegister() {
                 <p className="text-sm text-gray-500">Saldo Esperado</p>
                 <p className="font-bold">{formatCurrency(
                   (current.openingBalance || 0)
-                  + (current.sales?.reduce((sum: number, s: any) => sum + s.total, 0) || 0)
+                  + (current.sales?.filter((s: any) => s.paymentMethod === 'cash').reduce((sum: number, s: any) => sum + s.total, 0) || 0)
                   + (current.movements?.filter((m: any) => m.type === 'income').reduce((sum: number, m: any) => sum + m.amount, 0) || 0)
                   - (current.movements?.filter((m: any) => m.type === 'expense').reduce((sum: number, m: any) => sum + m.amount, 0) || 0)
                 )}</p>
@@ -440,7 +440,7 @@ export default function CashRegister() {
           <div className="bg-white rounded-2xl w-full max-w-sm p-6 mx-4">
             <h2 className="text-lg font-bold mb-4">Cerrar Caja</h2>
             {(() => {
-              const salesTotal = current.sales?.reduce((sum: number, s: any) => sum + s.total, 0) || 0
+              const salesTotal = current.sales?.filter((s: any) => s.paymentMethod === 'cash').reduce((sum: number, s: any) => sum + s.total, 0) || 0
               const totalIncome = current.movements?.filter((m: any) => m.type === 'income').reduce((sum: number, m: any) => sum + m.amount, 0) || 0
               const totalExpense = current.movements?.filter((m: any) => m.type === 'expense').reduce((sum: number, m: any) => sum + m.amount, 0) || 0
               const expected = (current.openingBalance || 0) + salesTotal + totalIncome - totalExpense
