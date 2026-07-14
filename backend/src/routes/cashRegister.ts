@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { PrismaClient } from '@prisma/client'
 import { requirePermission, AuthRequest } from '../middleware/auth'
+import { logAudit } from '../lib/audit'
 
 export function cashRegisterRoutes(prisma: PrismaClient) {
   const router = Router()
@@ -11,7 +12,7 @@ export function cashRegisterRoutes(prisma: PrismaClient) {
         include: {
           user: { select: { id: true, username: true, name: true } },
           sales: { select: { total: true, paymentMethod: true, status: true } },
-          movements: { select: { type: true, amount: true } },
+          movements: { select: { type: true, amount: true, userId: true, createdAt: true, user: { select: { id: true, name: true } } } },
         },
         orderBy: { openingDate: 'desc' },
       })
@@ -37,7 +38,11 @@ export function cashRegisterRoutes(prisma: PrismaClient) {
     try {
       const register = await prisma.cashRegister.findFirst({
         where: { status: 'open' },
-        include: { user: { select: { id: true, username: true, name: true } }, sales: true, movements: true },
+        include: {
+          user: { select: { id: true, username: true, name: true } },
+          sales: true,
+          movements: { include: { user: { select: { id: true, name: true } } }, orderBy: { createdAt: 'desc' } },
+        },
       })
       res.json(register)
     } catch (e) { next(e) }
@@ -47,7 +52,11 @@ export function cashRegisterRoutes(prisma: PrismaClient) {
     try {
       const register = await prisma.cashRegister.findUnique({
         where: { id: Number(req.params.id) },
-        include: { user: { select: { id: true, username: true, name: true } }, sales: true, movements: true },
+        include: {
+          user: { select: { id: true, username: true, name: true } },
+          sales: true,
+          movements: { include: { user: { select: { id: true, name: true } } }, orderBy: { createdAt: 'desc' } },
+        },
       })
       if (!register) return res.status(404).json({ error: 'Cash register not found' })
       res.json(register)
@@ -68,11 +77,12 @@ export function cashRegisterRoutes(prisma: PrismaClient) {
         })
       })
 
+      await logAudit(prisma, req as AuthRequest, 'CREATE', 'cashRegister', register.id, { openingBalance: register.openingBalance })
       res.status(201).json(register)
     } catch (e) { next(e) }
   })
 
-  router.patch('/:id/close', requirePermission(prisma, 'cashRegister', 'close'), async (req, res, next) => {
+  router.patch('/:id/close', requirePermission(prisma, 'cashRegister', 'close'), async (req: AuthRequest, res, next) => {
     try {
       const { closingBalance, notes } = req.body
       const id = Number(req.params.id)
@@ -87,11 +97,13 @@ export function cashRegisterRoutes(prisma: PrismaClient) {
           data: { closingBalance, notes: notes || '', closingDate: new Date(), status: 'closed' },
         })
       })
+
+      await logAudit(prisma, req as AuthRequest, 'UPDATE', 'cashRegister', register.id, { closingBalance: register.closingBalance })
       res.json(register)
     } catch (e) { next(e) }
   })
 
-  router.post('/:id/movements', requirePermission(prisma, 'cashRegister', 'open'), async (req, res, next) => {
+  router.post('/:id/movements', requirePermission(prisma, 'cashRegister', 'open'), async (req: AuthRequest, res, next) => {
     try {
       const { type, amount, description } = req.body
       const id = Number(req.params.id)
@@ -107,11 +119,16 @@ export function cashRegisterRoutes(prisma: PrismaClient) {
         return tx.cashMovement.create({
           data: {
             cashRegisterId: id,
+            userId: req.user!.id,
             type: type || 'income',
             amount,
             description: description.trim(),
           },
         })
+      })
+
+      await logAudit(prisma, req as AuthRequest, 'CREATE', 'cashMovement', movement.id, {
+        cashRegisterId: id, type: movement.type, amount: movement.amount, description: movement.description,
       })
       res.status(201).json(movement)
     } catch (e) { next(e) }
@@ -121,6 +138,7 @@ export function cashRegisterRoutes(prisma: PrismaClient) {
     try {
       const movements = await prisma.cashMovement.findMany({
         where: { cashRegisterId: Number(req.params.id) },
+        include: { user: { select: { id: true, name: true } } },
         orderBy: { createdAt: 'desc' },
       })
       res.json(movements)

@@ -26,6 +26,7 @@ import { warehouseRoutes } from './routes/warehouses'
 import { locationRoutes } from './routes/locations'
 import { stockMovementRoutes } from './routes/stockMovements'
 import { inventoryRoutes } from './routes/inventory'
+import { auditRoutes } from './routes/audit'
 import { errorHandler } from './middleware/errorHandler'
 import { requireAuth } from './middleware/auth'
 
@@ -73,6 +74,7 @@ export function createServer(prisma: PrismaClient) {
   app.use('/api/locations', locationRoutes(prisma))
   app.use('/api/stock-movements', stockMovementRoutes(prisma))
   app.use('/api/inventory', inventoryRoutes(prisma))
+  app.use('/api/audit', auditRoutes(prisma))
 
   app.use(errorHandler)
   return app

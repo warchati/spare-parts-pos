@@ -3,7 +3,7 @@ import api from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import { can } from '../lib/permissions'
 import { formatCurrency } from '../lib/currency'
-import { DollarSign, Plus, History, Receipt, ArrowUpRight, ArrowDownRight, Download, Filter, X } from 'lucide-react'
+import { DollarSign, Plus, History, Receipt, ArrowUpRight, ArrowDownRight, Download, Filter, X, Eye, User } from 'lucide-react'
 
 export default function CashRegister() {
   const { user } = useAuth()
@@ -19,6 +19,8 @@ export default function CashRegister() {
   const [filterStart, setFilterStart] = useState('')
   const [filterEnd, setFilterEnd] = useState('')
   const [filterUser, setFilterUser] = useState('')
+  const [viewingSession, setViewingSession] = useState<any>(null)
+  const [sessionDetails, setSessionDetails] = useState<any>(null)
 
   useEffect(() => { loadData() }, [])
 
@@ -94,6 +96,14 @@ export default function CashRegister() {
   }
 
   const hasFilters = filterStart || filterEnd || filterUser
+
+  const loadSessionDetails = async (session: any) => {
+    setViewingSession(session)
+    try {
+      const res = await api.get(`/cash-register/${session.id}`)
+      setSessionDetails(res.data)
+    } catch { setSessionDetails(null) }
+  }
 
   const exportExcel = () => {
     const fmt = (n: number) => n.toLocaleString('es-DO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -235,9 +245,11 @@ export default function CashRegister() {
           <div className="bg-white rounded-xl border border-gray-200 p-5">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-gray-800">Movimientos</h2>
-              <button onClick={() => setShowMovementForm(true)} className="flex items-center gap-2 text-sm bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700">
-                <Plus className="w-4 h-4" /> Agregar Movimiento
-              </button>
+              {can(user?.role, 'cashRegister', 'open') && (
+                <button onClick={() => setShowMovementForm(true)} className="flex items-center gap-2 text-sm bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700">
+                  <Plus className="w-4 h-4" /> Agregar Movimiento
+                </button>
+              )}
             </div>
             {current.movements?.length > 0 ? (
               <div className="space-y-2">
@@ -250,7 +262,15 @@ export default function CashRegister() {
                       }
                       <div>
                         <p className="font-medium text-sm">{m.description}</p>
-                        <p className="text-xs text-gray-500">{formatDate(m.createdAt)}</p>
+                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                          <span>{formatDate(m.createdAt)}</span>
+                          {m.user && (
+                            <>
+                              <span>·</span>
+                              <span className="flex items-center gap-1"><User className="w-3 h-3" />{m.user.name}</span>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
                     <span className={`font-bold ${m.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
@@ -362,6 +382,7 @@ export default function CashRegister() {
                   <th className="text-left pb-2">Usuario</th>
                   <th className="text-right pb-2">Saldo Final</th>
                   <th className="text-right pb-2">Diferencia</th>
+                  <th className="text-center pb-2">Detalle</th>
                 </tr>
               </thead>
               <tbody>
@@ -373,6 +394,11 @@ export default function CashRegister() {
                     <td className="py-2 text-right font-mono">{formatCurrency(h.closingBalance)}</td>
                     <td className={`py-2 text-right font-mono ${h.difference != null && h.difference > 0 ? 'text-blue-600' : h.difference != null && h.difference < 0 ? 'text-red-600' : 'text-green-600'}`}>
                       {h.difference != null ? formatCurrency(h.difference) : '-'}
+                    </td>
+                    <td className="py-2 text-center">
+                      <button onClick={() => loadSessionDetails(h)} className="text-blue-600 hover:text-blue-800 p-1" title="Ver movimientos">
+                        <Eye className="w-4 h-4" />
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -477,6 +503,50 @@ export default function CashRegister() {
               <button onClick={() => { setShowCloseForm(false); setCloseForm({ closingBalance: 0, notes: '' }) }} className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50">Cancelar</button>
               <button onClick={closeRegister} className="flex-1 px-4 py-2.5 bg-orange-500 text-white rounded-lg hover:bg-orange-600">Cerrar</button>
             </div>
+          </div>
+        </div>
+      )}
+      {viewingSession && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl w-full max-w-lg p-6 mx-4 max-h-[80vh] overflow-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold">Movimientos — Sesión #{viewingSession.id}</h2>
+              <button onClick={() => { setViewingSession(null); setSessionDetails(null) }} className="p-1 hover:bg-gray-100 rounded"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="text-sm text-gray-500 mb-3">
+              {viewingSession.user?.name} | {formatDate(viewingSession.openingDate)} → {viewingSession.closingDate ? formatDate(viewingSession.closingDate) : '-'}
+            </div>
+            {sessionDetails?.movements?.length > 0 ? (
+              <div className="space-y-2">
+                {sessionDetails.movements.map((m: any) => (
+                  <div key={m.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      {m.type === 'income'
+                        ? <ArrowUpRight className="w-5 h-5 text-green-500" />
+                        : <ArrowDownRight className="w-5 h-5 text-red-500" />
+                      }
+                      <div>
+                        <p className="font-medium text-sm">{m.description}</p>
+                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                          <span>{formatDate(m.createdAt)}</span>
+                          {m.user && (
+                            <>
+                              <span>·</span>
+                              <span className="flex items-center gap-1"><User className="w-3 h-3" />{m.user.name}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <span className={`font-bold ${m.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+                      {m.type === 'income' ? '+' : '-'}{formatCurrency(m.amount)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-400">Sin movimientos manuales en esta sesión</p>
+            )}
           </div>
         </div>
       )}

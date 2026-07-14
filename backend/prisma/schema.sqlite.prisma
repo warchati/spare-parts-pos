@@ -17,6 +17,7 @@ model User {
   sales          Sale[]
   purchases      PurchaseOrder[]
   cashRegisters  CashRegister[]
+  cashMovements  CashMovement[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -125,6 +126,8 @@ model CashMovement {
   id             Int          @id @default(autoincrement())
   cashRegisterId Int
   cashRegister   CashRegister @relation(fields: [cashRegisterId], references: [id])
+  userId         Int?
+  user           User?        @relation(fields: [userId], references: [id])
   type           String       @default("income")
   amount         Float
   description    String

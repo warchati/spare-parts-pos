@@ -29,6 +29,7 @@ import Warehouses from './pages/Warehouses'
 import Locations from './pages/Locations'
 import Inventory from './pages/Inventory'
 import StockMovements from './pages/StockMovements'
+import AuditLog from './pages/AuditLog'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth()
@@ -77,6 +78,7 @@ export default function App() {
         <Route path="locations" element={<PermissionGuard module="warehouses" action="view"><Locations /></PermissionGuard>} />
         <Route path="inventory" element={<PermissionGuard module="inventory" action="view"><Inventory /></PermissionGuard>} />
         <Route path="stock-movements" element={<PermissionGuard module="inventory" action="view"><StockMovements /></PermissionGuard>} />
+        <Route path="audit-log" element={<PermissionGuard module="cashRegister" action="movements"><AuditLog /></PermissionGuard>} />
       </Route>
     </Routes>
   )
