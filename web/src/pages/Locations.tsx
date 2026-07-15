@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import api from '../lib/api'
 import { can } from '../lib/permissions'
 import { useAuth } from '../contexts/AuthContext'
-import { MapPin, Plus, Pencil, Trash2, ChevronRight, ChevronDown, Search, Upload, Download, X, Package } from 'lucide-react'
+import { MapPin, Plus, Pencil, Trash2, ChevronRight, ChevronDown, Search, Download, X, Package } from 'lucide-react'
 
 const TYPE_LABELS: Record<string, string> = { AISLE: 'Pasillo', RACK: 'Estante', SHELF: 'Anaquel', BIN: 'Bin', FLOOR: 'Piso', ZONE: 'Zona', DOCK: 'Dock' }
 const TYPE_OPTIONS = ['AISLE', 'RACK', 'SHELF', 'BIN', 'FLOOR', 'ZONE', 'DOCK']
@@ -13,6 +13,10 @@ interface LocationNode {
   warehouseId: number; parentId: number | null; children?: LocationNode[]
   _count?: { children: number; productLocations: number }
 }
+
+interface ImportRow { code: string; name: string; type: string; barcode: string; parentCode: string; sortOrder: number; isActive: boolean }
+
+const emptyRow = (): ImportRow => ({ code: '', name: '', type: 'BIN', barcode: '', parentCode: '', sortOrder: 0, isActive: true })
 
 export default function Locations() {
   const { user } = useAuth()
@@ -29,7 +33,10 @@ export default function Locations() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
+  const [importRows, setImportRows] = useState<ImportRow[]>([emptyRow()])
   const [importMsg, setImportMsg] = useState('')
+  const [importSubmitting, setImportSubmitting] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
 
   const [form, setForm] = useState({ name: '', code: '', type: 'BIN', barcode: '', parentId: '', sortOrder: 0, isActive: true })
@@ -58,6 +65,13 @@ export default function Locations() {
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [deleteTarget])
+
+  useEffect(() => {
+    if (!importOpen) return
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setImportOpen(false) }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [importOpen])
 
   const loadWarehouses = async () => {
     try {
@@ -171,47 +185,47 @@ export default function Locations() {
     } catch { setError('Error al exportar') }
   }
 
-  const handleImport = () => {
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.accept = '.csv'
-    input.onchange = async (e: any) => {
-      const file = e.target.files[0]
-      if (!file) return
-      try {
-        const text = await file.text()
-        const lines = text.replace(/^\uFEFF/, '').split('\n').filter((l: string) => l.trim())
-        const header = lines[0].split(',').map((h: string) => h.trim().toLowerCase())
-        const warehouseIdx = header.findIndex((h: string) => h === 'warehouse')
-        const codeIdx = header.findIndex((h: string) => h === 'code')
-        const nameIdx = header.findIndex((h: string) => h === 'nombre' || h === 'name')
-        const typeIdx = header.findIndex((h: string) => h === 'tipo' || h === 'type')
-        const barcodeIdx = header.findIndex((h: string) => h === 'barcode')
-        const parentIdx = header.findIndex((h: string) => h === 'padre' || h === 'parent')
-        const orderIdx = header.findIndex((h: string) => h === 'orden' || h === 'order')
+  const openImport = () => {
+    setImportRows([emptyRow()])
+    setImportMsg('')
+    setError('')
+    setImportOpen(true)
+  }
 
-        const rows = lines.slice(1).map((line: string) => {
-          const cols = line.split(',').map((c: string) => c.trim().replace(/^"|"$/g, ''))
-          return {
-            warehouse: cols[warehouseIdx] || '', code: cols[codeIdx] || '', name: cols[nameIdx] || '',
-            type: cols[typeIdx] || 'BIN', barcode: cols[barcodeIdx] || '', parent: cols[parentIdx] || '',
-            sortOrder: orderIdx >= 0 ? Number(cols[orderIdx]) || 0 : 0,
-          }
-        }).filter((r: any) => r.code && r.name && r.warehouse)
+  const updateImportRow = (idx: number, field: keyof ImportRow, value: any) => {
+    setImportRows(prev => prev.map((r, i) => i === idx ? { ...r, [field]: value } : r))
+  }
 
-        if (rows.length === 0) { setImportMsg('No se encontraron filas validas en el CSV'); return }
-        const res = await api.post('/locations/import', { rows })
-        const errMsgs = res.data.errors.length > 0 ? '\n' + res.data.errors.join('\n') : ''
-        setImportMsg(`Importados: ${res.data.created}. Errores: ${res.data.errors.length}${errMsgs}`)
-        loadTree()
-        loadAll()
-      } catch (e: any) { setImportMsg(e.response?.data?.error || 'Error al importar') }
-    }
-    input.click()
+  const removeImportRow = (idx: number) => {
+    setImportRows(prev => prev.filter((_, i) => i !== idx))
+  }
+
+  const addImportRow = () => {
+    setImportRows(prev => [...prev, emptyRow()])
+  }
+
+  const handleImportSubmit = async () => {
+    const warehouse = warehouses.find((w: any) => w.id === warehouseId)
+    if (!warehouse) return
+    const validRows = importRows.filter(r => r.code.trim() && r.name.trim()).map(r => ({
+      warehouse: warehouse.name, code: r.code.trim(), name: r.name.trim(),
+      type: r.type, barcode: r.barcode, parent: r.parentCode,
+      sortOrder: r.sortOrder, isActive: r.isActive,
+    }))
+    if (validRows.length === 0) { setImportMsg('Completa al menos una fila con codigo y nombre'); return }
+    setImportSubmitting(true)
+    try {
+      const res = await api.post('/locations/import', { rows: validRows })
+      const errMsgs = res.data.errors.length > 0 ? '\n' + res.data.errors.join('\n') : ''
+      setImportMsg(`Importados: ${res.data.created}. Errores: ${res.data.errors.length}${errMsgs}`)
+      if (res.data.created > 0) { loadTree(); loadAll() }
+    } catch (e: any) { setImportMsg(e.response?.data?.error || 'Error al importar') }
+    setImportSubmitting(false)
   }
 
   const statRoots = tree.length
   const statTotal = getAllIds(tree).length
+  const validImportCount = importRows.filter(r => r.code.trim() && r.name.trim()).length
 
   const renderNode = (node: LocationNode, depth: number = 0) => {
     const hasChildren = node.children && node.children.length > 0
@@ -258,6 +272,7 @@ export default function Locations() {
   }
 
   const filtered = filterTree(tree, search)
+  const currentWarehouseName = warehouses.find((w: any) => w.id === warehouseId)?.name || ''
 
   if (loading) return <div className="p-6 text-center text-gray-400">Cargando...</div>
 
@@ -272,13 +287,13 @@ export default function Locations() {
             {warehouses.map((w: any) => <option key={w.id} value={w.id}>{w.name}</option>)}
           </select>
           {can(user?.role, 'warehouses', 'view') && (
-            <>
-              <button onClick={handleExport} className="flex items-center gap-1.5 bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 text-sm"><Download className="w-4 h-4" /> Exportar</button>
-              <button onClick={handleImport} className="flex items-center gap-1.5 bg-purple-600 text-white px-3 py-2 rounded-lg hover:bg-purple-700 text-sm"><Upload className="w-4 h-4" /> Importar</button>
-            </>
+            <button onClick={handleExport} className="flex items-center gap-1.5 bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 text-sm"><Download className="w-4 h-4" /> Exportar</button>
           )}
           {can(user?.role, 'warehouses', 'create') && (
-            <button onClick={() => openCreate()} className="flex items-center gap-1.5 bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 text-sm"><Plus className="w-4 h-4" /> Nueva</button>
+            <>
+              <button onClick={openImport} className="flex items-center gap-1.5 bg-purple-600 text-white px-3 py-2 rounded-lg hover:bg-purple-700 text-sm"><Plus className="w-4 h-4" /> Importar</button>
+              <button onClick={() => openCreate()} className="flex items-center gap-1.5 bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 text-sm"><Plus className="w-4 h-4" /> Nueva</button>
+            </>
           )}
         </div>
       </div>
@@ -304,7 +319,7 @@ export default function Locations() {
         <div className="p-2 max-h-[600px] overflow-y-auto">
           {filtered.length === 0 ? (
             <div className="text-center py-12 text-gray-400">
-              {tree.length === 0 ? 'No hay ubicaciones. Crea una o importa desde CSV.' : 'No se encontraron ubicaciones'}
+              {tree.length === 0 ? 'No hay ubicaciones. Crea una o importa varias a la vez.' : 'No se encontraron ubicaciones'}
             </div>
           ) : (
             filtered.map(node => renderNode(node))
@@ -369,6 +384,102 @@ export default function Locations() {
               <button onClick={() => !submitting && setFormOpen(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm">Cancelar</button>
               <button onClick={handleSave} disabled={!form.name || !form.code || submitting} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm disabled:opacity-50">
                 {submitting ? 'Guardando...' : editing ? 'Guardar' : 'Crear'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {importOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => !importSubmitting && setImportOpen(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-5xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-5 border-b border-gray-200">
+              <div>
+                <h2 className="text-lg font-bold">Importar Ubicaciones</h2>
+                <p className="text-sm text-gray-500">Almacen: <strong>{currentWarehouseName}</strong></p>
+              </div>
+              <button onClick={() => !importSubmitting && setImportOpen(false)} className="p-1 hover:bg-gray-100 rounded"><X className="w-5 h-5" /></button>
+            </div>
+
+            <div className="flex items-center gap-2 px-5 py-3 border-b border-gray-100 bg-gray-50">
+              <button onClick={addImportRow} className="flex items-center gap-1 bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 text-xs font-medium"><Plus className="w-3 h-3" /> Agregar fila</button>
+              <button onClick={() => setImportRows([emptyRow()])} className="flex items-center gap-1 bg-gray-200 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-300 text-xs">Limpiar</button>
+              <span className="ml-auto text-xs text-gray-400">{validImportCount} de {importRows.length} filas validas</span>
+            </div>
+
+            <div className="flex-1 overflow-auto p-5">
+              <table className="w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
+                <thead>
+                  <tr className="bg-gray-100 text-gray-600 text-xs">
+                    <th className="text-left px-3 py-2 w-8">#</th>
+                    <th className="text-left px-3 py-2">Codigo *</th>
+                    <th className="text-left px-3 py-2">Nombre *</th>
+                    <th className="text-left px-3 py-2">Tipo</th>
+                    <th className="text-left px-3 py-2">Barcode</th>
+                    <th className="text-left px-3 py-2">Padre (codigo)</th>
+                    <th className="text-center px-3 py-2 w-16">Orden</th>
+                    <th className="text-center px-3 py-2 w-14">Act.</th>
+                    <th className="w-8"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {importRows.map((row, idx) => (
+                    <tr key={idx} className="border-t border-gray-100 hover:bg-gray-50">
+                      <td className="px-3 py-1.5 text-gray-400 text-xs">{idx + 1}</td>
+                      <td className="px-1 py-1">
+                        <input type="text" value={row.code} onChange={e => updateImportRow(idx, 'code', e.target.value.toUpperCase())}
+                          className={`w-full px-2 py-1.5 border rounded text-sm font-mono outline-none focus:ring-1 focus:ring-blue-500 ${!row.code && row.name ? 'border-red-300 bg-red-50' : 'border-gray-200'}`}
+                          placeholder="P01" />
+                      </td>
+                      <td className="px-1 py-1">
+                        <input type="text" value={row.name} onChange={e => updateImportRow(idx, 'name', e.target.value)}
+                          className={`w-full px-2 py-1.5 border rounded text-sm outline-none focus:ring-1 focus:ring-blue-500 ${row.code && !row.name ? 'border-red-300 bg-red-50' : 'border-gray-200'}`}
+                          placeholder="Pasillo 1" />
+                      </td>
+                      <td className="px-1 py-1">
+                        <select value={row.type} onChange={e => updateImportRow(idx, 'type', e.target.value)}
+                          className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm outline-none focus:ring-1 focus:ring-blue-500">
+                          {TYPE_OPTIONS.map(t => <option key={t} value={t}>{TYPE_LABELS[t]}</option>)}
+                        </select>
+                      </td>
+                      <td className="px-1 py-1">
+                        <input type="text" value={row.barcode} onChange={e => updateImportRow(idx, 'barcode', e.target.value)}
+                          className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm font-mono outline-none focus:ring-1 focus:ring-blue-500" placeholder="000001" />
+                      </td>
+                      <td className="px-1 py-1">
+                        <input type="text" value={row.parentCode} onChange={e => updateImportRow(idx, 'parentCode', e.target.value.toUpperCase())}
+                          className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm font-mono outline-none focus:ring-1 focus:ring-blue-500" placeholder="P01" />
+                      </td>
+                      <td className="px-1 py-1">
+                        <input type="number" value={row.sortOrder} onChange={e => updateImportRow(idx, 'sortOrder', Number(e.target.value))}
+                          className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm text-center outline-none focus:ring-1 focus:ring-blue-500" />
+                      </td>
+                      <td className="px-1 py-1 text-center">
+                        <input type="checkbox" checked={row.isActive} onChange={e => updateImportRow(idx, 'isActive', e.target.checked)}
+                          className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                      </td>
+                      <td className="px-1 py-1">
+                        <button onClick={() => removeImportRow(idx)} className="p-1 hover:bg-red-100 rounded text-gray-400 hover:text-red-600">
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <button onClick={addImportRow} className="mt-3 text-blue-600 hover:underline text-sm">+ Agregar fila vacia</button>
+            </div>
+
+            {importMsg && (
+              <div className={`mx-5 mb-3 p-3 rounded-lg text-sm ${importMsg.startsWith('Importados') ? 'bg-green-50 text-green-700' : 'bg-yellow-50 text-yellow-700'}`}>
+                {importMsg}
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 p-5 border-t border-gray-200">
+              <button onClick={() => !importSubmitting && setImportOpen(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm">Cancelar</button>
+              <button onClick={handleImportSubmit} disabled={importSubmitting || validImportCount === 0} className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm disabled:opacity-50">
+                {importSubmitting ? 'Importando...' : `Importar ${validImportCount} ubicacion${validImportCount !== 1 ? 'es' : ''}`}
               </button>
             </div>
           </div>
