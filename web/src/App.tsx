@@ -78,7 +78,7 @@ export default function App() {
         <Route path="locations" element={<PermissionGuard module="warehouses" action="view"><Locations /></PermissionGuard>} />
         <Route path="inventory" element={<PermissionGuard module="inventory" action="view"><Inventory /></PermissionGuard>} />
         <Route path="stock-movements" element={<PermissionGuard module="inventory" action="view"><StockMovements /></PermissionGuard>} />
-        <Route path="audit-log" element={<PermissionGuard module="cashRegister" action="movements"><AuditLog /></PermissionGuard>} />
+        <Route path="audit-log" element={<PermissionGuard module="audit" action="view"><AuditLog /></PermissionGuard>} />
       </Route>
     </Routes>
   )

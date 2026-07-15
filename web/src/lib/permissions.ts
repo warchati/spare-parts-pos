@@ -14,6 +14,7 @@ const PERMISSIONS: Record<string, Record<string, string[]>> = {
     purchases: ['view', 'create', 'receive'],
     dashboard: ['view'],
     cashRegister: ['open', 'close', 'movements'],
+    audit: ['view'],
     users: ['view', 'create', 'edit', 'delete'],
     vehicles: ['view', 'create', 'edit', 'delete'],
     credit: ['view', 'pay'],
