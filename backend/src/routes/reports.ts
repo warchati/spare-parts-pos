@@ -317,7 +317,8 @@ export function reportRoutes(prisma: PrismaClient) {
         prisma.sale.findMany({
           where: salesWhere,
           include: { items: true, client: true },
-          orderBy: { createdAt: 'desc' }),
+          orderBy: { createdAt: 'desc' },
+        }),
         prisma.product.findMany({ where: { active: true }, select: { id: true, name: true, code: true, category: true, brand: true, buyPrice: true, sellPrice: true, stock: true, minStock: true } }),
         prisma.client.findMany({ select: { id: true, name: true, phone: true, currentBalance: true, creditLimit: true } }),
       ])
