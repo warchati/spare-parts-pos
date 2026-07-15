@@ -4,7 +4,7 @@ import { Shield, Save, Check } from 'lucide-react'
 
 const ROLES = ['admin', 'supervisor', 'cashier', 'seller']
 const MODULES = ['pos', 'products', 'clients', 'suppliers', 'sales', 'purchases', 'dashboard', 'cashRegister', 'audit', 'users', 'vehicles', 'credit', 'exports', 'taxes', 'currencies', 'returns', 'expenses', 'warehouses', 'inventory']
-const ACTIONS = ['view', 'create', 'edit', 'delete', 'sell', 'receive', 'open', 'close', 'movements', 'pay', 'redeem']
+const ACTIONS = ['view', 'create', 'edit', 'delete', 'sell', 'receive', 'open', 'close', 'movements', 'pay', 'redeem', 'viewCost', 'viewWholesale']
 
 const MODULE_LABELS: Record<string, string> = {
   pos: 'POS', products: 'Productos', clients: 'Clientes', suppliers: 'Proveedores',
@@ -15,12 +15,12 @@ const MODULE_LABELS: Record<string, string> = {
 const ACTION_LABELS: Record<string, string> = {
   view: 'Ver', create: 'Crear', edit: 'Editar', delete: 'Eliminar',
   sell: 'Vender', receive: 'Recibir', open: 'Abrir', close: 'Cerrar',
-  movements: 'Movimientos', pay: 'Pagar', redeem: 'Canjear',
+  movements: 'Movimientos', pay: 'Pagar', redeem: 'Canjear', viewCost: 'Ver Costo', viewWholesale: 'Ver Por Mayor',
 }
 
 const MODULE_ACTIONS: Record<string, string[]> = {
   pos: ['sell'],
-  products: ['view', 'create', 'edit'],
+  products: ['view', 'create', 'edit', 'viewCost', 'viewWholesale'],
   clients: ['view', 'create', 'edit'],
   suppliers: ['view', 'create', 'edit'],
   sales: ['view', 'edit'],

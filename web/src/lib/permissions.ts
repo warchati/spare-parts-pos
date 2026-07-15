@@ -7,7 +7,7 @@ export function updateLatestPermissions(perms: { module: string, action: string 
 const PERMISSIONS: Record<string, Record<string, string[]>> = {
   admin: {
     pos: ['sell'],
-    products: ['view', 'create', 'edit'],
+    products: ['view', 'create', 'edit', 'viewCost', 'viewWholesale'],
     clients: ['view', 'create', 'edit'],
     suppliers: ['view', 'create', 'edit'],
     sales: ['view', 'edit'],
@@ -31,7 +31,7 @@ const PERMISSIONS: Record<string, Record<string, string[]>> = {
   },
   supervisor: {
     pos: ['sell'],
-    products: ['view', 'create', 'edit'],
+    products: ['view', 'create', 'edit', 'viewCost', 'viewWholesale'],
     clients: ['view', 'create', 'edit'],
     suppliers: ['view', 'create', 'edit'],
     sales: ['view', 'edit'],

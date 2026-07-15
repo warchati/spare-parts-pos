@@ -148,6 +148,9 @@ export default function Products() {
     return 'bg-green-500'
   }
 
+  const canViewCost = can(user?.role, 'products', 'viewCost')
+  const canViewWholesale = can(user?.role, 'products', 'viewWholesale')
+
 
 
   return (
@@ -187,9 +190,9 @@ export default function Products() {
               <th className="text-left px-4 py-3">Nombre</th>
               <th className="text-left px-4 py-3">Marca</th>
               <th className="text-center px-4 py-3">Stock</th>
-              <th className="text-right px-4 py-3">Costo</th>
+              {canViewCost && <th className="text-right px-4 py-3">Costo</th>}
               <th className="text-right px-4 py-3">Precio</th>
-              <th className="text-right px-4 py-3">Por Mayor</th>
+              {canViewWholesale && <th className="text-right px-4 py-3">Por Mayor</th>}
               <th className="text-left px-4 py-3">Ubicación</th>
               <th className="text-center px-4 py-3">Img</th>
               <th className="text-center px-4 py-3">Veh.</th>
@@ -211,9 +214,9 @@ export default function Products() {
                     <span className={`font-mono ${p.stock <= p.minStock ? 'text-red-600 font-bold' : ''}`}>{p.stock}</span>
                   </div>
                 </td>
-                <td className="px-4 py-3 text-right font-mono">{formatCurrency(p.buyPrice)}</td>
+                {canViewCost && <td className="px-4 py-3 text-right font-mono">{formatCurrency(p.buyPrice)}</td>}
                 <td className="px-4 py-3 text-right font-mono font-bold">{formatCurrency(p.sellPrice)}</td>
-                <td className="px-4 py-3 text-right font-mono text-gray-500">{p.wholesalePrice ? formatCurrency(p.wholesalePrice) : '-'}</td>
+                {canViewWholesale && <td className="px-4 py-3 text-right font-mono text-gray-500">{p.wholesalePrice ? formatCurrency(p.wholesalePrice) : '-'}</td>}
                 <td className="px-4 py-3 text-sm text-gray-500">{p.defaultLocation?.name || p.location || '-'}</td>
                 <td className="px-4 py-3 text-center">
                   {p.images && p.images.length > 0 ? (
@@ -250,7 +253,7 @@ export default function Products() {
             ))}
             {products.length === 0 && (
               <tr>
-                <td colSpan={11} className="text-center py-8 text-gray-400">No hay productos</td>
+                <td colSpan={9 + (canViewCost ? 1 : 0) + (canViewWholesale ? 1 : 0)} className="text-center py-8 text-gray-400">No hay productos</td>
               </tr>
             )}
           </tbody>
@@ -325,18 +328,22 @@ export default function Products() {
                   ))}
                 </select>
               </div>
+              {canViewCost && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Precio Compra</label>
                 <input type="number" value={form.buyPrice} onChange={(e) => setForm({...form, buyPrice: Number(e.target.value)})} className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Precio Venta</label>
                 <input type="number" value={form.sellPrice} onChange={(e) => setForm({...form, sellPrice: Number(e.target.value)})} className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
+              {canViewWholesale && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Precio por Mayor</label>
                 <input type="number" value={form.wholesalePrice} onChange={(e) => setForm({...form, wholesalePrice: Number(e.target.value)})} className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Stock Actual</label>
                 <input type="number" value={form.stock} onChange={(e) => setForm({...form, stock: Number(e.target.value)})} className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" />
