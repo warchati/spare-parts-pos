@@ -1,511 +1,353 @@
-import { useState, useEffect, useMemo } from 'react'
-import api from '../lib/api'
-import { useAuth } from '../contexts/AuthContext'
-import { can } from '../lib/permissions'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Plus, Pencil, Trash2, MapPin, Layers, X, ChevronRight, ChevronDown, Maximize2, Minimize2, Package, Hash, Building2 } from 'lucide-react'
+import api from '../lib/api'
+import { can } from '../lib/permissions'
+import { useAuth } from '../contexts/AuthContext'
+import { MapPin, Plus, Pencil, Trash2, ChevronRight, ChevronDown, Search, Upload, Download, X, Package, Warehouse as WarehouseIcon } from 'lucide-react'
 
-const TYPE_LABELS: Record<string, string> = {
-  ZONE: 'Zona', AISLE: 'Pasillo', RACK: 'Estante', SHELF: 'Anaquel', BIN: 'Ubicación',
-}
+const TYPE_LABELS: Record<string, string> = { AISLE: 'Pasillo', RACK: 'Estante', SHELF: 'Anaquel', BIN: 'Bin', FLOOR: 'Piso', ZONE: 'Zona', DOCK: 'Dock' }
+const TYPE_OPTIONS = ['AISLE', 'RACK', 'SHELF', 'BIN', 'FLOOR', 'ZONE', 'DOCK']
 
-const TYPE_COLORS: Record<string, string> = {
-  ZONE: 'bg-violet-100 text-violet-700 border-violet-200',
-  AISLE: 'bg-blue-100 text-blue-700 border-blue-200',
-  RACK: 'bg-cyan-100 text-cyan-700 border-cyan-200',
-  SHELF: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-  BIN: 'bg-gray-100 text-gray-600 border-gray-200',
-}
-
-const PROD_BADGE = (count: number) => {
-  if (count === 0) return 'bg-red-100 text-red-600'
-  if (count < 10) return 'bg-amber-100 text-amber-700'
-  return 'bg-green-100 text-green-700'
+interface LocationNode {
+  id: number; name: string; code: string; type: string; barcode: string; sortOrder: number; isActive: boolean
+  warehouseId: number; parentId: number | null; children?: LocationNode[]
+  _count?: { children: number; productLocations: number }
 }
 
 export default function Locations() {
   const { user } = useAuth()
   const [searchParams] = useSearchParams()
-  const warehouseIdParam = searchParams.get('warehouseId')
-
   const [warehouses, setWarehouses] = useState<any[]>([])
-  const [selectedWarehouse, setSelectedWarehouse] = useState(warehouseIdParam || '')
-  const [locations, setLocations] = useState<any[]>([])
+  const [warehouseId, setWarehouseId] = useState<number>(() => Number(searchParams.get('warehouseId')) || 0)
+  const [tree, setTree] = useState<LocationNode[]>([])
+  const [allLocations, setAllLocations] = useState<any[]>([])
+  const [search, setSearch] = useState('')
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
-  const [childrenMap, setChildrenMap] = useState<Record<number, any[]>>({})
-  const [showForm, setShowForm] = useState(false)
-  const [editing, setEditing] = useState<any>(null)
-  const [form, setForm] = useState({ warehouseId: 0, parentId: '', name: '', code: '', type: 'BIN', sortOrder: 0 })
-  const [allLocations, setAllLocations] = useState<any[] | null>(null)
+  const [formOpen, setFormOpen] = useState(false)
+  const [editing, setEditing] = useState<LocationNode | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<LocationNode | null>(null)
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(true)
+  const formRef = useRef<HTMLFormElement>(null)
 
-  useEffect(() => {
-    api.get('/warehouses').then(res => setWarehouses(res.data)).catch(() => {})
-  }, [])
+  const [form, setForm] = useState({ name: '', code: '', type: 'BIN', barcode: '', parentId: '', sortOrder: 0, isActive: true })
 
-  useEffect(() => {
-    if (selectedWarehouse) { loadLocations(); setChildrenMap({}); setAllLocations(null) }
-    else setLocations([])
-  }, [selectedWarehouse])
+  useEffect(() => { loadWarehouses() }, [])
+  useEffect(() => { if (warehouseId) { loadTree(); loadAll() } }, [warehouseId])
 
-  const loadLocations = async () => {
+  const loadWarehouses = async () => {
     try {
-      const res = await api.get('/locations', { params: { warehouseId: selectedWarehouse, parentId: 'null' } })
-      setLocations(res.data)
+      const res = await api.get('/warehouses')
+      setWarehouses(res.data)
+      if (!warehouseId && res.data.length > 0) setWarehouseId(res.data[0].id)
+    } catch { console.error('Error loading warehouses') }
+    setLoading(false)
+  }
+
+  const loadTree = async () => {
+    try {
+      const res = await api.get('/locations', { params: { warehouseId } })
+      const nodes = buildTree(res.data)
+      setTree(nodes)
+      if (search) setExpanded(getAllIds(nodes))
+    } catch { console.error('Error loading locations') }
+  }
+
+  const loadAll = async () => {
+    try {
+      const res = await api.get('/locations/all', { params: { warehouseId } })
+      setAllLocations(res.data)
     } catch {}
   }
 
-  const loadChildren = async (parentId: number): Promise<any[]> => {
-    try {
-      const res = await api.get('/locations', { params: { warehouseId: selectedWarehouse, parentId } })
-      return res.data
-    } catch { return [] }
-  }
-
-  const expandAll = async () => {
-    try {
-      const res = await api.get('/locations', { params: { warehouseId: selectedWarehouse } })
-      const all: any[] = res.data
-      setAllLocations(all)
-      const map: Record<number, any[]> = {}
-      for (const loc of all) {
-        if (loc.parentId) {
-          if (!map[loc.parentId]) map[loc.parentId] = []
-          map[loc.parentId].push(loc)
-        }
-      }
-      setChildrenMap(map)
-      const ids = new Set<number>()
-      for (const loc of all) {
-        if (loc._count?.children > 0) ids.add(loc.id)
-      }
-      setExpanded(ids)
-    } catch {}
-  }
-
-  const collapseAll = () => {
-    setExpanded(new Set())
-    setChildrenMap({})
-    setAllLocations(null)
-  }
-
-  const toggleExpand = async (id: number) => {
-    const next = new Set(expanded)
-    if (next.has(id)) {
-      next.delete(id)
-    } else {
-      next.add(id)
-      if (!childrenMap[id]) {
-        const children = await loadChildren(id)
-        setChildrenMap(prev => ({ ...prev, [id]: children }))
-      }
+  const buildTree = (flat: any[]): LocationNode[] => {
+    const map = new Map<number, LocationNode & { children: LocationNode[] }>()
+    const roots: LocationNode[] = []
+    for (const loc of flat) map.set(loc.id, { ...loc, children: [] })
+    for (const loc of flat) {
+      const node = map.get(loc.id)!
+      if (loc.parentId && map.has(loc.parentId)) map.get(loc.parentId)!.children.push(node)
+      else roots.push(node)
     }
-    setExpanded(next)
+    return roots
   }
 
-  const stats = useMemo(() => {
-    let count = locations.length
-    let maxDepth = 1
-    let products = 0
-    const walk = (items: any[], depth: number) => {
-      maxDepth = Math.max(maxDepth, depth)
-      for (const item of items) {
-        products += item._count?.productLocations || 0
-        if (childrenMap[item.id]) {
-          count += childrenMap[item.id].length
-          walk(childrenMap[item.id], depth + 1)
-        }
-      }
-    }
-    walk(locations, 1)
-    return { count, maxDepth, products }
-  }, [locations, childrenMap])
+  const getAllIds = (nodes: LocationNode[]): number[] => {
+    const ids: number[] = []
+    for (const n of nodes) { ids.push(n.id); if (n.children) ids.push(...getAllIds(n.children)) }
+    return ids
+  }
+
+  const toggle = (id: number) => {
+    setExpanded(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next })
+  }
+
+  const expandAll = () => {
+    if (tree.length > 0) setExpanded(new Set(getAllIds(tree)))
+  }
+
+  const filterTree = (nodes: LocationNode[], q: string): LocationNode[] => {
+    if (!q) return nodes
+    const lower = q.toLowerCase()
+    return nodes.filter(n => n.name.toLowerCase().includes(lower) || n.code.toLowerCase().includes(lower) || (n.children && filterTree(n.children, q).length > 0))
+  }
+
+  const openCreate = (parentId?: number) => {
+    setEditing(null)
+    setForm({ name: '', code: '', type: 'BIN', barcode: '', parentId: parentId ? String(parentId) : '', sortOrder: 0, isActive: true })
+    setError('')
+    setFormOpen(true)
+  }
+
+  const openEdit = (loc: LocationNode) => {
+    setEditing(loc)
+    setForm({ name: loc.name, code: loc.code, type: loc.type, barcode: loc.barcode || '', parentId: loc.parentId ? String(loc.parentId) : '', sortOrder: loc.sortOrder, isActive: loc.isActive })
+    setError('')
+    setFormOpen(true)
+  }
 
   const handleSave = async () => {
     try {
-      const payload = {
-        ...form,
-        warehouseId: Number(form.warehouseId),
-        parentId: form.parentId ? Number(form.parentId) : null,
-        sortOrder: Number(form.sortOrder) || 0,
-      }
-      if (editing?.id) {
-        await api.put(`/locations/${editing.id}`, payload)
-        setShowForm(false); setEditing(null)
-        loadLocations()
-        setChildrenMap({})
-        setAllLocations(null)
-      } else {
-        await api.post('/locations', payload)
-        setShowForm(false); setEditing(null)
-        if (payload.parentId) {
-          await loadLocations()
-          const children = await loadChildren(payload.parentId)
-          setChildrenMap(prev => ({ ...prev, [payload.parentId!]: children }))
-          setExpanded(prev => new Set(prev).add(payload.parentId!))
-        } else {
-          loadLocations()
-        }
-      }
-    } catch (e: any) { alert(e.response?.data?.error || 'Error') }
+      const payload = { ...form, warehouseId, parentId: form.parentId ? Number(form.parentId) : null, sortOrder: Number(form.sortOrder) }
+      if (editing) await api.put(`/locations/${editing.id}`, payload)
+      else await api.post('/locations', payload)
+      setFormOpen(false)
+      loadTree()
+      loadAll()
+    } catch (e: any) { setError(e.response?.data?.error || 'Error al guardar') }
   }
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Eliminar esta ubicación?')) return
+  const handleDelete = async () => {
+    if (!deleteTarget) return
     try {
-      await api.delete(`/locations/${id}`)
-      loadLocations()
-      setChildrenMap({})
-      setAllLocations(null)
-    } catch (e: any) { alert(e.response?.data?.error || 'Error') }
+      await api.delete(`/locations/${deleteTarget.id}`)
+      setDeleteTarget(null)
+      loadTree()
+      loadAll()
+    } catch (e: any) { setError(e.response?.data?.error || 'Error al eliminar'); setDeleteTarget(null) }
   }
 
-  const openForm = (loc?: any) => {
-    const isEdit = loc?.id != null
-    setEditing(isEdit ? loc : null)
-    setForm(isEdit ? {
-      warehouseId: loc.warehouseId,
-      parentId: loc.parentId || '',
-      name: loc.name,
-      code: loc.code,
-      type: loc.type,
-      sortOrder: loc.sortOrder,
-    } : {
-      warehouseId: loc?.warehouseId || Number(selectedWarehouse),
-      parentId: loc?.parentId || '',
-      name: '', code: '', type: 'BIN', sortOrder: 0,
-    })
-    setShowForm(true)
+  const handleExport = () => { window.open(`${api.defaults.baseURL}/locations/export`, '_blank') }
+
+  const handleImport = async () => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = '.csv'
+    input.onchange = async (e: any) => {
+      const file = e.target.files[0]
+      if (!file) return
+      try {
+        const text = await file.text()
+        const lines = text.replace(/^\uFEFF/, '').split('\n').filter((l: string) => l.trim())
+        const header = lines[0].split(',').map((h: string) => h.trim().toLowerCase())
+        const warehouseIdx = header.findIndex((h: string) => h === 'warehouse')
+        const codeIdx = header.findIndex((h: string) => h === 'code')
+        const nameIdx = header.findIndex((h: string) => h === 'nombre' || h === 'name')
+        const typeIdx = header.findIndex((h: string) => h === 'tipo' || h === 'type')
+        const barcodeIdx = header.findIndex((h: string) => h === 'barcode')
+        const parentIdx = header.findIndex((h: string) => h === 'padre' || h === 'parent')
+        const orderIdx = header.findIndex((h: string) => h === 'orden' || h === 'order')
+
+        const rows = lines.slice(1).map((line: string) => {
+          const cols = line.split(',').map((c: string) => c.trim().replace(/^"|"$/g, ''))
+          return {
+            warehouse: cols[warehouseIdx] || '',
+            code: cols[codeIdx] || '',
+            name: cols[nameIdx] || '',
+            type: cols[typeIdx] || 'BIN',
+            barcode: cols[barcodeIdx] || '',
+            parent: cols[parentIdx] || '',
+            sortOrder: orderIdx >= 0 ? Number(cols[orderIdx]) || 0 : 0,
+          }
+        }).filter((r: any) => r.code && r.name && r.warehouse)
+
+        if (rows.length === 0) { setError('No se encontraron filas válidas en el CSV'); return }
+        const res = await api.post('/locations/import', { rows })
+        const msg = `Importados: ${res.data.created}. Errores: ${res.data.errors.length}`
+        if (res.data.errors.length > 0) alert(msg + '\n' + res.data.errors.join('\n'))
+        else alert(msg)
+        loadTree()
+        loadAll()
+      } catch (e: any) { setError(e.response?.data?.error || 'Error al importar') }
+    }
+    input.click()
   }
 
-  const renderSiblingRows = (siblings: any[], depth: number, ancestorHasNext: boolean[]): JSX.Element[] => {
-    const rows: JSX.Element[] = []
-    siblings.forEach((loc, i) => {
-      const hasNextSibling = i < siblings.length - 1
-      rows.push(...renderLocationRows(loc, depth, ancestorHasNext, hasNextSibling))
-    })
-    return rows
-  }
+  const statTotal = tree.length
+  const statExpanded = getAllIds(tree).length
 
-  const renderLocationRows = (loc: any, depth: number, ancestorHasNext: boolean[], hasNextSibling: boolean): JSX.Element[] => {
-    const hasChildren = loc._count?.children > 0 || (childrenMap[loc.id]?.length > 0)
-    const isExpanded = expanded.has(loc.id)
-    const tc = TYPE_COLORS[loc.type] || TYPE_COLORS.BIN
-    const pc = PROD_BADGE(loc._count?.productLocations || 0)
+  const renderNode = (node: LocationNode, depth: number = 0) => {
+    const hasChildren = node.children && node.children.length > 0
+    const isExpanded = expanded.has(node.id)
+    const typeShort = node.type?.slice(0, 3) || 'BIN'
 
-    const rows: JSX.Element[] = [
-      <tr key={loc.id} className="group border-t border-gray-100 hover:bg-blue-50/40 transition-colors">
-        <td className="px-4 py-2.5">
-          <div className="flex items-center gap-0.5 font-mono text-sm text-gray-400 select-none">
-            {ancestorHasNext.map((hasNext, i) => (
-              <span key={i} className="w-5 shrink-0 flex justify-center text-gray-300">
-                {hasNext ? '│' : ' '}
-              </span>
-            ))}
-            <span className="w-5 shrink-0 flex justify-center text-gray-300">
-              {hasNextSibling ? '├' : '└'}
+    return (
+      <div key={node.id}>
+        <div className="flex items-center gap-1 py-1.5 px-2 hover:bg-gray-50 rounded-lg group" style={{ paddingLeft: `${depth * 24 + 8}px` }}>
+          <button onClick={() => toggle(node.id)} className="w-5 h-5 flex items-center justify-center text-gray-400 hover:text-gray-600 shrink-0">
+            {hasChildren ? (isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />) : <span className="w-4" />}
+          </button>
+          <MapPin className="w-4 h-4 text-blue-500 shrink-0" />
+          <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${node.type === 'AISLE' ? 'bg-blue-100 text-blue-700' : node.type === 'RACK' ? 'bg-green-100 text-green-700' : node.type === 'SHELF' ? 'bg-purple-100 text-purple-700' : node.type === 'BIN' ? 'bg-gray-100 text-gray-700' : 'bg-yellow-100 text-yellow-700'}`}>{typeShort}</span>
+          <span className="text-sm font-medium text-gray-800 truncate">{node.name}</span>
+          <span className="text-xs text-gray-400 font-mono">{node.code}</span>
+          {!node.isActive && <span className="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded">Inactivo</span>}
+          {node._count && node._count.productLocations > 0 && (
+            <span className="text-xs bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded flex items-center gap-1">
+              <Package className="w-3 h-3" />{node._count.productLocations}
             </span>
-            <span className="w-3 shrink-0 text-gray-300">─</span>
-            {hasChildren ? (
-              <button
-                onClick={(e) => { e.stopPropagation(); toggleExpand(loc.id) }}
-                className="w-4 h-4 shrink-0 flex items-center justify-center rounded hover:bg-gray-200 transition-colors"
-              >
-                {isExpanded
-                  ? <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
-                  : <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
-                }
-              </button>
-            ) : (
-              <span className="w-4 shrink-0" />
-            )}
-            <Layers className={`w-4 h-4 shrink-0 ml-1 ${isExpanded ? 'text-blue-500' : 'text-gray-400'}`} />
-            <span className={`font-medium text-sm ml-2 ${isExpanded ? 'text-blue-700' : 'text-gray-800'}`}>
-              {loc.name}
-            </span>
-          </div>
-        </td>
-        <td className="px-4 py-2.5">
-          <span className="font-mono text-xs text-gray-400 bg-gray-50 px-2 py-0.5 rounded border border-gray-100">
-            {loc.code}
-          </span>
-        </td>
-        <td className="px-4 py-2.5">
-          <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full border ${tc}`}>
-            {TYPE_LABELS[loc.type] || loc.type}
-          </span>
-        </td>
-        <td className="px-4 py-2.5 text-center">
-          <span className={`inline-flex items-center justify-center min-w-[28px] h-6 px-1.5 text-xs font-bold rounded-full ${pc}`}>
-            {loc._count?.productLocations || 0}
-          </span>
-        </td>
-        <td className="px-4 py-2.5 text-right">
-          <div className="flex items-center justify-end gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+          )}
+          <div className="ml-auto flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             {can(user?.role, 'warehouses', 'create') && (
-              <button
-                onClick={() => openForm({ warehouseId: Number(selectedWarehouse), parentId: String(loc.id) })}
-                className="p-1.5 rounded-lg hover:bg-blue-100 text-gray-400 hover:text-blue-600 transition-colors"
-                title="Añadir sub-ubicación"
-              >
+              <button onClick={() => openCreate(node.id)} className="p-1 hover:bg-gray-200 rounded text-gray-400 hover:text-blue-600" title="Agregar hijo">
                 <Plus className="w-3.5 h-3.5" />
               </button>
             )}
             {can(user?.role, 'warehouses', 'edit') && (
-              <button
-                onClick={() => openForm(loc)}
-                className="p-1.5 rounded-lg hover:bg-amber-100 text-gray-400 hover:text-amber-600 transition-colors"
-                title="Editar"
-              >
+              <button onClick={() => openEdit(node)} className="p-1 hover:bg-gray-200 rounded text-gray-400 hover:text-yellow-600" title="Editar">
                 <Pencil className="w-3.5 h-3.5" />
               </button>
             )}
-            {can(user?.role, 'warehouses', 'delete') && loc._count?.children === 0 && (
-              <button
-                onClick={() => handleDelete(loc.id)}
-                className="p-1.5 rounded-lg hover:bg-red-100 text-gray-400 hover:text-red-600 transition-colors"
-                title="Eliminar"
-              >
+            {can(user?.role, 'warehouses', 'delete') && (
+              <button onClick={() => setDeleteTarget(node)} className="p-1 hover:bg-gray-200 rounded text-gray-400 hover:text-red-600" title="Eliminar">
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
-        </td>
-      </tr>,
-    ]
-
-    if (isExpanded && childrenMap[loc.id]) {
-      rows.push(...renderSiblingRows(childrenMap[loc.id], depth + 1, [...ancestorHasNext, hasNextSibling]))
-    }
-
-    return rows
+        </div>
+        {isExpanded && hasChildren && node.children!.map(child => renderNode(child, depth + 1))}
+      </div>
+    )
   }
+
+  const filtered = filterTree(tree, search)
+
+  if (loading) return <div className="p-6 text-center text-gray-400">Cargando...</div>
 
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-            <MapPin className="w-6 h-6 text-blue-500" /> Ubicaciones
-          </h1>
-          {selectedWarehouse && (
-            <p className="text-sm text-gray-400 mt-0.5 ml-8">
-              {stats.count} ubicación{stats.count !== 1 ? 'es' : ''} · {stats.maxDepth} nivel{stats.maxDepth !== 1 ? 'es' : ''} · {stats.products} producto{stats.products !== 1 ? 's' : ''}
-            </p>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          {selectedWarehouse && (
+        <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+          <MapPin className="w-6 h-6" /> Ubicaciones
+        </h1>
+        <div className="flex items-center gap-2 flex-wrap">
+          <select value={warehouseId} onChange={e => setWarehouseId(Number(e.target.value))} className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
+            {warehouses.map((w: any) => <option key={w.id} value={w.id}><WarehouseIcon /> {w.name}</option>)}
+          </select>
+          {can(user?.role, 'warehouses', 'view') && (
             <>
-              <button
-                onClick={expandAll}
-                className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-500 hover:text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                title="Expandir todo"
-              >
-                <Maximize2 className="w-3.5 h-3.5" /> Expandir
-              </button>
-              <button
-                onClick={collapseAll}
-                className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-500 hover:text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                title="Colapsar todo"
-              >
-                <Minimize2 className="w-3.5 h-3.5" /> Colapsar
-              </button>
+              <button onClick={handleExport} className="flex items-center gap-1.5 bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 text-sm"><Download className="w-4 h-4" /> Exportar</button>
+              <button onClick={handleImport} className="flex items-center gap-1.5 bg-purple-600 text-white px-3 py-2 rounded-lg hover:bg-purple-700 text-sm"><Upload className="w-4 h-4" /> Importar</button>
             </>
           )}
-          {selectedWarehouse && can(user?.role, 'warehouses', 'create') && (
-            <button
-              onClick={() => openForm()}
-              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200"
-            >
-              <Plus className="w-4 h-4" /> Nueva Ubicación
-            </button>
+          {can(user?.role, 'warehouses', 'create') && (
+            <button onClick={() => openCreate()} className="flex items-center gap-1.5 bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 text-sm"><Plus className="w-4 h-4" /> Nueva</button>
           )}
         </div>
       </div>
 
-      <div className="mb-4 flex items-center gap-3 flex-wrap">
-        <div className="relative">
-          <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <select
-            value={selectedWarehouse}
-            onChange={(e) => setSelectedWarehouse(e.target.value)}
-            className="pl-9 pr-8 py-2.5 bg-white border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm appearance-none cursor-pointer"
-          >
-            <option value="">Seleccionar almacén</option>
-            {warehouses.map(w => (
-              <option key={w.id} value={w.id}>{w.name} ({w.code})</option>
-            ))}
-          </select>
-          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
-        </div>
-
-        {stats.count > 0 && (
-          <div className="flex items-center gap-4 text-xs text-gray-400 bg-white px-4 py-2 rounded-lg border border-gray-200">
-            <span className="flex items-center gap-1.5">
-              <Hash className="w-3.5 h-3.5" /> {stats.count}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <Layers className="w-3.5 h-3.5" /> {stats.maxDepth} niv.
-            </span>
-            <span className="flex items-center gap-1.5">
-              <Package className="w-3.5 h-3.5" /> {stats.products} prod.
-            </span>
-          </div>
-        )}
-      </div>
-
-      {selectedWarehouse ? (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-gray-50/80 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  <th className="text-left px-4 py-3 w-[40%]">Nombre</th>
-                  <th className="text-left px-4 py-3 w-[20%]">Código</th>
-                  <th className="text-left px-4 py-3 w-[15%]">Tipo</th>
-                  <th className="text-center px-4 py-3 w-[10%]">Prod.</th>
-                  <th className="text-right px-4 py-3 w-[15%]"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {locations.length > 0 ? (
-                  renderSiblingRows(locations, 0, [])
-                ) : (
-                  <tr>
-                    <td colSpan={5}>
-                      <div className="flex flex-col items-center justify-center py-16 text-gray-300">
-                        <MapPin className="w-12 h-12 mb-3" />
-                        <p className="text-gray-400 text-sm">No hay ubicaciones en este almacén</p>
-                        {can(user?.role, 'warehouses', 'create') && (
-                          <button
-                            onClick={() => openForm()}
-                            className="mt-3 flex items-center gap-2 text-blue-500 hover:text-blue-600 text-sm font-medium"
-                          >
-                            <Plus className="w-4 h-4" /> Crear primera ubicación
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      ) : (
-        <div className="flex flex-col items-center justify-center py-24 text-gray-300 bg-white rounded-xl border border-gray-200">
-          <Building2 className="w-16 h-16 mb-4" />
-          <p className="text-gray-400 text-sm">Selecciona un almacén para ver sus ubicaciones</p>
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg mb-4 text-sm flex items-center justify-between">
+          {error} <button onClick={() => setError('')}><X className="w-4 h-4" /></button>
         </div>
       )}
 
-      {showForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl w-full max-w-md p-6 mx-4 shadow-2xl">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                {editing ? <Pencil className="w-5 h-5 text-blue-500" /> : <Plus className="w-5 h-5 text-blue-500" />}
-                {editing ? 'Editar Ubicación' : 'Nueva Ubicación'}
-              </h2>
-              <button onClick={() => setShowForm(false)} className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
-                <X className="w-5 h-5 text-gray-400" />
-              </button>
+      <div className="bg-white rounded-xl border border-gray-200">
+        <div className="flex items-center gap-3 p-4 border-b border-gray-100">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar ubicaciones..." className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+          <span className="text-xs text-gray-400">{statExpanded} ubicaciones</span>
+          <button onClick={expandAll} className="text-xs text-blue-600 hover:underline">Expandir todo</button>
+          <button onClick={() => setExpanded(new Set())} className="text-xs text-gray-500 hover:underline">Colapsar</button>
+        </div>
+
+        <div className="p-2 max-h-[600px] overflow-y-auto">
+          {filtered.length === 0 ? (
+            <div className="text-center py-12 text-gray-400">
+              {tree.length === 0 ? 'No hay ubicaciones. Crea una o importa desde CSV.' : 'No se encontraron ubicaciones'}
             </div>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1.5">Almacén</label>
-                <div className="relative">
-                  <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <select
-                    value={form.warehouseId}
-                    onChange={(e) => setForm({...form, warehouseId: Number(e.target.value)})}
-                    className="w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm appearance-none bg-white"
-                  >
-                    {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-                  </select>
+          ) : (
+            filtered.map(node => renderNode(node))
+          )}
+        </div>
+      </div>
+
+      {/* Form Modal */}
+      {formOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setFormOpen(false)} onKeyDown={e => e.key === 'Escape' && setFormOpen(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold">{editing ? 'Editar Ubicacion' : 'Nueva Ubicacion'}</h2>
+              <button onClick={() => setFormOpen(false)} className="p-1 hover:bg-gray-100 rounded"><X className="w-5 h-5" /></button>
+            </div>
+            {error && <div className="bg-red-50 text-red-700 p-2 rounded-lg text-sm mb-3">{error}</div>}
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Nombre *</label>
+                  <input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="Pasillo 1" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Codigo *</label>
+                  <input type="text" value={form.code} onChange={e => setForm({ ...form, code: e.target.value.toUpperCase() })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 font-mono" placeholder="P01" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-1.5">Código *</label>
-                  <input
-                    type="text"
-                    value={form.code}
-                    onChange={(e) => setForm({...form, code: e.target.value})}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    placeholder="Ej: BIN-01"
-                  />
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Tipo</label>
+                  <select value={form.type} onChange={e => setForm({ ...form, type: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                    {TYPE_OPTIONS.map(t => <option key={t} value={t}>{TYPE_LABELS[t]} ({t})</option>)}
+                  </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-1.5">Nombre *</label>
-                  <input
-                    type="text"
-                    value={form.name}
-                    onChange={(e) => setForm({...form, name: e.target.value})}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    placeholder="Ej: Estante Principal"
-                  />
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Barcode</label>
+                  <input type="text" value={form.barcode} onChange={e => setForm({ ...form, barcode: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 font-mono" placeholder="000001" />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1.5">Tipo</label>
-                <div className="flex flex-wrap gap-2">
-                  {Object.entries(TYPE_LABELS).map(([k, v]) => {
-                    const selected = form.type === k
-                    return (
-                      <button
-                        key={k}
-                        type="button"
-                        onClick={() => setForm({...form, type: k})}
-                        className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-all ${
-                          selected
-                            ? `${TYPE_COLORS[k]} ring-2 ring-offset-1 ring-blue-400`
-                            : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
-                        }`}
-                      >
-                        {v}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1.5">Ubicación padre</label>
-                <select
-                  value={form.parentId}
-                  onChange={(e) => setForm({...form, parentId: e.target.value})}
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white"
-                >
-                  <option value="">Ninguna (raíz)</option>
-                  {locations.map(loc => (
-                    <option key={loc.id} value={String(loc.id)}>{loc.name} ({loc.code})</option>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Padre</label>
+                <select value={form.parentId} onChange={e => setForm({ ...form, parentId: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="">Ninguno (raiz)</option>
+                  {allLocations.filter(l => l.id !== editing?.id).map(l => (
+                    <option key={l.id} value={String(l.id)}>{l.name} ({l.code})</option>
                   ))}
                 </select>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1.5">Orden</label>
-                <input
-                  type="number"
-                  value={form.sortOrder}
-                  onChange={(e) => setForm({...form, sortOrder: Number(e.target.value)})}
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                  placeholder="0"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Orden</label>
+                  <input type="number" value={form.sortOrder} onChange={e => setForm({ ...form, sortOrder: Number(e.target.value) })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div className="flex items-end pb-1">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={form.isActive} onChange={e => setForm({ ...form, isActive: e.target.checked })} className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                    <span className="text-sm text-gray-700">Activo</span>
+                  </label>
+                </div>
               </div>
             </div>
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => setShowForm(false)}
-                className="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors text-sm font-medium"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleSave}
-                className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium shadow-sm shadow-blue-200"
-              >
-                {editing ? 'Actualizar' : 'Guardar'}
-              </button>
+            <div className="flex justify-end gap-2 mt-5">
+              <button onClick={() => setFormOpen(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm">Cancelar</button>
+              <button onClick={handleSave} disabled={!form.name || !form.code} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm disabled:opacity-50">{editing ? 'Guardar' : 'Crear'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteTarget && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setDeleteTarget(null)}>
+          <div className="bg-white rounded-2xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
+            <h2 className="text-lg font-bold text-red-600 mb-2">Eliminar ubicacion</h2>
+            <p className="text-sm text-gray-600 mb-1">Estas seguro de eliminar <strong>{deleteTarget.name}</strong> ({deleteTarget.code})?</p>
+            {deleteTarget._count && deleteTarget._count.productLocations > 0 && (
+              <p className="text-sm text-yellow-600 bg-yellow-50 p-2 rounded-lg mt-2">Esta ubicacion tiene {deleteTarget._count.productLocations} producto(s) asignado(s). Se desasociaran.</p>
+            )}
+            <div className="flex justify-end gap-2 mt-4">
+              <button onClick={() => setDeleteTarget(null)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm">Cancelar</button>
+              <button onClick={handleDelete} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm">Eliminar</button>
             </div>
           </div>
         </div>
