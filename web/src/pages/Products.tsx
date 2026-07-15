@@ -39,6 +39,7 @@ export default function Products() {
   const { user } = useAuth()
   const [products, setProducts] = useState<Product[]>([])
   const [search, setSearch] = useState('')
+  const [stockFilter, setStockFilter] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Product | null>(null)
   const [form, setForm] = useState({ code: '', barcode: '', name: '', description: '', category: '', brand: '', vehicleType: '', oemNumber: '', buyPrice: 0, sellPrice: 0, wholesalePrice: 0, stock: 0, minStock: 5, location: '', defaultLocationId: 0 })
@@ -140,7 +141,16 @@ export default function Products() {
     setShowForm(true)
   }
 
-  const lowStock = products.filter(p => p.stock <= p.minStock)
+  const lowStock = products.filter(p => p.stock > 0 && p.stock <= p.minStock)
+  const outOfStock = products.filter(p => p.stock <= 0)
+  const okStock = products.filter(p => p.stock > p.minStock)
+
+  const filteredProducts = products.filter(p => {
+    if (stockFilter === 'out') return p.stock <= 0
+    if (stockFilter === 'low') return p.stock > 0 && p.stock <= p.minStock
+    if (stockFilter === 'ok') return p.stock > p.minStock
+    return true
+  })
 
   const stockDot = (p: Product) => {
     if (p.stock <= 0) return 'bg-red-500'
@@ -177,9 +187,17 @@ export default function Products() {
         </div>
       )}
 
-      <div className="relative mb-4">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-        <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar productos..." className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" />
+      <div className="flex gap-3 mb-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar productos..." className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" />
+        </div>
+        <select value={stockFilter} onChange={(e) => setStockFilter(e.target.value)} className="px-3 py-2.5 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm min-w-[200px]">
+          <option value="">Todos ({products.length})</option>
+          <option value="out">🔴 Sin stock ({outOfStock.length})</option>
+          <option value="low">🟡 Bajo mínimo ({lowStock.length})</option>
+          <option value="ok">🟢 OK ({okStock.length})</option>
+        </select>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
@@ -200,7 +218,7 @@ export default function Products() {
             </tr>
           </thead>
           <tbody>
-            {products.map(p => (
+            {filteredProducts.map(p => (
               <tr key={p.id} className="border-t border-gray-100 hover:bg-gray-50">
                 <td className="px-4 py-3 text-sm font-mono text-gray-500">
                   <div>{p.code}</div>
@@ -251,9 +269,9 @@ export default function Products() {
                 </td>
               </tr>
             ))}
-            {products.length === 0 && (
+            {filteredProducts.length === 0 && (
               <tr>
-                <td colSpan={9 + (canViewCost ? 1 : 0) + (canViewWholesale ? 1 : 0)} className="text-center py-8 text-gray-400">No hay productos</td>
+                <td colSpan={9 + (canViewCost ? 1 : 0) + (canViewWholesale ? 1 : 0)} className="text-center py-8 text-gray-400">{products.length === 0 ? 'No hay productos' : 'No hay productos con este filtro'}</td>
               </tr>
             )}
           </tbody>
