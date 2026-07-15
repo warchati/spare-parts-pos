@@ -3,13 +3,13 @@ import api from '../lib/api'
 import { Shield, Save, Check } from 'lucide-react'
 
 const ROLES = ['admin', 'supervisor', 'cashier', 'seller']
-const MODULES = ['pos', 'products', 'clients', 'suppliers', 'sales', 'purchases', 'dashboard', 'cashRegister', 'audit', 'users', 'vehicles', 'credit', 'exports', 'taxes', 'currencies', 'returns', 'expenses', 'warehouses', 'inventory']
+const MODULES = ['pos', 'products', 'clients', 'suppliers', 'sales', 'purchases', 'dashboard', 'cashRegister', 'audit', 'analytics', 'users', 'vehicles', 'credit', 'exports', 'taxes', 'currencies', 'returns', 'expenses', 'warehouses', 'inventory']
 const ACTIONS = ['view', 'create', 'edit', 'delete', 'sell', 'receive', 'open', 'close', 'movements', 'pay', 'redeem', 'viewCost', 'viewWholesale']
 
 const MODULE_LABELS: Record<string, string> = {
   pos: 'POS', products: 'Productos', clients: 'Clientes', suppliers: 'Proveedores',
   sales: 'Ventas', purchases: 'Compras', dashboard: 'Dashboard',
-  cashRegister: 'Caja', audit: 'Auditoría', users: 'Usuarios', vehicles: 'Vehículos',
+  cashRegister: 'Caja', audit: 'Auditoria', analytics: 'Analisis', users: 'Usuarios', vehicles: 'Vehiculos',
   credit: 'Crédito', exports: 'Exportaciones', taxes: 'Impuestos', currencies: 'Monedas', returns: 'Devoluciones', expenses: 'Gastos', warehouses: 'Almacenes', inventory: 'Inventario',
 }
 const ACTION_LABELS: Record<string, string> = {
@@ -28,6 +28,7 @@ const MODULE_ACTIONS: Record<string, string[]> = {
   dashboard: ['view'],
   cashRegister: ['open', 'close', 'movements'],
   audit: ['view'],
+  analytics: ['view'],
   users: ['view', 'create', 'edit', 'delete'],
   vehicles: ['view', 'create', 'edit', 'delete'],
   credit: ['view', 'pay'],

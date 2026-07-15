@@ -300,6 +300,135 @@ export function reportRoutes(prisma: PrismaClient) {
     } catch (e) { next(e) }
   })
 
+  router.get('/analytics', requirePermission(prisma, 'dashboard', 'view'), async (req, res, next) => {
+    try {
+      const { startDate, endDate } = req.query
+      const now = new Date()
+      const defaultStart = new Date(now)
+      defaultStart.setDate(defaultStart.getDate() - 90)
+
+      const periodStart = startDate ? new Date(startDate as string) : defaultStart
+      const periodEnd = endDate ? new Date(endDate as string) : now
+      if (!endDate) periodEnd.setHours(23, 59, 59, 999)
+
+      const salesWhere: any = { status: 'completed', createdAt: { gte: periodStart, lte: periodEnd } }
+
+      const [sales, allProducts, clients] = await Promise.all([
+        prisma.sale.findMany({
+          where: salesWhere,
+          include: { items: true, client: true },
+          orderBy: { createdAt: 'desc' }),
+        prisma.product.findMany({ where: { active: true }, select: { id: true, name: true, code: true, category: true, brand: true, buyPrice: true, sellPrice: true, stock: true, minStock: true } }),
+        prisma.client.findMany({ select: { id: true, name: true, phone: true, currentBalance: true, creditLimit: true } }),
+      ])
+
+      const productStats = new Map<number, { totalQty: number; totalRevenue: number; totalCost: number; timesSold: number; lastSoldAt: Date | null }>()
+      for (const p of allProducts) productStats.set(p.id, { totalQty: 0, totalRevenue: 0, totalCost: 0, timesSold: 0, lastSoldAt: null })
+
+      const clientStats = new Map<number, { totalSpent: number; totalSales: number; lastPurchaseAt: Date | null }>()
+      const paymentTotals: Record<string, { count: number; total: number }> = {}
+      const dailyData: Record<string, { count: number; revenue: number; items: number }> = {}
+
+      for (const sale of sales) {
+        const day = sale.createdAt.toISOString().slice(0, 10)
+        if (!dailyData[day]) dailyData[day] = { count: 0, revenue: 0, items: 0 }
+        dailyData[day].count++
+        dailyData[day].revenue += sale.total
+
+        if (!paymentTotals[sale.paymentMethod]) paymentTotals[sale.paymentMethod] = { count: 0, total: 0 }
+        paymentTotals[sale.paymentMethod].count++
+        paymentTotals[sale.paymentMethod].total += sale.total
+
+        if (sale.clientId) {
+          const cs = clientStats.get(sale.clientId) || { totalSpent: 0, totalSales: 0, lastPurchaseAt: null }
+          cs.totalSpent += sale.total
+          cs.totalSales++
+          if (!cs.lastPurchaseAt || sale.createdAt > cs.lastPurchaseAt) cs.lastPurchaseAt = sale.createdAt
+          clientStats.set(sale.clientId, cs)
+        }
+
+        for (const item of sale.items) {
+          dailyData[day].items += item.quantity
+          const ps = productStats.get(item.productId)
+          if (ps) {
+            ps.totalQty += item.quantity
+            ps.totalRevenue += item.totalPrice
+            ps.totalCost += (item.unitCost || 0) * item.quantity
+            ps.timesSold++
+            if (!ps.lastSoldAt || sale.createdAt > ps.lastSoldAt) ps.lastSoldAt = sale.createdAt
+          }
+        }
+      }
+
+      const productPerformance = allProducts.map(p => {
+        const ps = productStats.get(p.id)!
+        return {
+          id: p.id, name: p.name, code: p.code, category: p.category, brand: p.brand,
+          buyPrice: p.buyPrice, sellPrice: p.sellPrice, stock: p.stock, minStock: p.minStock,
+          totalQty: ps.totalQty, totalRevenue: ps.totalRevenue, totalCost: ps.totalCost,
+          margin: ps.totalRevenue > 0 ? ((ps.totalRevenue - ps.totalCost) / ps.totalRevenue) * 100 : 0,
+          lastSoldAt: ps.lastSoldAt, timesSold: ps.timesSold,
+        }
+      })
+
+      productPerformance.sort((a, b) => b.totalQty - a.totalQty)
+
+      const clientArr = clients.map(c => {
+        const cs = clientStats.get(c.id)
+        return {
+          id: c.id, name: c.name, phone: c.phone, currentBalance: c.currentBalance, creditLimit: c.creditLimit,
+          totalSpent: cs?.totalSpent || 0, totalSales: cs?.totalSales || 0, lastPurchaseAt: cs?.lastPurchaseAt || null,
+        }
+      })
+
+      const topClients = clientArr.filter(c => c.totalSales > 0).sort((a, b) => b.totalSpent - a.totalSpent).slice(0, 10)
+
+      const sixtyDaysAgo = new Date(now)
+      sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60)
+      const inactiveClients = clientArr
+        .filter(c => c.totalSales > 0 && c.lastPurchaseAt && c.lastPurchaseAt < sixtyDaysAgo)
+        .map(c => ({ ...c, daysSince: Math.floor((now.getTime() - new Date(c.lastPurchaseAt!).getTime()) / 86400000) }))
+        .sort((a, b) => b.daysSince - a.daysSince)
+
+      const monthlySales: { month: string; revenue: number; count: number; items: number }[] = []
+      const monthNames = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
+      for (let m = 0; m < 12; m++) {
+        const match = Object.entries(dailyData).filter(([d]) => new Date(d).getMonth() === m)
+        monthlySales.push({
+          month: monthNames[m],
+          revenue: match.reduce((s, [, d]) => s + d.revenue, 0),
+          count: match.reduce((s, [, d]) => s + d.count, 0),
+          items: match.reduce((s, [, d]) => s + d.items, 0),
+        })
+      }
+
+      const dailyTrend = Object.entries(dailyData).map(([date, d]) => ({ date, ...d })).sort((a, b) => a.date.localeCompare(b.date))
+
+      const inventorySummary = {
+        totalProducts: allProducts.length,
+        totalValue: allProducts.reduce((s, p) => s + p.stock * p.buyPrice, 0),
+        outOfStock: allProducts.filter(p => p.stock <= 0).length,
+        lowStock: allProducts.filter(p => p.stock > 0 && p.stock <= p.minStock).length,
+        okStock: allProducts.filter(p => p.stock > p.minStock).length,
+      }
+
+      const totalRevenue = sales.reduce((s, sale) => s + sale.total, 0)
+      const totalItems = sales.reduce((s, sale) => s + sale.items.reduce((i, item) => i + item.quantity, 0), 0)
+      const avgTicket = sales.length > 0 ? totalRevenue / sales.length : 0
+
+      res.json({
+        kpi: { totalRevenue, totalSales: sales.length, totalItems, avgTicket, productCount: allProducts.length },
+        productPerformance,
+        topClients,
+        inactiveClients,
+        paymentDistribution: Object.entries(paymentTotals).map(([method, d]) => ({ method, ...d })),
+        dailyTrend,
+        monthlySales,
+        inventorySummary,
+      })
+    } catch (e) { next(e) }
+  })
+
 
   return router
 }

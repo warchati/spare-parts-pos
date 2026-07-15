@@ -31,6 +31,7 @@ const navItems = [
   { to: '/inventory', label: 'Inventario', icon: ClipboardCheck, module: 'inventory', action: 'view' },
   { to: '/stock-movements', label: 'Mov. Stock', icon: ArrowUpDown, module: 'inventory', action: 'view' },
   { to: '/audit-log', label: 'Auditoría', icon: ShieldCheck, module: 'audit', action: 'view' },
+  { to: '/analytics', label: 'Análisis', icon: BarChart3, module: 'analytics', action: 'view' },
 ]
 
 export default function Layout() {

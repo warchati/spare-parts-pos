@@ -26,7 +26,7 @@ const roleLabel: Record<string, string> = {
   cashier: 'Cajero',
 }
 
-const MODULES = ['pos', 'products', 'clients', 'suppliers', 'sales', 'purchases', 'dashboard', 'cashRegister', 'audit', 'users', 'vehicles', 'credit', 'exports', 'taxes', 'currencies', 'expenses']
+const MODULES = ['pos', 'products', 'clients', 'suppliers', 'sales', 'purchases', 'dashboard', 'cashRegister', 'audit', 'analytics', 'users', 'vehicles', 'credit', 'exports', 'taxes', 'currencies', 'expenses']
 const ACTIONS = ['view', 'create', 'edit', 'delete', 'sell', 'receive', 'open', 'close', 'movements', 'pay']
 const MODULE_LABELS: Record<string, string> = {
   pos: 'POS', products: 'Productos', clients: 'Clientes', suppliers: 'Proveedores',
