@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import api from '../lib/api'
 import { can } from '../lib/permissions'
 import { useAuth } from '../contexts/AuthContext'
-import { MapPin, Plus, Pencil, Trash2, ChevronRight, ChevronDown, Search, Upload, Download, X, Package, Warehouse as WarehouseIcon } from 'lucide-react'
+import { MapPin, Plus, Pencil, Trash2, ChevronRight, ChevronDown, Search, Upload, Download, X, Package } from 'lucide-react'
 
 const TYPE_LABELS: Record<string, string> = { AISLE: 'Pasillo', RACK: 'Estante', SHELF: 'Anaquel', BIN: 'Bin', FLOOR: 'Piso', ZONE: 'Zona', DOCK: 'Dock' }
 const TYPE_OPTIONS = ['AISLE', 'RACK', 'SHELF', 'BIN', 'FLOOR', 'ZONE', 'DOCK']
@@ -28,34 +28,58 @@ export default function Locations() {
   const [deleteTarget, setDeleteTarget] = useState<LocationNode | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
-  const formRef = useRef<HTMLFormElement>(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [importMsg, setImportMsg] = useState('')
+  const abortRef = useRef<AbortController | null>(null)
 
   const [form, setForm] = useState({ name: '', code: '', type: 'BIN', barcode: '', parentId: '', sortOrder: 0, isActive: true })
 
   useEffect(() => { loadWarehouses() }, [])
-  useEffect(() => { if (warehouseId) { loadTree(); loadAll() } }, [warehouseId])
+  useEffect(() => {
+    if (!warehouseId) return
+    abortRef.current?.abort()
+    const ctrl = new AbortController()
+    abortRef.current = ctrl
+    loadTree(ctrl.signal)
+    loadAll(ctrl.signal)
+    return () => ctrl.abort()
+  }, [warehouseId])
+
+  useEffect(() => {
+    if (!formOpen) return
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setFormOpen(false) }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [formOpen])
+
+  useEffect(() => {
+    if (!deleteTarget) return
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setDeleteTarget(null) }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [deleteTarget])
 
   const loadWarehouses = async () => {
     try {
       const res = await api.get('/warehouses')
       setWarehouses(res.data)
       if (!warehouseId && res.data.length > 0) setWarehouseId(res.data[0].id)
-    } catch { console.error('Error loading warehouses') }
+    } catch { setError('Error al cargar almacenes') }
     setLoading(false)
   }
 
-  const loadTree = async () => {
+  const loadTree = async (signal?: AbortSignal) => {
     try {
-      const res = await api.get('/locations', { params: { warehouseId } })
+      const res = await api.get('/locations', { params: { warehouseId }, signal })
       const nodes = buildTree(res.data)
       setTree(nodes)
       if (search) setExpanded(getAllIds(nodes))
-    } catch { console.error('Error loading locations') }
+    } catch { if (!signal?.aborted) setError('Error al cargar ubicaciones') }
   }
 
-  const loadAll = async () => {
+  const loadAll = async (signal?: AbortSignal) => {
     try {
-      const res = await api.get('/locations/all', { params: { warehouseId } })
+      const res = await api.get('/locations/all', { params: { warehouseId }, signal })
       setAllLocations(res.data)
     } catch {}
   }
@@ -82,14 +106,18 @@ export default function Locations() {
     setExpanded(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next })
   }
 
-  const expandAll = () => {
-    if (tree.length > 0) setExpanded(new Set(getAllIds(tree)))
-  }
+  const expandAll = () => { if (tree.length > 0) setExpanded(new Set(getAllIds(tree))) }
 
   const filterTree = (nodes: LocationNode[], q: string): LocationNode[] => {
     if (!q) return nodes
     const lower = q.toLowerCase()
-    return nodes.filter(n => n.name.toLowerCase().includes(lower) || n.code.toLowerCase().includes(lower) || (n.children && filterTree(n.children, q).length > 0))
+    return nodes.reduce<LocationNode[]>((acc, n) => {
+      const filteredChildren = filterTree(n.children || [], q)
+      if (n.name.toLowerCase().includes(lower) || n.code.toLowerCase().includes(lower) || filteredChildren.length > 0) {
+        acc.push({ ...n, children: filteredChildren.length > 0 ? filteredChildren : n.children })
+      }
+      return acc
+    }, [])
   }
 
   const openCreate = (parentId?: number) => {
@@ -107,6 +135,7 @@ export default function Locations() {
   }
 
   const handleSave = async () => {
+    setSubmitting(true)
     try {
       const payload = { ...form, warehouseId, parentId: form.parentId ? Number(form.parentId) : null, sortOrder: Number(form.sortOrder) }
       if (editing) await api.put(`/locations/${editing.id}`, payload)
@@ -115,21 +144,34 @@ export default function Locations() {
       loadTree()
       loadAll()
     } catch (e: any) { setError(e.response?.data?.error || 'Error al guardar') }
+    setSubmitting(false)
   }
 
   const handleDelete = async () => {
     if (!deleteTarget) return
+    setSubmitting(true)
     try {
       await api.delete(`/locations/${deleteTarget.id}`)
       setDeleteTarget(null)
       loadTree()
       loadAll()
-    } catch (e: any) { setError(e.response?.data?.error || 'Error al eliminar'); setDeleteTarget(null) }
+    } catch (e: any) { setError(e.response?.data?.error || 'Error al eliminar') }
+    setSubmitting(false)
   }
 
-  const handleExport = () => { window.open(`${api.defaults.baseURL}/locations/export`, '_blank') }
+  const handleExport = async () => {
+    try {
+      const res = await api.get('/locations/export', { params: { warehouseId }, responseType: 'blob' })
+      const url = window.URL.createObjectURL(new Blob([res.data]))
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'ubicaciones.csv'
+      a.click()
+      window.URL.revokeObjectURL(url)
+    } catch { setError('Error al exportar') }
+  }
 
-  const handleImport = async () => {
+  const handleImport = () => {
     const input = document.createElement('input')
     input.type = 'file'
     input.accept = '.csv'
@@ -151,30 +193,25 @@ export default function Locations() {
         const rows = lines.slice(1).map((line: string) => {
           const cols = line.split(',').map((c: string) => c.trim().replace(/^"|"$/g, ''))
           return {
-            warehouse: cols[warehouseIdx] || '',
-            code: cols[codeIdx] || '',
-            name: cols[nameIdx] || '',
-            type: cols[typeIdx] || 'BIN',
-            barcode: cols[barcodeIdx] || '',
-            parent: cols[parentIdx] || '',
+            warehouse: cols[warehouseIdx] || '', code: cols[codeIdx] || '', name: cols[nameIdx] || '',
+            type: cols[typeIdx] || 'BIN', barcode: cols[barcodeIdx] || '', parent: cols[parentIdx] || '',
             sortOrder: orderIdx >= 0 ? Number(cols[orderIdx]) || 0 : 0,
           }
         }).filter((r: any) => r.code && r.name && r.warehouse)
 
-        if (rows.length === 0) { setError('No se encontraron filas válidas en el CSV'); return }
+        if (rows.length === 0) { setImportMsg('No se encontraron filas validas en el CSV'); return }
         const res = await api.post('/locations/import', { rows })
-        const msg = `Importados: ${res.data.created}. Errores: ${res.data.errors.length}`
-        if (res.data.errors.length > 0) alert(msg + '\n' + res.data.errors.join('\n'))
-        else alert(msg)
+        const errMsgs = res.data.errors.length > 0 ? '\n' + res.data.errors.join('\n') : ''
+        setImportMsg(`Importados: ${res.data.created}. Errores: ${res.data.errors.length}${errMsgs}`)
         loadTree()
         loadAll()
-      } catch (e: any) { setError(e.response?.data?.error || 'Error al importar') }
+      } catch (e: any) { setImportMsg(e.response?.data?.error || 'Error al importar') }
     }
     input.click()
   }
 
-  const statTotal = tree.length
-  const statExpanded = getAllIds(tree).length
+  const statRoots = tree.length
+  const statTotal = getAllIds(tree).length
 
   const renderNode = (node: LocationNode, depth: number = 0) => {
     const hasChildren = node.children && node.children.length > 0
@@ -232,7 +269,7 @@ export default function Locations() {
         </h1>
         <div className="flex items-center gap-2 flex-wrap">
           <select value={warehouseId} onChange={e => setWarehouseId(Number(e.target.value))} className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
-            {warehouses.map((w: any) => <option key={w.id} value={w.id}><WarehouseIcon /> {w.name}</option>)}
+            {warehouses.map((w: any) => <option key={w.id} value={w.id}>{w.name}</option>)}
           </select>
           {can(user?.role, 'warehouses', 'view') && (
             <>
@@ -246,9 +283,10 @@ export default function Locations() {
         </div>
       </div>
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg mb-4 text-sm flex items-center justify-between">
-          {error} <button onClick={() => setError('')}><X className="w-4 h-4" /></button>
+      {(error || importMsg) && (
+        <div className={`p-3 rounded-lg mb-4 text-sm flex items-center justify-between ${error ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-green-50 border border-green-200 text-green-700'}`}>
+          {error || importMsg}
+          <button onClick={() => { setError(''); setImportMsg('') }}><X className="w-4 h-4" /></button>
         </div>
       )}
 
@@ -258,7 +296,7 @@ export default function Locations() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar ubicaciones..." className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
-          <span className="text-xs text-gray-400">{statExpanded} ubicaciones</span>
+          <span className="text-xs text-gray-400">{statTotal} ubicaciones</span>
           <button onClick={expandAll} className="text-xs text-blue-600 hover:underline">Expandir todo</button>
           <button onClick={() => setExpanded(new Set())} className="text-xs text-gray-500 hover:underline">Colapsar</button>
         </div>
@@ -274,13 +312,12 @@ export default function Locations() {
         </div>
       </div>
 
-      {/* Form Modal */}
       {formOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setFormOpen(false)} onKeyDown={e => e.key === 'Escape' && setFormOpen(false)}>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => !submitting && setFormOpen(false)}>
           <div className="bg-white rounded-2xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold">{editing ? 'Editar Ubicacion' : 'Nueva Ubicacion'}</h2>
-              <button onClick={() => setFormOpen(false)} className="p-1 hover:bg-gray-100 rounded"><X className="w-5 h-5" /></button>
+              <button onClick={() => !submitting && setFormOpen(false)} className="p-1 hover:bg-gray-100 rounded"><X className="w-5 h-5" /></button>
             </div>
             {error && <div className="bg-red-50 text-red-700 p-2 rounded-lg text-sm mb-3">{error}</div>}
             <div className="space-y-3">
@@ -310,7 +347,7 @@ export default function Locations() {
                 <label className="block text-xs font-medium text-gray-600 mb-1">Padre</label>
                 <select value={form.parentId} onChange={e => setForm({ ...form, parentId: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
                   <option value="">Ninguno (raiz)</option>
-                  {allLocations.filter(l => l.id !== editing?.id).map(l => (
+                  {allLocations.filter(l => l.id !== editing?.id && l.warehouseId === warehouseId).map(l => (
                     <option key={l.id} value={String(l.id)}>{l.name} ({l.code})</option>
                   ))}
                 </select>
@@ -329,16 +366,17 @@ export default function Locations() {
               </div>
             </div>
             <div className="flex justify-end gap-2 mt-5">
-              <button onClick={() => setFormOpen(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm">Cancelar</button>
-              <button onClick={handleSave} disabled={!form.name || !form.code} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm disabled:opacity-50">{editing ? 'Guardar' : 'Crear'}</button>
+              <button onClick={() => !submitting && setFormOpen(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm">Cancelar</button>
+              <button onClick={handleSave} disabled={!form.name || !form.code || submitting} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm disabled:opacity-50">
+                {submitting ? 'Guardando...' : editing ? 'Guardar' : 'Crear'}
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
       {deleteTarget && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setDeleteTarget(null)}>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => !submitting && setDeleteTarget(null)}>
           <div className="bg-white rounded-2xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
             <h2 className="text-lg font-bold text-red-600 mb-2">Eliminar ubicacion</h2>
             <p className="text-sm text-gray-600 mb-1">Estas seguro de eliminar <strong>{deleteTarget.name}</strong> ({deleteTarget.code})?</p>
@@ -346,8 +384,10 @@ export default function Locations() {
               <p className="text-sm text-yellow-600 bg-yellow-50 p-2 rounded-lg mt-2">Esta ubicacion tiene {deleteTarget._count.productLocations} producto(s) asignado(s). Se desasociaran.</p>
             )}
             <div className="flex justify-end gap-2 mt-4">
-              <button onClick={() => setDeleteTarget(null)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm">Cancelar</button>
-              <button onClick={handleDelete} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm">Eliminar</button>
+              <button onClick={() => !submitting && setDeleteTarget(null)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm">Cancelar</button>
+              <button onClick={handleDelete} disabled={submitting} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm disabled:opacity-50">
+                {submitting ? 'Eliminando...' : 'Eliminar'}
+              </button>
             </div>
           </div>
         </div>

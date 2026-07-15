@@ -41,12 +41,16 @@ export function locationRoutes(prisma: PrismaClient) {
 
   router.get('/export', requirePermission(prisma, 'warehouses', 'view'), async (req, res, next) => {
     try {
+      const where: any = {}
+      if (req.query.warehouseId) where.warehouseId = Number(req.query.warehouseId)
       const locations = await prisma.location.findMany({
+        where,
         include: { warehouse: { select: { name: true } }, parent: { select: { name: true } } },
         orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
       })
+      const esc = (v: string) => `"${(v || '').replace(/"/g, '""')}"`
       const header = 'Warehouse,Code,Nombre,Tipo,Barcode,Padre,Orden,Activo'
-      const rows = locations.map(l => `"${l.warehouse.name}","${l.code}","${l.name}","${l.type}","${l.barcode}","${l.parent?.name || ''}",${l.sortOrder},${l.isActive}`)
+      const rows = locations.map(l => [esc(l.warehouse.name), esc(l.code), esc(l.name), esc(l.type), esc(l.barcode), esc(l.parent?.name || ''), l.sortOrder, l.isActive].join(','))
       res.setHeader('Content-Type', 'text/csv; charset=utf-8')
       res.setHeader('Content-Disposition', 'attachment; filename=ubicaciones.csv')
       res.send('\uFEFF' + header + '\n' + rows.join('\n'))
@@ -84,7 +88,7 @@ export function locationRoutes(prisma: PrismaClient) {
 
   router.post('/', requirePermission(prisma, 'warehouses', 'create'), async (req: AuthRequest, res, next) => {
     try {
-      const { warehouseId, parentId, name, code, type, barcode, sortOrder } = req.body
+      const { warehouseId, parentId, name, code, type, barcode, sortOrder, isActive } = req.body
       if (!warehouseId || !name || !code) {
         return res.status(400).json({ error: 'warehouseId, name and code are required' })
       }
@@ -107,6 +111,7 @@ export function locationRoutes(prisma: PrismaClient) {
           type: type || 'BIN',
           barcode: barcode || '',
           sortOrder: sortOrder ?? 0,
+          isActive: isActive !== undefined ? isActive : true,
         },
       })
 
