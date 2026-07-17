@@ -18,7 +18,7 @@ export default function Suppliers() {
     try {
       const res = await api.get('/suppliers', { params: { q: search || undefined } })
       setSuppliers(res.data)
-    } catch {}
+    } catch (e) { console.error('Failed to load suppliers:', e) }
   }
 
   const handleSave = async () => {

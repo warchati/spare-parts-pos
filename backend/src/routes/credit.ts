@@ -56,7 +56,14 @@ export function creditRoutes(prisma: PrismaClient) {
     try {
       const { saleId, clientId, amount, method, notes } = req.body
 
+      if (!saleId) return res.status(400).json({ error: 'saleId is required' })
+      if (!amount || amount <= 0) return res.status(400).json({ error: 'amount must be a positive number' })
+
       const result = await prisma.$transaction(async (tx) => {
+        if (clientId) {
+          await tx.$queryRaw`SELECT id FROM "Client" WHERE id = ${clientId} FOR UPDATE`
+        }
+
         const payment = await tx.creditPayment.create({
           data: {
             saleId,
@@ -68,6 +75,14 @@ export function creditRoutes(prisma: PrismaClient) {
         })
 
         if (clientId) {
+          const client = await tx.client.findUnique({
+            where: { id: clientId },
+            select: { currentBalance: true },
+          })
+          if (!client) throw new Error('Client not found')
+          if (client.currentBalance < amount) {
+            throw new Error('Payment amount exceeds client balance')
+          }
           await tx.client.update({
             where: { id: clientId },
             data: { currentBalance: { decrement: amount } },

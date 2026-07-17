@@ -7,7 +7,7 @@ export async function loadCurrency() {
     const res = await api.get('/currencies')
     const base = res.data.find((c: any) => c.isBase && c.isActive)
     if (base) symbol = base.symbol
-  } catch {}
+  } catch (e) { console.warn('Failed to load currency:', e) }
 }
 
 export function formatCurrency(n: number | null | undefined): string {

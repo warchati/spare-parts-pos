@@ -77,7 +77,7 @@ export default function POS() {
     try {
       const res = await api.get('/cash-register/current')
       setCurrentRegister(res.data)
-    } catch { setCurrentRegister(null) }
+    } catch (e) { console.error('Failed to load current register:', e); setCurrentRegister(null) }
   }
 
   const loadDefaultTax = async () => {
@@ -85,14 +85,14 @@ export default function POS() {
       const res = await api.get('/taxes')
       const def = res.data.find((t: any) => t.isDefault)
       if (def) setDefaultTax(def)
-    } catch {}
+    } catch (e) { console.error('Failed to load products:', e) }
   }
 
   const loadLoyaltyConfig = async () => {
     try {
       const res = await api.get('/loyalty/config')
       setLoyaltyConfig(res.data)
-    } catch {}
+    } catch (e) { console.error('Failed to load currencies:', e) }
   }
 
   const loadClientPoints = async (clientId: number) => {
@@ -113,7 +113,7 @@ export default function POS() {
       const base = active.find((c: Currency) => c.isBase)
       if (base) setSelectedCurrency(base)
       else if (active.length > 0) setSelectedCurrency(active[0])
-    } catch { setCurrencies([]) }
+    } catch (e) { console.error('Failed to load currencies:', e); setCurrencies([]) }
   }
 
   useEffect(() => {
@@ -123,7 +123,7 @@ export default function POS() {
       try {
         const res = await api.get('/products', { params: { q: search, active: true } })
         setResults(res.data.filter((p: Product) => p.stock > 0))
-      } catch { setResults([]) }
+      } catch (e) { console.error('Failed to load products:', e); setResults([]) }
     }, 300)
     return () => clearTimeout(searchTimeout.current)
   }, [search])
@@ -133,7 +133,7 @@ export default function POS() {
     try {
       const res = await api.get('/clients', { params: { q } })
       setClientResults(res.data)
-    } catch { setClientResults([]) }
+    } catch (e) { console.error('Failed to search clients:', e); setClientResults([]) }
   }
 
   const addToCart = (product: Product) => {

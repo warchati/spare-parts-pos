@@ -12,7 +12,10 @@ export function reportRoutes(prisma: PrismaClient) {
       const tomorrow = new Date(today)
       tomorrow.setDate(tomorrow.getDate() + 1)
 
-      const safe = <T>(p: Promise<T>, fallback: T): Promise<T> => p.catch(() => fallback)
+      const safe = <T>(p: Promise<T>, fallback: T): Promise<T> => p.catch((err) => {
+        console.error('Dashboard query failed:', err?.message || err)
+        return fallback
+      })
 
       const [todaySales, allSales, lowStock, recentSales, activeRegister] = await Promise.all([
         safe(
@@ -308,8 +311,8 @@ export function reportRoutes(prisma: PrismaClient) {
       defaultStart.setDate(defaultStart.getDate() - 90)
 
       const periodStart = startDate ? new Date(startDate as string) : defaultStart
-      const periodEnd = endDate ? new Date(endDate as string) : now
-      if (!endDate) periodEnd.setHours(23, 59, 59, 999)
+      const periodEnd = endDate ? new Date(endDate as string) : new Date(now)
+      periodEnd.setHours(23, 59, 59, 999)
 
       const salesWhere: any = { status: 'completed', createdAt: { gte: periodStart, lte: periodEnd } }
 

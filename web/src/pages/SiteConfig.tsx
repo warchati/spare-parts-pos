@@ -21,7 +21,7 @@ export default function SiteConfig() {
   const [resetError, setResetError] = useState('')
 
   useEffect(() => {
-    api.get('/store-config').then(res => setConfig(res.data)).catch(() => {}).finally(() => setLoading(false))
+    api.get('/store-config').then(res => setConfig(res.data)).catch((e) => console.error('Failed to load store config:', e)).finally(() => setLoading(false))
   }, [])
 
   const handleSave = async () => {
@@ -59,8 +59,8 @@ export default function SiteConfig() {
       if (!res.ok) throw new Error('Error al subir logo')
       const data = await res.json()
       setConfig({ ...config, logoUrl: data.secure_url })
-    } catch {
-      alert('Error al subir el logo')
+    } catch (e) {
+      console.error('Failed to upload logo:', e); alert('Error al subir el logo')
     } finally {
       setUploading(false)
     }

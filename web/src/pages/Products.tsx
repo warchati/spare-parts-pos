@@ -53,7 +53,7 @@ export default function Products() {
   useEffect(() => { loadProducts() }, [search])
 
   useEffect(() => {
-    api.get('/locations').then(r => setLocations(r.data)).catch(() => {})
+    api.get('/locations').then(r => setLocations(r.data)).catch((e) => console.error('Failed to load locations:', e))
   }, [])
 
   const loadProducts = async () => {

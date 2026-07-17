@@ -100,8 +100,8 @@ export function can(role: string | undefined, module: string, action: string): b
   if (_latestPermissions.length > 0) {
     return _latestPermissions.some(p => p.module === module && p.action === action)
   }
-  const r = role || 'cashier'
-  const perms = PERMISSIONS[r]
+  if (!role) return false
+  const perms = PERMISSIONS[role]
   if (!perms) return false
   const actions = perms[module]
   if (!actions) return false

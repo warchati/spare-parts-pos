@@ -30,10 +30,10 @@ export default function Purchases() {
     } catch (e) { console.error(e) }
   }
   const loadProducts = async () => {
-    try { const res = await api.get('/products'); setProducts(res.data) } catch {}
+    try { const res = await api.get('/products'); setProducts(res.data) } catch (e) { console.error('Failed to load products:', e) }
   }
   const loadSuppliers = async () => {
-    try { const res = await api.get('/suppliers'); setSuppliers(res.data) } catch {}
+    try { const res = await api.get('/suppliers'); setSuppliers(res.data) } catch (e) { console.error('Failed to load suppliers:', e) }
   }
 
   const filteredProducts = products.filter(p =>

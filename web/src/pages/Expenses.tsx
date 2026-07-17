@@ -51,7 +51,7 @@ export default function Expenses() {
       if (endDate) params.end = endDate
       const res = await api.get('/expenses', { params })
       setExpenses(res.data)
-    } catch {}
+    } catch (e) { console.error('Failed to load expenses:', e) }
   }
 
   const loadSummary = async () => {
@@ -61,7 +61,7 @@ export default function Expenses() {
       if (endDate) params.end = endDate
       const res = await api.get('/expenses/summary', { params })
       setSummary(res.data)
-    } catch {}
+    } catch (e) { console.error('Failed to load categories:', e) }
   }
 
   useEffect(() => { loadSummary() }, [startDate, endDate])

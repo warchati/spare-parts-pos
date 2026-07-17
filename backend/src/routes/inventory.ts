@@ -108,9 +108,10 @@ export function inventoryRoutes(prisma: PrismaClient) {
       const { items } = req.body
       if (!items) return res.status(400).json({ error: 'items are required' })
 
-      await prisma.inventoryAdjustmentItem.deleteMany({ where: { adjustmentId: Number(req.params.id) } })
+      const updated = await prisma.$transaction(async (tx) => {
+        await tx.inventoryAdjustmentItem.deleteMany({ where: { adjustmentId: Number(req.params.id) } })
 
-      const updated = await prisma.inventoryAdjustment.update({
+        return tx.inventoryAdjustment.update({
         where: { id: Number(req.params.id) },
         data: {
           items: {
@@ -132,6 +133,7 @@ export function inventoryRoutes(prisma: PrismaClient) {
             },
           },
         },
+        })
       })
 
       await logAudit(prisma, req, 'UPDATE', 'InventoryAdjustment', adjustment.id, { action: 'update_items' })

@@ -29,8 +29,8 @@ export default function Inventory() {
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    api.get('/warehouses').then(res => setWarehouses(res.data)).catch(() => {})
-    api.get('/products').then(res => setProducts(res.data)).catch(() => {})
+    api.get('/warehouses').then(res => setWarehouses(res.data)).catch((e) => console.error('Failed to load warehouses:', e))
+    api.get('/products').then(res => setProducts(res.data)).catch((e) => console.error('Failed to load products:', e))
     loadAdjustments()
   }, [filterWarehouse, filterStatus])
 
@@ -41,14 +41,14 @@ export default function Inventory() {
       if (filterStatus) params.status = filterStatus
       const res = await api.get('/inventory/adjustments', { params })
       setAdjustments(res.data)
-    } catch {}
+    } catch (e) { console.error('Failed to load adjustments:', e) }
   }
 
   const viewDetail = async (id: number) => {
     try {
       const res = await api.get(`/inventory/adjustments/${id}`)
       setSelected(res.data)
-    } catch {}
+    } catch (e) { console.error('Failed to load adjustment details:', e) }
   }
 
   const addItem = () => {

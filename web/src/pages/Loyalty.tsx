@@ -58,7 +58,7 @@ export default function Loyalty() {
       try {
         const res = await api.get('/loyalty/clients', { params: { q: histClientSearch } })
         setClientsLookup(res.data)
-      } catch { setClientsLookup([]) }
+      } catch (e) { console.error('Failed to load client lookup:', e); setClientsLookup([]) }
     }, 300)
     return () => clearTimeout(timer)
   }, [histClientSearch])
@@ -67,7 +67,7 @@ export default function Loyalty() {
     try {
       const res = await api.get('/loyalty/clients', { params: { q: search || undefined, sortBy: 'points', order: 'desc' } })
       setClients(res.data)
-    } catch {}
+    } catch (e) { console.error('Failed to load loyalty config:', e) }
   }
 
   const loadTransactions = async () => {
@@ -82,14 +82,14 @@ export default function Loyalty() {
       if (histEnd) params.end = histEnd
       const res = await api.get('/loyalty/transactions', { params })
       setTransactions(res.data)
-    } catch {}
+    } catch (e) { console.error('Failed to load transactions:', e) }
   }
 
   const loadConfig = async () => {
     try {
       const res = await api.get('/loyalty/config')
       setConfig(res.data)
-    } catch {}
+    } catch (e) { console.error('Failed to load loyalty config:', e) }
   }
 
   const handleSearch = (q: string) => {

@@ -42,9 +42,9 @@ export default function Layout() {
   const [storeConfig, setStoreConfig] = useState<any>(null)
 
   useEffect(() => {
-    api.get('/store-config').then(res => setStoreConfig(res.data)).catch(() => {})
+    api.get('/store-config').then(res => setStoreConfig(res.data)).catch((e) => console.warn('Failed to load store config:', e))
     const handler = () => {
-      api.get('/store-config').then(res => setStoreConfig(res.data)).catch(() => {})
+      api.get('/store-config').then(res => setStoreConfig(res.data)).catch((e) => console.warn('Failed to load store config:', e))
     }
     window.addEventListener('store-changed', handler)
     return () => window.removeEventListener('store-changed', handler)

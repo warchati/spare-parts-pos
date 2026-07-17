@@ -30,7 +30,7 @@ export default function Clients() {
     try {
       const res = await api.get('/clients', { params: { q: search || undefined } })
       setClients(res.data)
-    } catch {}
+    } catch (e) { console.error('Failed to load clients:', e) }
   }
 
   const handleSave = async () => {

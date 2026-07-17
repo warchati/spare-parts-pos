@@ -25,7 +25,7 @@ export default function Warehouses() {
         w.code.toLowerCase().includes(search.toLowerCase())
       )
       setWarehouses(data)
-    } catch {}
+    } catch (e) { console.error('Failed to load warehouses:', e) }
   }
 
   const handleSave = async () => {

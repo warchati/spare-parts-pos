@@ -1,6 +1,7 @@
 import express from 'express'
 import cors from 'cors'
 import helmet from 'helmet'
+import rateLimit from 'express-rate-limit'
 import { PrismaClient } from '@prisma/client'
 import { productRoutes } from './routes/products'
 import { clientRoutes } from './routes/clients'
@@ -34,11 +35,23 @@ export function createServer(prisma: PrismaClient) {
   const app = express()
 
   app.use(helmet())
+  const allowedOrigins = process.env.CORS_ORIGIN
+    ? process.env.CORS_ORIGIN.split(',').map(s => s.trim())
+    : ['https://pos-spare-parts.vercel.app', 'http://localhost:5173']
   app.use(cors({
-    origin: process.env.CORS_ORIGIN || ['https://pos-spare-parts.vercel.app', 'http://localhost:5173'],
+    origin: allowedOrigins,
     credentials: true,
   }))
-  app.use(express.json({ limit: '5mb' }))
+  app.use(express.json({ limit: '2mb' }))
+
+  const globalLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 200,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many requests, please try again later' },
+  })
+  app.use('/api', globalLimiter)
 
   app.use('/api/auth', authRoutes(prisma))
   app.get('/api/health', async (_req, res) => {
@@ -46,7 +59,7 @@ export function createServer(prisma: PrismaClient) {
       await prisma.$queryRaw`SELECT 1`
       res.json({ status: 'ok', db: 'connected' })
     } catch {
-      res.json({ status: 'error', db: 'disconnected' })
+      res.status(503).json({ status: 'error', db: 'disconnected' })
     }
   })
 

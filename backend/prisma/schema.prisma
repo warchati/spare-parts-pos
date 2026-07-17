@@ -18,11 +18,12 @@ model RolePermission {
 model UserPermission {
   id      Int    @id @default(autoincrement())
   userId  Int
-  user    User   @relation(fields: [userId], references: [id])
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   module  String
   action  String
   granted Boolean @default(true)
   @@unique([userId, module, action])
+  @@index([userId])
 }
 
 model User {
@@ -90,11 +91,11 @@ model Product {
   minStock       Int            @default(5)
   location       String         @default("")
   defaultLocationId Int?
-  defaultLocation    Location?  @relation("DefaultProductLocation", fields: [defaultLocationId], references: [id])
+  defaultLocation    Location?  @relation("DefaultProductLocation", fields: [defaultLocationId], references: [id], onDelete: SetNull)
   imageUrl       String         @default("")
   active         Boolean        @default(true)
   taxId          Int?
-  tax            Tax?           @relation(fields: [taxId], references: [id])
+  tax            Tax?           @relation(fields: [taxId], references: [id], onDelete: Restrict)
   saleItems      SaleItem[]
   purchaseItems  PurchaseItem[]
   vehicleLinks   ProductVehicle[]
@@ -111,10 +112,12 @@ model Product {
 model ProductImage {
   id        Int     @id @default(autoincrement())
   productId Int
-  product   Product @relation(fields: [productId], references: [id])
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
   url       String
   altText   String  @default("")
   sortOrder Int     @default(0)
+
+  @@index([productId])
 }
 
 model Warehouse {
@@ -132,13 +135,13 @@ model Warehouse {
 model Location {
   id                Int               @id @default(autoincrement())
   warehouseId       Int
-  warehouse         Warehouse         @relation(fields: [warehouseId], references: [id])
+  warehouse         Warehouse         @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
   parentId          Int?
-  parent            Location?         @relation("LocationHierarchy", fields: [parentId], references: [id])
+  parent            Location?         @relation("LocationHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
   children          Location[]        @relation("LocationHierarchy")
   name              String
   code              String
-  type              String            @default("BIN")  // ZONE, AISLE, RACK, SHELF, BIN
+  type              String            @default("BIN")
   barcode           String            @default("")
   sortOrder         Int               @default(0)
   isActive          Boolean           @default(true)
@@ -156,9 +159,9 @@ model Location {
 model ProductLocation {
   id         Int      @id @default(autoincrement())
   productId  Int
-  product    Product  @relation(fields: [productId], references: [id])
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   locationId Int
-  location   Location @relation(fields: [locationId], references: [id])
+  location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
   stock      Int      @default(0)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -171,20 +174,20 @@ model ProductLocation {
 model StockMovement {
   id            Int      @id @default(autoincrement())
   productId     Int
-  product       Product  @relation(fields: [productId], references: [id])
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
   locationId    Int?
-  location      Location? @relation(fields: [locationId], references: [id])
-  type          String   // SALE, PURCHASE_RECEIVE, SALE_CANCEL, RETURN, ADJUSTMENT, MANUAL, TRANSFER
-  quantity      Int      // positivo=entrada, negativo=salida
-  beforeStock   Int      // stock total del producto antes
-  afterStock    Int      // stock total del producto después
-  beforeLocStock Int?    // stock en esa ubicación antes (si aplica)
-  afterLocStock  Int?    // stock en esa ubicación después (si aplica)
+  location      Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  type          String
+  quantity      Int
+  beforeStock   Int
+  afterStock    Int
+  beforeLocStock Int?
+  afterLocStock  Int?
   referenceType String?
   referenceId   Int?
   reason        String   @default("")
   userId        Int?
-  user          User?    @relation(fields: [userId], references: [id])
+  user          User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   createdAt     DateTime @default(now())
 
   @@index([productId])
@@ -192,32 +195,38 @@ model StockMovement {
   @@index([type])
   @@index([createdAt])
   @@index([referenceType, referenceId])
+  @@index([userId])
 }
 
 model InventoryAdjustment {
   id           Int                      @id @default(autoincrement())
-  type         String                   // COUNT, ADJUSTMENT
-  status       String                   @default("draft") // draft, pending, approved, rejected
+  type         String
+  status       String                   @default("draft")
   warehouseId  Int
-  warehouse    Warehouse                @relation(fields: [warehouseId], references: [id])
+  warehouse    Warehouse                @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
   notes        String                   @default("")
   createdById  Int
-  createdBy    User                     @relation("CreatedAdjustments", fields: [createdById], references: [id])
+  createdBy    User                     @relation("CreatedAdjustments", fields: [createdById], references: [id], onDelete: Restrict)
   approvedById Int?
-  approvedBy   User?                    @relation("ApprovedAdjustments", fields: [approvedById], references: [id])
+  approvedBy   User?                    @relation("ApprovedAdjustments", fields: [approvedById], references: [id], onDelete: SetNull)
   approvedAt   DateTime?
   items        InventoryAdjustmentItem[]
   createdAt    DateTime                 @default(now())
+
+  @@index([warehouseId])
+  @@index([createdById])
+  @@index([status])
+  @@index([createdAt])
 }
 
 model InventoryAdjustmentItem {
   id           Int                  @id @default(autoincrement())
   adjustmentId Int
-  adjustment   InventoryAdjustment  @relation(fields: [adjustmentId], references: [id])
+  adjustment   InventoryAdjustment  @relation(fields: [adjustmentId], references: [id], onDelete: Cascade)
   productId    Int
-  product      Product              @relation(fields: [productId], references: [id])
+  product      Product              @relation(fields: [productId], references: [id], onDelete: Restrict)
   locationId   Int
-  location     Location             @relation(fields: [locationId], references: [id])
+  location     Location             @relation(fields: [locationId], references: [id], onDelete: Restrict)
   expectedQty  Int                  @default(0)
   actualQty    Int                  @default(0)
   difference   Int                  @default(0)
@@ -225,6 +234,7 @@ model InventoryAdjustmentItem {
 
   @@index([adjustmentId])
   @@index([productId])
+  @@index([locationId])
 }
 
 model Client {
@@ -244,6 +254,9 @@ model Client {
   loyaltyTransactions LoyaltyTransaction[]
   createdAt          DateTime             @default(now())
   updatedAt          DateTime             @updatedAt
+
+  @@index([name])
+  @@index([document])
 }
 
 model Supplier {
@@ -271,23 +284,24 @@ model Vehicle {
 model ProductVehicle {
   id        Int     @id @default(autoincrement())
   productId Int
-  product   Product @relation(fields: [productId], references: [id])
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
   vehicleId Int
-  vehicle   Vehicle @relation(fields: [vehicleId], references: [id])
+  vehicle   Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   @@unique([productId, vehicleId])
+  @@index([vehicleId])
 }
 
 model Sale {
   id             Int            @id @default(autoincrement())
   invoiceNumber  String?        @unique
   clientId       Int?
-  client         Client?        @relation(fields: [clientId], references: [id])
+  client         Client?        @relation(fields: [clientId], references: [id], onDelete: Restrict)
   userId         Int
-  user           User           @relation(fields: [userId], references: [id])
+  user           User           @relation(fields: [userId], references: [id], onDelete: Restrict)
   cashRegisterId Int?
-  cashRegister   CashRegister?  @relation(fields: [cashRegisterId], references: [id])
+  cashRegister   CashRegister?  @relation(fields: [cashRegisterId], references: [id], onDelete: SetNull)
   currencyId     Int?
-  currency       Currency?      @relation(fields: [currencyId], references: [id])
+  currency       Currency?      @relation(fields: [currencyId], references: [id], onDelete: Restrict)
   items          SaleItem[]
   creditPayments CreditPayment[]
   returns        SaleReturn[]
@@ -304,60 +318,81 @@ model Sale {
   pointsEarned   Int            @default(0)
   pointsRedeemed Int            @default(0)
   createdAt      DateTime       @default(now())
+
+  @@index([userId])
+  @@index([clientId])
+  @@index([cashRegisterId])
+  @@index([currencyId])
+  @@index([status])
+  @@index([paymentMethod])
+  @@index([createdAt])
 }
 
 model SaleItem {
   id          Int      @id @default(autoincrement())
   saleId      Int
-  sale        Sale     @relation(fields: [saleId], references: [id])
+  sale        Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
   productId   Int
-  product     Product  @relation(fields: [productId], references: [id])
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
   productName String
   quantity    Int      @default(1)
   unitPrice   Float
   unitCost    Float?
   totalPrice  Float
+
+  @@index([saleId])
+  @@index([productId])
 }
 
 model SaleReturn {
   id               Int              @id @default(autoincrement())
   saleId           Int
-  sale             Sale             @relation(fields: [saleId], references: [id])
+  sale             Sale             @relation(fields: [saleId], references: [id], onDelete: Restrict)
   reason           String
   totalRefund      Float            @default(0)
   creditNoteNumber String           @default("")
   createdAt        DateTime         @default(now())
   items            SaleReturnItem[]
+
+  @@index([saleId])
+  @@index([createdAt])
 }
 
 model SaleReturnItem {
   id           Int        @id @default(autoincrement())
   saleReturnId Int
-  saleReturn   SaleReturn @relation(fields: [saleReturnId], references: [id])
+  saleReturn   SaleReturn @relation(fields: [saleReturnId], references: [id], onDelete: Cascade)
   productId    Int
-  product      Product    @relation(fields: [productId], references: [id])
+  product      Product    @relation(fields: [productId], references: [id], onDelete: Restrict)
   productName  String
   quantity     Int
   unitPrice    Float
   subtotal     Float
+
+  @@index([saleReturnId])
+  @@index([productId])
 }
 
 model CreditPayment {
   id        Int      @id @default(autoincrement())
   saleId    Int
-  sale      Sale     @relation(fields: [saleId], references: [id])
+  sale      Sale     @relation(fields: [saleId], references: [id], onDelete: Restrict)
   clientId  Int?
-  client    Client?  @relation(fields: [clientId], references: [id])
+  client    Client?  @relation(fields: [clientId], references: [id], onDelete: Restrict)
   amount    Float
   method    String   @default("cash")
   notes     String   @default("")
   createdAt DateTime @default(now())
+
+  @@index([saleId])
+  @@index([clientId])
+  @@index([createdAt])
 }
 
 model CashRegister {
   id             Int             @id @default(autoincrement())
   userId         Int
-  user           User            @relation(fields: [userId], references: [id])
+  user           User            @relation(fields: [userId], references: [id], onDelete: Restrict)
   openingBalance Float           @default(0)
   closingBalance Float?
   openingDate    DateTime        @default(now())
@@ -367,28 +402,37 @@ model CashRegister {
   sales          Sale[]
   movements      CashMovement[]
   createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
 }
 
 model CashMovement {
   id             Int          @id @default(autoincrement())
   cashRegisterId Int
-  cashRegister   CashRegister @relation(fields: [cashRegisterId], references: [id])
+  cashRegister   CashRegister @relation(fields: [cashRegisterId], references: [id], onDelete: Cascade)
   userId         Int?
-  user           User?        @relation(fields: [userId], references: [id])
+  user           User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
   type           String       @default("income")
   amount         Float
   description    String
   reference      String       @default("")
   createdAt      DateTime     @default(now())
+
+  @@index([cashRegisterId])
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
 }
 
 model PurchaseOrder {
   id          Int            @id @default(autoincrement())
   supplierId  Int
-  supplier    Supplier       @relation(fields: [supplierId], references: [id])
+  supplier    Supplier       @relation(fields: [supplierId], references: [id], onDelete: Restrict)
   userId      Int
-  user        User           @relation(fields: [userId], references: [id])
+  user        User           @relation(fields: [userId], references: [id], onDelete: Restrict)
   items       PurchaseItem[]
   subtotal    Float          @default(0)
   tax         Float          @default(0)
@@ -397,18 +441,26 @@ model PurchaseOrder {
   invoiceFile String         @default("")
   createdAt   DateTime       @default(now())
   receivedAt  DateTime?
+
+  @@index([supplierId])
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
 }
 
 model PurchaseItem {
   id          Int           @id @default(autoincrement())
   purchaseId  Int
-  purchase    PurchaseOrder @relation(fields: [purchaseId], references: [id])
+  purchase    PurchaseOrder @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
   productId   Int
-  product     Product       @relation(fields: [productId], references: [id])
+  product     Product       @relation(fields: [productId], references: [id], onDelete: Restrict)
   productName String
   quantity    Int
   unitCost    Float
   totalCost   Float
+
+  @@index([purchaseId])
+  @@index([productId])
 }
 
 model LoyaltyConfig {
@@ -433,7 +485,7 @@ model StoreConfig {
 model LoyaltyTransaction {
   id            Int      @id @default(autoincrement())
   clientId      Int
-  client        Client   @relation(fields: [clientId], references: [id])
+  client        Client   @relation(fields: [clientId], references: [id], onDelete: Restrict)
   type          String
   points        Int
   balanceBefore Int
@@ -442,12 +494,14 @@ model LoyaltyTransaction {
   referenceId   String   @default("")
   description   String   @default("")
   createdById   Int
-  createdBy     User     @relation(fields: [createdById], references: [id])
+  createdBy     User     @relation(fields: [createdById], references: [id], onDelete: Restrict)
   createdAt     DateTime @default(now())
   expiresAt     DateTime?
 
   @@index([clientId])
   @@index([createdAt])
+  @@index([createdById])
+  @@index([type])
 }
 
 model Expense {
@@ -462,10 +516,11 @@ model Expense {
   taxAmount     Float    @default(0)
   taxDeductible Boolean  @default(true)
   userId        Int
-  user          User     @relation(fields: [userId], references: [id])
+  user          User     @relation(fields: [userId], references: [id], onDelete: Restrict)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
+  @@index([userId])
   @@index([category])
   @@index([createdAt])
 }
@@ -473,7 +528,7 @@ model Expense {
 model AuditLog {
   id        Int      @id @default(autoincrement())
   userId    Int?
-  user      User?    @relation(fields: [userId], references: [id])
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   action    String
   entity    String
   entityId  Int?
@@ -481,6 +536,7 @@ model AuditLog {
   ip        String   @default("")
   createdAt DateTime @default(now())
 
+  @@index([userId])
   @@index([entity, entityId])
   @@index([createdAt])
 }
@@ -488,14 +544,15 @@ model AuditLog {
 model PriceHistory {
   id          Int      @id @default(autoincrement())
   productId   Int
-  product     Product  @relation(fields: [productId], references: [id])
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   field       String
   oldValue    Float
   newValue    Float
   changedById Int?
-  changedBy   User?    @relation(fields: [changedById], references: [id])
+  changedBy   User?    @relation(fields: [changedById], references: [id], onDelete: SetNull)
   createdAt   DateTime @default(now())
 
   @@index([productId])
   @@index([createdAt])
+  @@index([changedById])
 }

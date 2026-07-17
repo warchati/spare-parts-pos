@@ -29,7 +29,7 @@ function Barcode({ value, label }: { value: string; label: string }) {
           margin: 0,
           background: '#ffffff',
         })
-      } catch {}
+      } catch (e) { console.warn('Failed to generate barcode:', e) }
     }
   }, [value])
   return (

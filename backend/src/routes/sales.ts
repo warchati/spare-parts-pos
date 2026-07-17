@@ -157,10 +157,30 @@ export function saleRoutes(prisma: PrismaClient) {
   router.post('/', requirePermission(prisma, 'pos', 'sell'), async (req: AuthRequest, res, next) => {
     try {
       const { items, clientId, discount, paymentMethod, paymentDetails, cashRegisterId, currencyId, pointsToRedeem } = req.body
+
+      if (!items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ error: 'items must be a non-empty array' })
+      }
+      for (const item of items) {
+        if (!item.productId || !Number.isInteger(item.productId)) {
+          return res.status(400).json({ error: 'Each item must have a valid productId' })
+        }
+        if (!item.quantity || item.quantity < 1 || !Number.isInteger(item.quantity)) {
+          return res.status(400).json({ error: 'Each item must have a positive integer quantity' })
+        }
+      }
+      if (discount !== undefined && discount < 0) {
+        return res.status(400).json({ error: 'Discount cannot be negative' })
+      }
+
       const userId = req.user!.id
       const loyaltyConfig = await getLoyaltyConfig()
 
-      const result = await prisma.$transaction(async (tx) => {
+      const MAX_RETRIES = 3
+      let result: any = null
+      for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+        try {
+          result = await prisma.$transaction(async (tx) => {
         let subtotal = 0
         let taxTotal = 0
         const saleItems = []
@@ -390,7 +410,15 @@ export function saleRoutes(prisma: PrismaClient) {
           where: { id: sale.id },
           include: { items: true, client: true, creditPayments: true, currency: true, user: true },
         })
-      })
+          })
+          break
+        } catch (e: any) {
+          if (e?.code === 'P2002' && e?.meta?.target?.includes('invoiceNumber') && attempt < MAX_RETRIES - 1) {
+            continue
+          }
+          throw e
+        }
+      }
 
       res.status(201).json(result)
     } catch (e) { next(e) }
@@ -399,11 +427,20 @@ export function saleRoutes(prisma: PrismaClient) {
   router.patch('/:id/status', requirePermission(prisma, 'sales', 'edit'), async (req, res, next) => {
     try {
       const { status } = req.body
-      const sale = await prisma.sale.update({
+      const allowedStatuses = ['completed', 'pending', 'cancelled']
+      if (!allowedStatuses.includes(status)) {
+        return res.status(400).json({ error: `Invalid status. Allowed: ${allowedStatuses.join(', ')}` })
+      }
+      const sale = await prisma.sale.findUnique({ where: { id: Number(req.params.id) } })
+      if (!sale) return res.status(404).json({ error: 'Sale not found' })
+      if (sale.status === 'cancelled' && status !== 'cancelled') {
+        return res.status(400).json({ error: 'Cannot change status of a cancelled sale' })
+      }
+      const updated = await prisma.sale.update({
         where: { id: Number(req.params.id) },
         data: { status },
       })
-      res.json(sale)
+      res.json(updated)
     } catch (e) { next(e) }
   })
 
@@ -420,6 +457,7 @@ export function saleRoutes(prisma: PrismaClient) {
 
       const result = await prisma.$transaction(async (tx) => {
         for (const item of sale.items) {
+          await tx.$queryRaw`SELECT id FROM "Product" WHERE id = ${item.productId} FOR UPDATE`
           const product = await tx.product.findUniqueOrThrow({
             where: { id: item.productId },
           })

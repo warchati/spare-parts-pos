@@ -10,7 +10,7 @@ export default function StoreConfig() {
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    api.get('/store-config').then(res => setConfig(res.data)).catch(() => {}).finally(() => setLoading(false))
+    api.get('/store-config').then(res => setConfig(res.data)).catch((e) => console.error('Failed to load store config:', e)).finally(() => setLoading(false))
   }, [])
 
   const handleSave = async () => {
@@ -47,7 +47,7 @@ export default function StoreConfig() {
     try {
       const res = await api.post('/store-config/logo', { dataUrl: '' })
       setConfig(res.data)
-    } catch {}
+    } catch (e) { console.error('Failed to remove logo:', e) }
   }
 
   if (loading) return <div className="p-6 text-gray-500">Cargando...</div>

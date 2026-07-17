@@ -33,7 +33,7 @@ export default function StockMovements() {
   const [page, setPage] = useState(0)
 
   useEffect(() => {
-    api.get('/products').then(res => setProducts(res.data)).catch(() => {})
+    api.get('/products').then(res => setProducts(res.data)).catch((e) => console.error('Failed to load products:', e))
   }, [])
 
   useEffect(() => { loadMovements() }, [productId, typeFilter, startDate, endDate, page])
@@ -47,7 +47,7 @@ export default function StockMovements() {
       if (endDate) params.end = endDate
       const res = await api.get('/stock-movements', { params })
       setData(res.data)
-    } catch {}
+    } catch (e) { console.error('Failed to load stock movements:', e) }
   }
 
   const formatDate = (d: string) => new Date(d).toLocaleString('es-AR')

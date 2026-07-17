@@ -78,7 +78,7 @@ export default function Locations() {
       const res = await api.get('/warehouses')
       setWarehouses(res.data)
       if (!warehouseId && res.data.length > 0) setWarehouseId(res.data[0].id)
-    } catch { setError('Error al cargar almacenes') }
+    } catch (e) { console.error('Failed to load locations:', e); setError('Error al cargar almacenes') }
     setLoading(false)
   }
 
@@ -88,14 +88,14 @@ export default function Locations() {
       const nodes = buildTree(res.data)
       setTree(nodes)
       if (search) setExpanded(getAllIds(nodes))
-    } catch { if (!signal?.aborted) setError('Error al cargar ubicaciones') }
+    } catch (e) { if (!signal?.aborted) { console.error('Failed to load locations:', e); setError('Error al cargar ubicaciones') } }
   }
 
   const loadAll = async (signal?: AbortSignal) => {
     try {
       const res = await api.get('/locations/all', { params: { warehouseId }, signal })
       setAllLocations(res.data)
-    } catch {}
+    } catch (e) { console.error('Failed to load locations:', e) }
   }
 
   const buildTree = (flat: any[]): LocationNode[] => {
@@ -182,7 +182,7 @@ export default function Locations() {
       a.download = 'ubicaciones.csv'
       a.click()
       window.URL.revokeObjectURL(url)
-    } catch { setError('Error al exportar') }
+    } catch (e) { console.error('Failed to export locations:', e); setError('Error al exportar') }
   }
 
   const openImport = () => {

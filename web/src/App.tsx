@@ -43,7 +43,14 @@ function PermissionGuard({ module, action, children }: { module: string; action:
   const hasAccess = permissions.length > 0
     ? permissions.some(p => p.module === module && p.action === action)
     : can(user?.role, module, action)
-  if (!hasAccess) return <Navigate to="/dashboard" replace />
+  if (!hasAccess) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="text-center">
+        <h2 className="text-lg font-semibold text-gray-700 mb-2">Sin permisos</h2>
+        <p className="text-sm text-gray-500">No tienes acceso a esta seccion.</p>
+      </div>
+    </div>
+  )
   return <>{children}</>
 }
 

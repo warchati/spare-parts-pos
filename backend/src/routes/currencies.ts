@@ -28,18 +28,26 @@ export function currencyRoutes(prisma: PrismaClient) {
     try {
       const { code, name, symbol, exchangeRate, isBase } = req.body
 
+      if (!code || !name || !symbol) {
+        return res.status(400).json({ error: 'code, name, and symbol are required' })
+      }
+      if (exchangeRate !== undefined && exchangeRate < 0) {
+        return res.status(400).json({ error: 'exchangeRate must be non-negative' })
+      }
+
       const existing = await prisma.currency.findUnique({ where: { code } })
       if (existing) return res.status(409).json({ error: 'Currency code already exists' })
 
-      if (isBase) {
-        await prisma.currency.updateMany({
-          where: { isBase: true },
-          data: { isBase: false },
+      const currency = await prisma.$transaction(async (tx) => {
+        if (isBase) {
+          await tx.currency.updateMany({
+            where: { isBase: true },
+            data: { isBase: false },
+          })
+        }
+        return tx.currency.create({
+          data: { code, name, symbol, exchangeRate: exchangeRate || 1, isBase: isBase || false },
         })
-      }
-
-      const currency = await prisma.currency.create({
-        data: { code, name, symbol, exchangeRate: exchangeRate || 1, isBase: isBase || false },
       })
       res.status(201).json(currency)
     } catch (e) { next(e) }
@@ -56,24 +64,26 @@ export function currencyRoutes(prisma: PrismaClient) {
         }
       }
 
-      if (isBase) {
-        await prisma.currency.updateMany({
-          where: { isBase: true },
-          data: { isBase: false },
+      const currency = await prisma.$transaction(async (tx) => {
+        if (isBase) {
+          await tx.currency.updateMany({
+            where: { isBase: true, id: { not: Number(req.params.id) } },
+            data: { isBase: false },
+          })
+        }
+
+        const data: any = {}
+        if (code !== undefined) data.code = code
+        if (name !== undefined) data.name = name
+        if (symbol !== undefined) data.symbol = symbol
+        if (exchangeRate !== undefined) data.exchangeRate = exchangeRate
+        if (isBase !== undefined) data.isBase = isBase
+        if (isActive !== undefined) data.isActive = isActive
+
+        return tx.currency.update({
+          where: { id: Number(req.params.id) },
+          data,
         })
-      }
-
-      const data: any = {}
-      if (code !== undefined) data.code = code
-      if (name !== undefined) data.name = name
-      if (symbol !== undefined) data.symbol = symbol
-      if (exchangeRate !== undefined) data.exchangeRate = exchangeRate
-      if (isBase !== undefined) data.isBase = isBase
-      if (isActive !== undefined) data.isActive = isActive
-
-      const currency = await prisma.currency.update({
-        where: { id: Number(req.params.id) },
-        data,
       })
       res.json(currency)
     } catch (e) { next(e) }

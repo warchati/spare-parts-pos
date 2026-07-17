@@ -69,7 +69,11 @@ export function vehicleRoutes(prisma: PrismaClient) {
 
   router.delete('/:id', requirePermission(prisma, 'vehicles', 'delete'), async (req, res, next) => {
     try {
-      await prisma.vehicle.delete({ where: { id: Number(req.params.id) } })
+      const id = Number(req.params.id)
+      await prisma.$transaction(async (tx) => {
+        await tx.productVehicle.deleteMany({ where: { vehicleId: id } })
+        await tx.vehicle.delete({ where: { id } })
+      })
       res.json({ success: true })
     } catch (e) { next(e) }
   })

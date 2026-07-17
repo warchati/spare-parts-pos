@@ -28,15 +28,19 @@ export function taxRoutes(prisma: PrismaClient) {
     try {
       const { name, percentage, isDefault } = req.body
 
-      if (isDefault) {
-        await prisma.tax.updateMany({
-          where: { isDefault: true },
-          data: { isDefault: false },
-        })
-      }
+      if (!name) return res.status(400).json({ error: 'name is required' })
+      if (percentage === undefined || percentage < 0) return res.status(400).json({ error: 'percentage must be a non-negative number' })
 
-      const tax = await prisma.tax.create({
-        data: { name, percentage, isDefault: isDefault || false },
+      const tax = await prisma.$transaction(async (tx) => {
+        if (isDefault) {
+          await tx.tax.updateMany({
+            where: { isDefault: true },
+            data: { isDefault: false },
+          })
+        }
+        return tx.tax.create({
+          data: { name, percentage, isDefault: isDefault || false },
+        })
       })
       res.status(201).json(tax)
     } catch (e) { next(e) }
@@ -46,22 +50,24 @@ export function taxRoutes(prisma: PrismaClient) {
     try {
       const { name, percentage, isDefault, isActive } = req.body
 
-      if (isDefault) {
-        await prisma.tax.updateMany({
-          where: { isDefault: true },
-          data: { isDefault: false },
+      const tax = await prisma.$transaction(async (tx) => {
+        if (isDefault) {
+          await tx.tax.updateMany({
+            where: { isDefault: true, id: { not: Number(req.params.id) } },
+            data: { isDefault: false },
+          })
+        }
+
+        const data: any = {}
+        if (name !== undefined) data.name = name
+        if (percentage !== undefined) data.percentage = percentage
+        if (isDefault !== undefined) data.isDefault = isDefault
+        if (isActive !== undefined) data.isActive = isActive
+
+        return tx.tax.update({
+          where: { id: Number(req.params.id) },
+          data,
         })
-      }
-
-      const data: any = {}
-      if (name !== undefined) data.name = name
-      if (percentage !== undefined) data.percentage = percentage
-      if (isDefault !== undefined) data.isDefault = isDefault
-      if (isActive !== undefined) data.isActive = isActive
-
-      const tax = await prisma.tax.update({
-        where: { id: Number(req.params.id) },
-        data,
       })
       res.json(tax)
     } catch (e) { next(e) }
