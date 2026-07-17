@@ -6,7 +6,7 @@ import { logAudit } from '../lib/audit'
 export function productRoutes(prisma: PrismaClient) {
   const router = Router()
 
-  router.get('/', async (req, res, next) => {
+  router.get('/', requirePermission(prisma, 'products', 'view'), async (req, res, next) => {
     try {
       const { q, category, brand, active } = req.query
       const where: any = {}
@@ -32,7 +32,7 @@ export function productRoutes(prisma: PrismaClient) {
     } catch (e) { next(e) }
   })
 
-  router.get('/categories/list', async (_req, res, next) => {
+  router.get('/categories/list', requirePermission(prisma, 'products', 'view'), async (_req, res, next) => {
     try {
       const categories = await prisma.product.findMany({
         select: { category: true },
@@ -44,7 +44,7 @@ export function productRoutes(prisma: PrismaClient) {
     } catch (e) { next(e) }
   })
 
-  router.get('/brands/list', async (_req, res, next) => {
+  router.get('/brands/list', requirePermission(prisma, 'products', 'view'), async (_req, res, next) => {
     try {
       const brands = await prisma.product.findMany({
         select: { brand: true },
@@ -56,7 +56,7 @@ export function productRoutes(prisma: PrismaClient) {
     } catch (e) { next(e) }
   })
 
-  router.get('/:id', async (req, res, next) => {
+  router.get('/:id', requirePermission(prisma, 'products', 'view'), async (req, res, next) => {
     try {
       const product = await prisma.product.findUnique({
         where: { id: Number(req.params.id) },
@@ -71,6 +71,15 @@ export function productRoutes(prisma: PrismaClient) {
     try {
       const { code, barcode, name, description, category, brand, vehicleType, oemNumber, buyPrice, sellPrice, wholesalePrice, minStock, location, taxId, active, defaultLocationId } = req.body
       if (!code || !name) return res.status(400).json({ error: 'Code and name are required' })
+      if (buyPrice !== undefined && (typeof buyPrice !== 'number' || buyPrice < 0)) {
+        return res.status(400).json({ error: 'buyPrice must be a non-negative number' })
+      }
+      if (sellPrice !== undefined && (typeof sellPrice !== 'number' || sellPrice < 0)) {
+        return res.status(400).json({ error: 'sellPrice must be a non-negative number' })
+      }
+      if (wholesalePrice !== undefined && (typeof wholesalePrice !== 'number' || wholesalePrice < 0)) {
+        return res.status(400).json({ error: 'wholesalePrice must be a non-negative number' })
+      }
 
       const product = await prisma.product.create({
         data: { code, barcode, name, description, category, brand, vehicleType, oemNumber, buyPrice, sellPrice, wholesalePrice, minStock: minStock ?? 0, location, taxId: taxId || null, active: active ?? true, defaultLocationId: defaultLocationId > 0 ? defaultLocationId : null },
@@ -151,6 +160,9 @@ export function productRoutes(prisma: PrismaClient) {
   router.patch('/:id/stock', requirePermission(prisma, 'products', 'edit'), async (req, res, next) => {
     try {
       const { stock } = req.body
+      if (typeof stock !== 'number' || stock < 0 || !Number.isInteger(stock)) {
+        return res.status(400).json({ error: 'Stock must be a non-negative integer' })
+      }
       const product = await prisma.product.update({
         where: { id: Number(req.params.id) },
         data: { stock },

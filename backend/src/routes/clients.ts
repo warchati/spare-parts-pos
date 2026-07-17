@@ -28,7 +28,7 @@ export function clientRoutes(prisma: PrismaClient) {
     } catch (e) { next(e) }
   })
 
-  router.get('/credit/summary', async (req, res, next) => {
+  router.get('/credit/summary', requirePermission(prisma, 'credit', 'view'), async (req, res, next) => {
     try {
       const clients = await prisma.client.findMany({
         where: {

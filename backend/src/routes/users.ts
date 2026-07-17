@@ -31,12 +31,24 @@ export function userRoutes(prisma: PrismaClient) {
     try {
       const { username, name, email, password, role } = req.body
 
+      if (!username || !name || !password) {
+        return res.status(400).json({ error: 'username, name, and password are required' })
+      }
+      if (typeof password !== 'string' || password.length < 8) {
+        return res.status(400).json({ error: 'Password must be at least 8 characters' })
+      }
+      const allowedRoles = ['admin', 'supervisor', 'cashier', 'seller']
+      const finalRole = role || 'cashier'
+      if (!allowedRoles.includes(finalRole)) {
+        return res.status(400).json({ error: `Invalid role. Allowed: ${allowedRoles.join(', ')}` })
+      }
+
       const existing = await prisma.user.findUnique({ where: { username } })
       if (existing) return res.status(409).json({ error: 'Username already exists' })
 
       const hashedPassword = await bcrypt.hash(password, 10)
       const user = await prisma.user.create({
-        data: { username, name, email: email || '', password: hashedPassword, role: role || 'cashier' },
+        data: { username, name, email: email || '', password: hashedPassword, role: finalRole },
         select: { id: true, username: true, name: true, email: true, role: true, active: true },
       })
       res.status(201).json(user)
@@ -50,7 +62,12 @@ export function userRoutes(prisma: PrismaClient) {
       if (username !== undefined) data.username = username
       if (name !== undefined) data.name = name
       if (email !== undefined) data.email = email
-      if (password !== undefined) data.password = await bcrypt.hash(password, 10)
+      if (password !== undefined) {
+        if (typeof password !== 'string' || password.length < 8) {
+          return res.status(400).json({ error: 'Password must be at least 8 characters' })
+        }
+        data.password = await bcrypt.hash(password, 10)
+      }
       if (role !== undefined) {
         // Only admins can change roles, prevent self-escalation
         if (req.user!.role !== 'admin') {

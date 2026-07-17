@@ -8,13 +8,19 @@ export function errorHandler(err: Error, _req: Request, res: Response, _next: Ne
   let message = 'Internal server error'
 
   if (err instanceof Prisma.PrismaClientKnownRequestError) {
-    if (err.code === 'P2025') { status = 404; message = 'Resource not found' }
-    else if (err.code === 'P2002') { status = 409; message = 'Unique constraint violation' }
-    else { status = 500; message = 'Database error' }
+    if (err.code === 'P2025') { status = 404; message = 'Recurso no encontrado' }
+    else if (err.code === 'P2002') { status = 409; message = 'Violación de restricción única' }
+    else { status = 500; message = 'Error de base de datos' }
   } else if (err instanceof Prisma.PrismaClientValidationError) {
-    status = 400; message = 'Invalid data provided'
-  } else if (err.message?.startsWith('Insufficient') || err.message?.startsWith('Already')) {
-    status = 400; message = err.message
+    status = 400; message = 'Datos inválidos'
+  } else if ((err as any).status) {
+    status = (err as any).status
+    message = err.message
+  } else if (process.env.NODE_ENV === 'production') {
+    status = 500
+    message = 'Internal server error'
+  } else {
+    message = err.message || 'Internal server error'
   }
 
   res.status(status).json({ error: message })

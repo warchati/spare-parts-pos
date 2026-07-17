@@ -32,9 +32,6 @@ interface LocationOption {
   warehouse?: { name: string }
 }
 
-const CLOUDINARY_CLOUD = 'vidcanal'
-const CLOUDINARY_PRESET = 'm5vtjzdl'
-
 export default function Products() {
   const { user } = useAuth()
   const [products, setProducts] = useState<Product[]>([])
@@ -87,21 +84,13 @@ export default function Products() {
       setUploadingImage(true)
       const fd = new FormData()
       fd.append('file', file)
-      fd.append('upload_preset', CLOUDINARY_PRESET)
-      fd.append('folder', 'products')
-      const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/auto/upload`, {
-        method: 'POST',
-        body: fd,
+      const res = await api.post('/uploads?folder=products', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       })
-      if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.error?.message || 'Error al subir imagen')
-      }
-      const data = await res.json()
-      await api.post(`/images/product/${editing.id}`, { url: data.secure_url })
+      await api.post(`/images/product/${editing.id}`, { url: res.data.url })
       loadProducts()
     } catch (err: any) {
-      alert(err.message || 'Error al subir imagen')
+      alert(err.response?.data?.error || err.message || 'Error al subir imagen')
     } finally {
       setUploadingImage(false)
     }

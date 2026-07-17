@@ -35,6 +35,14 @@ export default function Clients() {
 
   const handleSave = async () => {
     try {
+      if (!form.name.trim()) {
+        alert('El nombre es requerido')
+        return
+      }
+      if (form.creditLimit < 0) {
+        alert('El límite de crédito no puede ser negativo')
+        return
+      }
       if (editing) await api.put(`/clients/${editing.id}`, form)
       else await api.post('/clients', form)
       setShowForm(false); setEditing(null); loadClients()

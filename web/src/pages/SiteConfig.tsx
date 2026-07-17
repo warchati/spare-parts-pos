@@ -3,9 +3,6 @@ import api from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import { Save, Upload, Store, X, AlertTriangle, Database, Package } from 'lucide-react'
 
-const CLOUDINARY_CLOUD = 'vidcanal'
-const CLOUDINARY_PRESET = 'm5vtjzdl'
-
 type ResetMode = 'transactional' | 'master' | null
 
 export default function SiteConfig() {
@@ -50,17 +47,13 @@ export default function SiteConfig() {
     try {
       const fd = new FormData()
       fd.append('file', file)
-      fd.append('upload_preset', CLOUDINARY_PRESET)
-      fd.append('folder', 'logos')
-      const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/auto/upload`, {
-        method: 'POST',
-        body: fd,
+      const res = await api.post('/uploads?folder=logos', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       })
-      if (!res.ok) throw new Error('Error al subir logo')
-      const data = await res.json()
-      setConfig({ ...config, logoUrl: data.secure_url })
-    } catch (e) {
-      console.error('Failed to upload logo:', e); alert('Error al subir el logo')
+      setConfig({ ...config, logoUrl: res.data.url })
+    } catch (e: any) {
+      console.error('Failed to upload logo:', e)
+      alert(e.response?.data?.error || 'Error al subir el logo')
     } finally {
       setUploading(false)
     }

@@ -125,6 +125,14 @@ export default function Users() {
 
   const handleSave = async () => {
     try {
+      if (!editing && (!form.password || form.password.length < 8)) {
+        alert('La contraseña debe tener al menos 8 caracteres')
+        return
+      }
+      if (editing && form.password && form.password.length < 8) {
+        alert('La contraseña debe tener al menos 8 caracteres')
+        return
+      }
       if (editing) {
         const payload = { ...form }
         if (!payload.password) delete payload.password

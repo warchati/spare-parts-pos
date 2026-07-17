@@ -108,6 +108,7 @@ export default function CashRegister() {
   const exportExcel = () => {
     const fmt = (n: number) => n.toLocaleString('es-DO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
     const fmtDate = (d: string) => new Date(d).toLocaleString('es-DO')
+    const esc = (s: string) => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
     const totalSaldoFinal = filteredHistory.reduce((s: number, h: any) => s + (h.closingBalance ?? 0), 0)
     const totalDiferencia = filteredHistory.reduce((s: number, h: any) => s + (h.difference ?? 0), 0)
     const totalApertura = filteredHistory.reduce((s: number, h: any) => s + h.openingBalance, 0)
@@ -118,11 +119,11 @@ export default function CashRegister() {
       return `<tr>
         <td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;">${fmtDate(h.openingDate)}</td>
         <td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;">${h.closingDate ? fmtDate(h.closingDate) : '-'}</td>
-        <td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;">${h.user?.name || ''}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;">${esc(h.user?.name || '')}</td>
         <td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;text-align:right;font-family:Consolas,monospace;">${fmt(h.openingBalance)}</td>
         <td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;text-align:right;font-family:Consolas,monospace;">${fmt(h.closingBalance ?? 0)}</td>
         <td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;text-align:right;font-family:Consolas,monospace;color:${diffColor};font-weight:600;">${h.closingBalance != null ? fmt(diff) : '-'}</td>
-        <td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;">${h.notes || ''}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;">${esc(h.notes || '')}</td>
       </tr>`
     }).join('')
 

@@ -104,6 +104,9 @@ export function expenseRoutes(prisma: PrismaClient) {
       if (!description || amount === undefined) {
         return res.status(400).json({ error: 'Description and amount are required' })
       }
+      if (typeof amount !== 'number' || amount <= 0) {
+        return res.status(400).json({ error: 'Amount must be a positive number' })
+      }
 
       const rate = await getDefaultTaxRate(prisma)
       const taxAmount = calcTaxAmount(Number(amount), rate)

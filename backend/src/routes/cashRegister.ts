@@ -67,6 +67,9 @@ export function cashRegisterRoutes(prisma: PrismaClient) {
     try {
       const { openingBalance, notes } = req.body
       const userId = req.user!.id
+      if (openingBalance !== undefined && (typeof openingBalance !== 'number' || openingBalance < 0)) {
+        return res.status(400).json({ error: 'Opening balance must be a non-negative number' })
+      }
 
       const register = await prisma.$transaction(async (tx) => {
         const openRegister = await tx.cashRegister.findFirst({ where: { status: 'open' } })
@@ -108,7 +111,13 @@ export function cashRegisterRoutes(prisma: PrismaClient) {
       const { type, amount, description } = req.body
       const id = Number(req.params.id)
 
-      if (!amount || amount <= 0) return res.status(400).json({ error: 'Amount must be greater than 0' })
+      const allowedTypes = ['income', 'expense']
+      if (type && !allowedTypes.includes(type)) {
+        return res.status(400).json({ error: `Invalid movement type. Allowed: ${allowedTypes.join(', ')}` })
+      }
+      if (!amount || typeof amount !== 'number' || amount <= 0) {
+        return res.status(400).json({ error: 'Amount must be a positive number' })
+      }
       if (!description || !description.trim()) return res.status(400).json({ error: 'Description is required' })
 
       const movement = await prisma.$transaction(async (tx) => {

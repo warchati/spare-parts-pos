@@ -20,9 +20,6 @@ const METHOD_LABELS: Record<string, string> = {
   cash: 'Efectivo', card: 'Tarjeta', transfer: 'Transferencia',
 }
 
-const CLOUDINARY_CLOUD = 'vidcanal'
-const CLOUDINARY_PRESET = 'm5vtjzdl'
-
 export default function Expenses() {
   const { user } = useAuth()
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -69,22 +66,22 @@ export default function Expenses() {
   const uploadFile = async (file: File): Promise<string> => {
     const fd = new FormData()
     fd.append('file', file)
-    fd.append('upload_preset', CLOUDINARY_PRESET)
-    fd.append('folder', 'expenses')
-    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/auto/upload`, {
-      method: 'POST',
-      body: fd,
+    const res = await api.post('/uploads?folder=expenses', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
     })
-    if (!res.ok) {
-      const err = await res.json()
-      throw new Error(err.error?.message || 'Error al subir archivo')
-    }
-    const data = await res.json()
-    return data.secure_url
+    return res.data.url
   }
 
   const handleSave = async () => {
     try {
+      if (!form.description.trim()) {
+        alert('La descripción es requerida')
+        return
+      }
+      if (typeof form.amount !== 'number' || form.amount <= 0) {
+        alert('El monto debe ser mayor a 0')
+        return
+      }
       setUploading(true)
       let url = existingAttachment
 

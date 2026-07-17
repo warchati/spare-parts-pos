@@ -11,7 +11,6 @@ interface User {
 
 interface AuthContextType {
   user: User | null
-  token: string | null
   permissions: { module: string, action: string }[]
   login: (username: string, password: string) => Promise<void>
   logout: () => void
@@ -22,29 +21,22 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [token, setToken] = useState<string | null>(localStorage.getItem('token'))
+  const [user, setUser] = useState<User | null>(() => {
+    try {
+      const stored = localStorage.getItem('user')
+      return stored ? JSON.parse(stored) : null
+    } catch {
+      return null
+    }
+  })
   const [permissions, setPermissions] = useState<{ module: string, action: string }[]>([])
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('user')
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser))
-      } catch {
-        localStorage.removeItem('user')
-      }
-    }
+    if (user) refreshPermissions()
   }, [])
 
   useEffect(() => {
-    if (token) {
-      refreshPermissions()
-    }
-  }, [token])
-
-  useEffect(() => {
-    if (!token) return
+    if (!user) return
     const onVisible = () => {
       if (document.visibilityState === 'visible') refreshPermissions()
     }
@@ -54,7 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       document.removeEventListener('visibilitychange', onVisible)
       clearInterval(interval)
     }
-  }, [token])
+  }, [user])
 
   const refreshPermissions = async () => {
     try {
@@ -63,10 +55,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       updateLatestPermissions(res.data)
     } catch (err: any) {
       if (err.response?.status === 401) {
-        localStorage.removeItem('token')
         localStorage.removeItem('user')
         setUser(null)
-        setToken(null)
       }
       setPermissions([])
       updateLatestPermissions([])
@@ -75,25 +65,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (username: string, password: string) => {
     const res = await api.post('/auth/login', { username, password })
-    const { user: userData, token: newToken } = res.data
-    localStorage.setItem('token', newToken)
+    const { user: userData } = res.data
     localStorage.setItem('user', JSON.stringify(userData))
     setUser(userData)
-    setToken(newToken)
     await refreshPermissions()
   }
 
-  const logout = () => {
-    localStorage.removeItem('token')
+  const logout = async () => {
+    try { await api.post('/auth/logout') } catch {}
     localStorage.removeItem('user')
     setUser(null)
-    setToken(null)
     setPermissions([])
     updateLatestPermissions([])
   }
 
   return (
-    <AuthContext.Provider value={{ user, token, permissions, login, logout, isAuthenticated: !!token, refreshPermissions }}>
+    <AuthContext.Provider value={{ user, permissions, login, logout, isAuthenticated: !!user, refreshPermissions }}>
       {children}
     </AuthContext.Provider>
   )

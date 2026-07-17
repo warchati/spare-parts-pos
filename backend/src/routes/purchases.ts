@@ -50,6 +50,20 @@ export function purchaseRoutes(prisma: PrismaClient) {
     try {
       const { items, supplierId } = req.body
       const userId = req.user!.id
+      if (!items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ error: 'items must be a non-empty array' })
+      }
+      for (const item of items) {
+        if (!item.productId || !Number.isInteger(item.productId)) {
+          return res.status(400).json({ error: 'Each item must have a valid productId' })
+        }
+        if (!item.quantity || item.quantity < 1 || !Number.isInteger(item.quantity)) {
+          return res.status(400).json({ error: 'Each item must have a positive integer quantity' })
+        }
+        if (typeof item.unitCost !== 'number' || item.unitCost < 0) {
+          return res.status(400).json({ error: 'Each item must have a non-negative unitCost' })
+        }
+      }
       const result = await prisma.$transaction(async (tx) => {
         let subtotal = 0
         const purchaseItems = []

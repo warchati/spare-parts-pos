@@ -23,6 +23,10 @@ export default function Suppliers() {
 
   const handleSave = async () => {
     try {
+      if (!form.name.trim()) {
+        alert('El nombre es requerido')
+        return
+      }
       if (editing) await api.put(`/suppliers/${editing.id}`, form)
       else await api.post('/suppliers', form)
       setShowForm(false); setEditing(null); loadSuppliers()
