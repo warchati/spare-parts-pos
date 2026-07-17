@@ -55,6 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       updateLatestPermissions(res.data)
     } catch (err: any) {
       if (err.response?.status === 401) {
+        localStorage.removeItem('token')
         localStorage.removeItem('user')
         setUser(null)
       }
@@ -65,7 +66,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (username: string, password: string) => {
     const res = await api.post('/auth/login', { username, password })
-    const { user: userData } = res.data
+    const { user: userData, token } = res.data
+    localStorage.setItem('token', token)
     localStorage.setItem('user', JSON.stringify(userData))
     setUser(userData)
     await refreshPermissions()
@@ -73,6 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try { await api.post('/auth/logout') } catch {}
+    localStorage.removeItem('token')
     localStorage.removeItem('user')
     setUser(null)
     setPermissions([])

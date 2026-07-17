@@ -1,7 +1,6 @@
 import express from 'express'
 import cors from 'cors'
 import helmet from 'helmet'
-import cookieParser from 'cookie-parser'
 import rateLimit from 'express-rate-limit'
 import { PrismaClient } from '@prisma/client'
 import { productRoutes } from './routes/products'
@@ -36,10 +35,9 @@ export function createServer(prisma: PrismaClient) {
   const app = express()
 
   app.use(helmet())
-  app.use(cookieParser())
   const allowedOrigins = process.env.CORS_ORIGIN
     ? process.env.CORS_ORIGIN.split(',').map(s => s.trim())
-    : ['https://spare-parts-pos-web.vercel.app', 'https://pos-spare-parts.vercel.app', 'http://localhost:5173']
+    : ['https://pos-spare-parts.vercel.app', 'https://spare-parts-pos-web.vercel.app', 'http://localhost:5173']
   app.use(cors({
     origin: allowedOrigins,
     credentials: true,

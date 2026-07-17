@@ -132,10 +132,12 @@ export async function hasPermission(prisma: PrismaClient, role: string, module: 
 export function requireAuth(prisma: PrismaClient) {
   return async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
-      const token = req.cookies?.token
-      if (!token) {
+      const authHeader = req.headers.authorization
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return res.status(401).json({ error: 'No token provided' })
       }
+
+      const token = authHeader.slice(7)
 
       let decoded: any
       try {
