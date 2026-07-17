@@ -39,7 +39,7 @@ export function createServer(prisma: PrismaClient) {
   app.use(cookieParser())
   const allowedOrigins = process.env.CORS_ORIGIN
     ? process.env.CORS_ORIGIN.split(',').map(s => s.trim())
-    : ['https://pos-spare-parts.vercel.app', 'http://localhost:5173']
+    : ['https://spare-parts-pos-web.vercel.app', 'https://pos-spare-parts.vercel.app', 'http://localhost:5173']
   app.use(cors({
     origin: allowedOrigins,
     credentials: true,
