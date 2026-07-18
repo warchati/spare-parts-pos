@@ -40,7 +40,7 @@ export function systemRoutes(prisma: PrismaClient) {
           entity: true,
           action: true,
           createdAt: true,
-          details: true,
+          metadata: true,
         },
       }).catch(() => [])
 

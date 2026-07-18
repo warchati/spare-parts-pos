@@ -27,7 +27,7 @@ interface SystemStatus {
     entity: string
     action: string
     createdAt: string
-    details: string | null
+    metadata: any
   }[]
 }
 
@@ -277,7 +277,7 @@ export default function SystemAdmin() {
                       <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">{log.entity}</span>
                     </td>
                     <td className="py-2 px-3 text-gray-700">{log.action}</td>
-                    <td className="py-2 px-3 text-gray-500 text-xs max-w-xs truncate">{log.details || '-'}</td>
+                    <td className="py-2 px-3 text-gray-500 text-xs max-w-xs truncate">{log.metadata ? JSON.stringify(log.metadata) : '-'}</td>
                   </tr>
                 ))}
               </tbody>
