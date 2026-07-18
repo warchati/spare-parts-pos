@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import api from '../lib/api'
-import { Server, Database, Activity, Settings, RefreshCw, CheckCircle, XCircle, Clock, ExternalLink, Shield, Globe, HardDrive, BarChart3, Users, Package, ShoppingCart, FileText, ChevronDown, ChevronRight, Save, AlertTriangle } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Server, Database, Activity, Settings, RefreshCw, CheckCircle, XCircle, Clock, ExternalLink, Shield, Globe, HardDrive, BarChart3, Users, Package, ShoppingCart, FileText, ChevronDown, ChevronRight, Save, AlertTriangle, Image, LayoutDashboard, Receipt, FileCog } from 'lucide-react'
 
 interface SystemStatus {
   status: string
@@ -47,15 +48,18 @@ const DEFAULT_LINKS: Omit<SystemLink, 'url'>[] = [
   { id: 'github', label: 'Repositorio GitHub', description: 'Código fuente del proyecto', icon: FileText, editable: true, configKey: 'link_github' },
   { id: 'vercel', label: 'Panel Vercel', description: 'Dashboard de despliegues', icon: HardDrive, editable: true, configKey: 'link_vercel' },
   { id: 'database', label: 'Base de Datos', description: 'Panel de la base de datos (Neon)', icon: Database, editable: true, configKey: 'link_database' },
+  { id: 'cloudinary', label: 'Cloudinary', description: 'Panel de imágenes y assets', icon: Image, editable: true, configKey: 'link_cloudinary' },
 ]
 
 const LINK_DEFAULTS: Record<string, string> = {
   link_github: 'https://github.com/warchati/spare-parts-pos',
   link_vercel: 'https://vercel.com/nyumoviescom-gmailcoms-projects',
   link_database: 'https://console.neon.tech',
+  link_cloudinary: 'https://console.cloudinary.com',
 }
 
 export default function SystemAdmin() {
+  const navigate = useNavigate()
   const [status, setStatus] = useState<SystemStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -63,6 +67,8 @@ export default function SystemAdmin() {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     status: true,
     links: true,
+    version: true,
+    shortcuts: true,
     logs: false,
     config: false,
   })
@@ -290,6 +296,49 @@ export default function SystemAdmin() {
               </div>
             </div>
           ))}
+        </div>
+      </Section>
+
+      <Section title="Versión del Sistema" icon={<FileCog className="w-5 h-5" />} expanded={expandedSections.version} onToggle={() => toggleSection('version')}>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-gray-50 rounded-lg border border-gray-100 p-4">
+            <p className="text-xs text-gray-400 mb-1">Versión</p>
+            <p className="text-sm font-bold text-gray-800">Spare Parts POS v1.0</p>
+          </div>
+          <div className="bg-gray-50 rounded-lg border border-gray-100 p-4">
+            <p className="text-xs text-gray-400 mb-1">Última actualización</p>
+            <p className="text-sm font-bold text-gray-800">{new Date().toLocaleDateString('es-VE')}</p>
+          </div>
+          <div className="bg-gray-50 rounded-lg border border-gray-100 p-4">
+            <p className="text-xs text-gray-400 mb-1">Stack</p>
+            <p className="text-sm font-bold text-gray-800">React + Express + Prisma + Neon</p>
+          </div>
+        </div>
+      </Section>
+
+      <Section title="Accesos Rápidos" icon={<LayoutDashboard className="w-5 h-5" />} expanded={expandedSections.shortcuts} onToggle={() => toggleSection('shortcuts')}>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <button onClick={() => navigate('/site-config')} className="flex items-center gap-3 p-3 bg-purple-50 rounded-lg border border-purple-100 hover:bg-purple-100 transition-colors text-left">
+            <Settings className="w-5 h-5 text-purple-600 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-gray-800">Config. Sitio</p>
+              <p className="text-xs text-gray-500">Nombre, moneda, datos del negocio</p>
+            </div>
+          </button>
+          <button onClick={() => navigate('/invoice-config')} className="flex items-center gap-3 p-3 bg-purple-50 rounded-lg border border-purple-100 hover:bg-purple-100 transition-colors text-left">
+            <Receipt className="w-5 h-5 text-purple-600 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-gray-800">Config. Factura</p>
+              <p className="text-xs text-gray-500">RIF, dirección, mensajes</p>
+            </div>
+          </button>
+          <button onClick={() => navigate('/users')} className="flex items-center gap-3 p-3 bg-purple-50 rounded-lg border border-purple-100 hover:bg-purple-100 transition-colors text-left">
+            <Users className="w-5 h-5 text-purple-600 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-gray-800">Usuarios</p>
+              <p className="text-xs text-gray-500">Gestionar cuentas y permisos</p>
+            </div>
+          </button>
         </div>
       </Section>
 
