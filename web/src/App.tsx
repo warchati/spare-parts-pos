@@ -31,6 +31,7 @@ import Inventory from './pages/Inventory'
 import StockMovements from './pages/StockMovements'
 import AuditLog from './pages/AuditLog'
 import Analytics from './pages/Analytics'
+import SystemAdmin from './pages/SystemAdmin'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth()
@@ -88,6 +89,7 @@ export default function App() {
         <Route path="stock-movements" element={<PermissionGuard module="inventory" action="view"><StockMovements /></PermissionGuard>} />
         <Route path="audit-log" element={<PermissionGuard module="audit" action="view"><AuditLog /></PermissionGuard>} />
         <Route path="analytics" element={<PermissionGuard module="analytics" action="view"><Analytics /></PermissionGuard>} />
+        <Route path="system" element={<PermissionGuard module="storeConfig" action="edit"><SystemAdmin /></PermissionGuard>} />
       </Route>
     </Routes>
   )

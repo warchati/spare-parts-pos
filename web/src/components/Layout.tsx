@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { ShoppingCart, Package, Users, Truck, Receipt, ClipboardList, LogOut, Store, LayoutDashboard, DollarSign, UserCog, Car, CreditCard, Percent, Shield, BarChart3, Award, RotateCcw, FileText, TrendingDown, Warehouse, MapPin, ClipboardCheck, ArrowUpDown, ShieldCheck } from 'lucide-react'
+import { ShoppingCart, Package, Users, Truck, Receipt, ClipboardList, LogOut, Store, LayoutDashboard, DollarSign, UserCog, Car, CreditCard, Percent, Shield, BarChart3, Award, RotateCcw, FileText, TrendingDown, Warehouse, MapPin, ClipboardCheck, ArrowUpDown, ShieldCheck, Server } from 'lucide-react'
 import { can } from '../lib/permissions'
 import api from '../lib/api'
 
@@ -32,6 +32,7 @@ const navItems = [
   { to: '/stock-movements', label: 'Mov. Stock', icon: ArrowUpDown, module: 'inventory', action: 'view' },
   { to: '/audit-log', label: 'Auditoría', icon: ShieldCheck, module: 'audit', action: 'view' },
   { to: '/analytics', label: 'Análisis', icon: BarChart3, module: 'analytics', action: 'view' },
+  { to: '/system', label: 'Sistema', icon: Server, module: 'storeConfig', action: 'edit' },
 ]
 
 export default function Layout() {
