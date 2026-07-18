@@ -68,13 +68,13 @@ export default function Layout() {
         <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />
       )}
 
-      <aside className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 fixed lg:static inset-y-0 left-0 z-50 w-64 bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 flex flex-col transition-transform duration-200 shadow-xl`}>
-        <div className="p-4 border-b border-slate-700/50">
+      <aside className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 fixed lg:static inset-y-0 left-0 z-50 w-64 bg-gradient-to-b from-violet-950 via-purple-900 to-violet-950 flex flex-col transition-transform duration-200 shadow-xl`}>
+        <div className="p-4 border-b border-purple-800/50">
           <div className="flex items-center gap-2">
             {storeConfig?.logoUrl ? (
               <img src={storeConfig.logoUrl} alt="" className="w-8 h-8 object-contain rounded-md" />
             ) : (
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-400 to-violet-500 flex items-center justify-center">
                 <Store className="w-5 h-5 text-white" />
               </div>
             )}
@@ -94,8 +94,8 @@ export default function Layout() {
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
                   isActive
-                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/25'
-                    : 'text-slate-300 hover:bg-slate-700/50 hover:text-white'
+                    ? 'bg-gradient-to-r from-purple-500 to-violet-600 text-white shadow-lg shadow-purple-500/25'
+                    : 'text-slate-300 hover:bg-purple-800/40 hover:text-white'
                 }`
               }
             >
@@ -105,10 +105,10 @@ export default function Layout() {
           ))}
         </nav>
 
-        <div className="p-3 border-t border-slate-700/50">
+        <div className="p-3 border-t border-purple-800/50">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-violet-600 flex items-center justify-center text-white text-xs font-bold">
                 {user?.name?.charAt(0)?.toUpperCase()}
               </div>
               <div>
@@ -116,7 +116,7 @@ export default function Layout() {
                 <p className="text-[11px] text-slate-400 capitalize">{user?.role}</p>
               </div>
             </div>
-            <button onClick={handleLogout} className="p-2 hover:bg-slate-700/50 rounded-lg transition-colors" title="Cerrar sesión">
+            <button onClick={handleLogout} className="p-2 hover:bg-purple-800/40 rounded-lg transition-colors" title="Cerrar sesión">
               <LogOut className="w-4 h-4 text-slate-400 hover:text-white" />
             </button>
           </div>
@@ -124,8 +124,8 @@ export default function Layout() {
       </aside>
 
       <main className="flex-1 overflow-auto min-w-0">
-        <div className="lg:hidden flex items-center gap-2 p-3 bg-gradient-to-r from-slate-900 to-slate-800 border-b border-slate-700/50 sticky top-0 z-30">
-          <button onClick={() => setSidebarOpen(true)} className="p-1.5 hover:bg-slate-700/50 rounded-lg">
+        <div className="lg:hidden flex items-center gap-2 p-3 bg-gradient-to-r from-violet-950 to-purple-900 border-b border-purple-800/50 sticky top-0 z-30">
+          <button onClick={() => setSidebarOpen(true)} className="p-1.5 hover:bg-purple-800/40 rounded-lg">
             <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
@@ -134,7 +134,7 @@ export default function Layout() {
             {storeConfig?.logoUrl ? (
               <img src={storeConfig.logoUrl} alt="" className="w-5 h-5 object-contain rounded" />
             ) : (
-              <div className="w-6 h-6 rounded bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+              <div className="w-6 h-6 rounded bg-gradient-to-br from-purple-400 to-violet-500 flex items-center justify-center">
                 <Store className="w-4 h-4 text-white" />
               </div>
             )}
