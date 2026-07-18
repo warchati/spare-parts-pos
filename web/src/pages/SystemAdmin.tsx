@@ -49,6 +49,11 @@ const DEFAULT_LINKS: Omit<SystemLink, 'url'>[] = [
   { id: 'database', label: 'Base de Datos', description: 'Panel de la base de datos (Neon)', icon: Database, editable: true, configKey: 'link_database' },
 ]
 
+const LINK_DEFAULTS: Record<string, string> = {
+  link_github: 'https://github.com/warchati/spare-parts-pos',
+  link_vercel: 'https://vercel.com/nyumoviescom-gmailcoms-projects',
+}
+
 export default function SystemAdmin() {
   const [status, setStatus] = useState<SystemStatus | null>(null)
   const [loading, setLoading] = useState(true)
@@ -80,9 +85,13 @@ export default function SystemAdmin() {
           let url = link.id === 'frontend'
             ? window.location.origin
             : saved[link.configKey || ''] || ''
-          if (link.id === 'backend' && !url && statusData.server?.apiBaseUrl) {
-            url = statusData.server.apiBaseUrl
-            api.put('/system/config', { key: 'link_backend', value: url }).catch(() => {})
+          if (!url && link.configKey) {
+            if (link.id === 'backend' && statusData.server?.apiBaseUrl) {
+              url = statusData.server.apiBaseUrl
+            } else if (LINK_DEFAULTS[link.configKey]) {
+              url = LINK_DEFAULTS[link.configKey]
+            }
+            if (url) api.put('/system/config', { key: link.configKey, value: url }).catch(() => {})
           }
           return { ...link, url }
         })
@@ -117,7 +126,7 @@ export default function SystemAdmin() {
         ...link,
         url: link.id === 'frontend'
           ? window.location.origin
-          : saved[link.configKey || ''] || (link.id === 'backend' && status?.server?.apiBaseUrl ? status.server.apiBaseUrl : ''),
+          : saved[link.configKey || ''] || (link.id === 'backend' && status?.server?.apiBaseUrl ? status.server.apiBaseUrl : LINK_DEFAULTS[link.configKey || ''] || ''),
       }))
       setLinks(merged)
     } catch {
