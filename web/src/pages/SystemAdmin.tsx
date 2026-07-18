@@ -52,6 +52,7 @@ const DEFAULT_LINKS: Omit<SystemLink, 'url'>[] = [
 const LINK_DEFAULTS: Record<string, string> = {
   link_github: 'https://github.com/warchati/spare-parts-pos',
   link_vercel: 'https://vercel.com/nyumoviescom-gmailcoms-projects',
+  link_database: 'https://console.neon.tech',
 }
 
 export default function SystemAdmin() {
