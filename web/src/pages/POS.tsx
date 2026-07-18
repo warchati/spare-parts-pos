@@ -238,7 +238,7 @@ export default function POS() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar por código, nombre, OEM..."
-            className="w-full pl-10 pr-4 py-3 bg-white border border-gray-300 rounded-xl text-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+            className="w-full pl-10 pr-4 py-3 bg-white border border-gray-300 rounded-xl text-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none"
           />
         </div>
 
@@ -248,13 +248,13 @@ export default function POS() {
               <button
                 key={p.id}
                 onClick={() => addToCart(p)}
-                className="w-full flex items-center justify-between px-4 py-3 hover:bg-blue-50 border-b border-gray-100 last:border-0 text-left"
+                className="w-full flex items-center justify-between px-4 py-3 hover:bg-purple-50 border-b border-gray-100 last:border-0 text-left"
               >
                 <div>
                   <p className="font-medium text-gray-800">{p.name}</p>
                   <p className="text-sm text-gray-500">Cód: {p.code} | Stock: {p.stock}</p>
                 </div>
-                <p className="text-lg font-bold text-blue-600">{formatCurrency(p.sellPrice)}</p>
+                <p className="text-lg font-bold text-purple-600">{formatCurrency(p.sellPrice)}</p>
               </button>
             ))}
           </div>
@@ -426,7 +426,7 @@ export default function POS() {
                 onClick={() => setPaymentMethod(method)}
                 className={`flex flex-col items-center gap-1 p-2 rounded-lg border text-xs ${
                   paymentMethod === method
-                    ? 'border-blue-500 bg-blue-50 text-blue-700'
+                    ? 'border-purple-500 bg-purple-50 text-purple-700'
                     : 'border-gray-200 hover:bg-gray-50 text-gray-600'
                 }`}
               >
@@ -440,7 +440,7 @@ export default function POS() {
             <button
               onClick={() => setShowPaymentModal(true)}
               disabled={cart.length === 0}
-              className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold text-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-emerald-600 text-white py-3 rounded-xl font-bold text-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {cart.length === 0 ? 'Agrega productos' : `Cobrar ${formatCurrency(total)}`}
             </button>
@@ -522,7 +522,7 @@ export default function POS() {
             </div>
             <div className="flex gap-3">
               <button onClick={() => setShowPaymentModal(false)} className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50">Cancelar</button>
-              <button onClick={handlePayment} disabled={loading} className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+              <button onClick={handlePayment} disabled={loading} className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50">
                 {loading ? 'Procesando...' : 'Confirmar Venta'}
               </button>
             </div>
