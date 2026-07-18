@@ -482,6 +482,13 @@ model StoreConfig {
   updatedAt    DateTime @updatedAt
 }
 
+model SystemConfig {
+  id    Int    @id @default(autoincrement())
+  key   String @unique
+  value String
+  updatedAt DateTime @updatedAt
+}
+
 model LoyaltyTransaction {
   id            Int      @id @default(autoincrement())
   clientId      Int

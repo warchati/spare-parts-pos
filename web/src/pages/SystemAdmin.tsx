@@ -38,15 +38,15 @@ interface SystemLink {
   description: string
   icon: any
   editable: boolean
-  storageKey?: string
+  configKey?: string
 }
 
-const DEFAULT_LINKS: SystemLink[] = [
-  { id: 'backend', label: 'Backend API', url: '', description: 'URL del servidor backend', icon: Server, editable: true, storageKey: 'sys_backend_url' },
-  { id: 'frontend', label: 'Frontend', url: window.location.origin, description: 'URL del frontend actual', icon: Globe, editable: false },
-  { id: 'github', label: 'Repositorio GitHub', url: 'https://github.com/warchati/spare-parts-pos', description: 'Código fuente del proyecto', icon: FileText, editable: true, storageKey: 'sys_github_url' },
-  { id: 'vercel', label: 'Panel Vercel', url: 'https://vercel.com/nyumoviescom-gmailcoms-projects', description: 'Dashboard de despliegues', icon: HardDrive, editable: true, storageKey: 'sys_vercel_url' },
-  { id: 'database', label: 'Base de Datos', url: '', description: 'Panel de la base de datos (Neon)', icon: Database, editable: true, storageKey: 'sys_db_url' },
+const DEFAULT_LINKS: Omit<SystemLink, 'url'>[] = [
+  { id: 'backend', label: 'Backend API', description: 'URL del servidor backend', icon: Server, editable: true, configKey: 'link_backend' },
+  { id: 'frontend', label: 'Frontend', description: 'URL del frontend actual', icon: Globe, editable: false },
+  { id: 'github', label: 'Repositorio GitHub', description: 'Código fuente del proyecto', icon: FileText, editable: true, configKey: 'link_github' },
+  { id: 'vercel', label: 'Panel Vercel', description: 'Dashboard de despliegues', icon: HardDrive, editable: true, configKey: 'link_vercel' },
+  { id: 'database', label: 'Base de Datos', description: 'Panel de la base de datos (Neon)', icon: Database, editable: true, configKey: 'link_database' },
 ]
 
 export default function SystemAdmin() {
@@ -83,32 +83,42 @@ export default function SystemAdmin() {
     }
   }
 
-  const loadLinks = () => {
-    const saved = DEFAULT_LINKS.map(link => {
-      if (link.storageKey) {
-        const stored = localStorage.getItem(link.storageKey)
-        if (stored) return { ...link, url: stored }
-      }
-      return link
-    })
-    setLinks(saved)
+  const loadLinks = async () => {
+    try {
+      const res = await api.get('/system/config')
+      const saved = res.data as Record<string, string>
+      const merged = DEFAULT_LINKS.map(link => ({
+        ...link,
+        url: link.id === 'frontend'
+          ? window.location.origin
+          : saved[link.configKey || ''] || '',
+      }))
+      setLinks(merged)
+    } catch {
+      const fallback = DEFAULT_LINKS.map(link => ({
+        ...link,
+        url: link.id === 'frontend' ? window.location.origin : '',
+      }))
+      setLinks(fallback)
+    }
   }
 
-  const saveLink = (id: string) => {
+  const saveLink = async (id: string) => {
+    const link = links.find(l => l.id === id)
+    if (!link?.configKey) return
     setSaving(true)
-    const updated = links.map(l => {
-      if (l.id === id) {
-        const newLink = { ...l, url: editValue }
-        if (l.storageKey) localStorage.setItem(l.storageKey, editValue)
-        return newLink
-      }
-      return l
-    })
-    setLinks(updated)
-    setEditingLink(null)
-    setSaving(false)
-    setSaveMsg('Guardado correctamente')
-    setTimeout(() => setSaveMsg(''), 3000)
+    try {
+      await api.put('/system/config', { key: link.configKey, value: editValue })
+      setLinks(prev => prev.map(l => l.id === id ? { ...l, url: editValue } : l))
+      setEditingLink(null)
+      setSaveMsg('Guardado correctamente en la base de datos')
+      setTimeout(() => setSaveMsg(''), 3000)
+    } catch {
+      setSaveMsg('Error al guardar')
+      setTimeout(() => setSaveMsg(''), 3000)
+    } finally {
+      setSaving(false)
+    }
   }
 
   const startEdit = (link: SystemLink) => {

@@ -5,12 +5,15 @@ import { requireAuth } from '../middleware/auth'
 export function systemRoutes(prisma: PrismaClient) {
   const router = Router()
 
-  router.get('/status', requireAuth(prisma), async (req, res, next) => {
-    try {
-      if (req.user?.role !== 'admin') {
-        return res.status(403).json({ error: 'Solo administradores' })
-      }
+  const requireAdmin = async (req: any, res: any, next: any) => {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Solo administradores' })
+    }
+    next()
+  }
 
+  router.get('/status', requireAuth(prisma), requireAdmin, async (req, res, next) => {
+    try {
       const dbStart = Date.now()
       let dbStatus = 'connected'
       let dbLatency = 0
@@ -66,6 +69,30 @@ export function systemRoutes(prisma: PrismaClient) {
         },
         recentAudit,
       })
+    } catch (e) { next(e) }
+  })
+
+  router.get('/config', requireAuth(prisma), requireAdmin, async (_req, res, next) => {
+    try {
+      const configs = await prisma.systemConfig.findMany()
+      const result: Record<string, string> = {}
+      configs.forEach(c => { result[c.key] = c.value })
+      res.json(result)
+    } catch (e) { next(e) }
+  })
+
+  router.put('/config', requireAuth(prisma), requireAdmin, async (req, res, next) => {
+    try {
+      const { key, value } = req.body
+      if (!key || typeof value !== 'string') {
+        return res.status(400).json({ error: 'key y value son requeridos' })
+      }
+      await prisma.systemConfig.upsert({
+        where: { key },
+        update: { value },
+        create: { key, value },
+      })
+      res.json({ success: true })
     } catch (e) { next(e) }
   })
 
