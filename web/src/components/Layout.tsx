@@ -68,66 +68,77 @@ export default function Layout() {
         <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />
       )}
 
-      <aside className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 flex flex-col transition-transform duration-200`}>
-        <div className="p-4 border-b border-gray-200">
+      <aside className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 fixed lg:static inset-y-0 left-0 z-50 w-64 bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 flex flex-col transition-transform duration-200 shadow-xl`}>
+        <div className="p-4 border-b border-slate-700/50">
           <div className="flex items-center gap-2">
             {storeConfig?.logoUrl ? (
-              <img src={storeConfig.logoUrl} alt="" className="w-6 h-6 object-contain" />
+              <img src={storeConfig.logoUrl} alt="" className="w-8 h-8 object-contain rounded-md" />
             ) : (
-              <Store className="w-6 h-6 text-blue-600" />
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                <Store className="w-5 h-5 text-white" />
+              </div>
             )}
-            <h1 className="text-lg font-bold text-gray-800">{storeConfig?.companyName || 'AutoRepuestos'}</h1>
+            <div>
+              <h1 className="text-lg font-bold text-white leading-tight">{storeConfig?.companyName || 'AutoRepuestos'}</h1>
+              <p className="text-[11px] text-slate-400">{storeConfig?.description || 'Sistema de Postventa'}</p>
+            </div>
           </div>
-          <p className="text-xs text-gray-500 mt-1">{storeConfig?.description || 'Sistema de Postventa'}</p>
         </div>
 
-        <nav className="flex-1 p-2 space-y-1 overflow-auto">
+        <nav className="flex-1 p-3 space-y-0.5 overflow-auto">
           {visibleItems.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
               to={to}
               onClick={() => setSidebarOpen(false)}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
                   isActive
-                    ? 'bg-blue-50 text-blue-700'
-                    : 'text-gray-600 hover:bg-gray-100'
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/25'
+                    : 'text-slate-300 hover:bg-slate-700/50 hover:text-white'
                 }`
               }
             >
-              <Icon className="w-5 h-5" />
+              <Icon className="w-5 h-5 flex-shrink-0" />
               {label}
             </NavLink>
           ))}
         </nav>
 
-        <div className="p-4 border-t border-gray-200">
+        <div className="p-3 border-t border-slate-700/50">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-700">{user?.name}</p>
-              <p className="text-xs text-gray-500 capitalize">{user?.role}</p>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold">
+                {user?.name?.charAt(0)?.toUpperCase()}
+              </div>
+              <div>
+                <p className="text-sm font-medium text-white">{user?.name}</p>
+                <p className="text-[11px] text-slate-400 capitalize">{user?.role}</p>
+              </div>
             </div>
-            <button onClick={handleLogout} className="p-2 hover:bg-gray-100 rounded-lg">
-              <LogOut className="w-4 h-4 text-gray-500" />
+            <button onClick={handleLogout} className="p-2 hover:bg-slate-700/50 rounded-lg transition-colors" title="Cerrar sesión">
+              <LogOut className="w-4 h-4 text-slate-400 hover:text-white" />
             </button>
           </div>
         </div>
       </aside>
 
       <main className="flex-1 overflow-auto min-w-0">
-        <div className="lg:hidden flex items-center gap-2 p-3 bg-white border-b border-gray-200 sticky top-0 z-30">
-          <button onClick={() => setSidebarOpen(true)} className="p-1.5 hover:bg-gray-100 rounded-lg">
-            <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="lg:hidden flex items-center gap-2 p-3 bg-gradient-to-r from-slate-900 to-slate-800 border-b border-slate-700/50 sticky top-0 z-30">
+          <button onClick={() => setSidebarOpen(true)} className="p-1.5 hover:bg-slate-700/50 rounded-lg">
+            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
           <div className="flex items-center gap-2">
             {storeConfig?.logoUrl ? (
-              <img src={storeConfig.logoUrl} alt="" className="w-5 h-5 object-contain" />
+              <img src={storeConfig.logoUrl} alt="" className="w-5 h-5 object-contain rounded" />
             ) : (
-              <Store className="w-5 h-5 text-blue-600" />
+              <div className="w-6 h-6 rounded bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                <Store className="w-4 h-4 text-white" />
+              </div>
             )}
-            <h1 className="text-base font-bold text-gray-800">{storeConfig?.companyName || 'AutoRepuestos'}</h1>
+            <h1 className="text-base font-bold text-white">{storeConfig?.companyName || 'AutoRepuestos'}</h1>
           </div>
         </div>
         <Outlet />
