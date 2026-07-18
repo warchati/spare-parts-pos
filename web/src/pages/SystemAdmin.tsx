@@ -66,8 +66,34 @@ export default function SystemAdmin() {
   const [saveMsg, setSaveMsg] = useState('')
 
   useEffect(() => {
-    loadStatus()
-    loadLinks()
+    const init = async () => {
+      try {
+        setLoading(true)
+        const res = await api.get('/system/status')
+        const statusData = res.data as SystemStatus
+        setStatus(statusData)
+        setError('')
+
+        const configRes = await api.get('/system/config')
+        const saved = configRes.data as Record<string, string>
+        const merged = DEFAULT_LINKS.map(link => {
+          let url = link.id === 'frontend'
+            ? window.location.origin
+            : saved[link.configKey || ''] || ''
+          if (link.id === 'backend' && !url && statusData.server?.apiBaseUrl) {
+            url = statusData.server.apiBaseUrl
+            api.put('/system/config', { key: 'link_backend', value: url }).catch(() => {})
+          }
+          return { ...link, url }
+        })
+        setLinks(merged)
+      } catch (e: any) {
+        setError(e.response?.data?.error || 'Error al cargar estado del sistema')
+      } finally {
+        setLoading(false)
+      }
+    }
+    init()
   }, [])
 
   const loadStatus = async () => {
@@ -91,7 +117,7 @@ export default function SystemAdmin() {
         ...link,
         url: link.id === 'frontend'
           ? window.location.origin
-          : saved[link.configKey || ''] || '',
+          : saved[link.configKey || ''] || (link.id === 'backend' && status?.server?.apiBaseUrl ? status.server.apiBaseUrl : ''),
       }))
       setLinks(merged)
     } catch {
@@ -144,7 +170,7 @@ export default function SystemAdmin() {
           <h1 className="text-2xl font-bold text-gray-900">Administración del Sistema</h1>
           <p className="text-sm text-gray-500 mt-1">Estado, configuración y enlaces del sistema</p>
         </div>
-        <button onClick={loadStatus} disabled={loading} className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50">
+        <button onClick={async () => { await loadStatus(); await loadLinks() }} disabled={loading} className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50">
           <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           Actualizar
         </button>
