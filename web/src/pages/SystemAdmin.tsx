@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import api from '../lib/api'
 import { useNavigate } from 'react-router-dom'
-import { Server, Database, Activity, Settings, RefreshCw, CheckCircle, XCircle, Clock, ExternalLink, Shield, Globe, HardDrive, Users, Package, FileText, ChevronDown, ChevronRight, Save, AlertTriangle, Image, LayoutDashboard, Receipt, FileCog, HelpCircle, ShoppingCart } from 'lucide-react'
+import { Server, Database, Activity, Settings, RefreshCw, CheckCircle, XCircle, Clock, ExternalLink, Shield, Globe, HardDrive, Users, Package, FileText, ChevronDown, ChevronRight, Save, AlertTriangle, Image, LayoutDashboard, Receipt, FileCog, HelpCircle, ShoppingCart, Download, Upload } from 'lucide-react'
 
 interface SystemStatus {
   status: string
@@ -71,6 +71,7 @@ export default function SystemAdmin() {
     shortcuts: true,
     logs: false,
     help: false,
+    backup: false,
     config: false,
   })
   const [editingLink, setEditingLink] = useState<string | null>(null)
@@ -85,6 +86,9 @@ export default function SystemAdmin() {
     users: false,
     daily: false,
   })
+  const [backupLoading, setBackupLoading] = useState(false)
+  const [importLoading, setImportLoading] = useState(false)
+  const [backupMsg, setBackupMsg] = useState('')
 
   useEffect(() => {
     const init = async () => {
@@ -216,6 +220,53 @@ export default function SystemAdmin() {
     setBackendChanged(true)
     setSaveMsg('URL restaurada al valor original. Recarga para aplicar.')
     setTimeout(() => setSaveMsg(''), 5000)
+  }
+
+  const handleExportBackup = async () => {
+    setBackupLoading(true)
+    setBackupMsg('')
+    try {
+      const res = await api.get('/backup/export', { responseType: 'blob' })
+      const blob = new Blob([res.data], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `backup-spare-parts-${new Date().toISOString().slice(0, 10)}.json`
+      a.click()
+      URL.revokeObjectURL(url)
+      setBackupMsg('Backup descargado correctamente')
+      setTimeout(() => setBackupMsg(''), 5000)
+    } catch (e: any) {
+      setBackupMsg('Error al descargar backup: ' + (e.response?.data?.error || e.message))
+      setTimeout(() => setBackupMsg(''), 8000)
+    } finally { setBackupLoading(false) }
+  }
+
+  const handleImportBackup = async () => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = '.json'
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0]
+      if (!file) return
+      if (!confirm('⚠️ Esto REEMPLAZARÁ todos los datos actuales con los del archivo. ¿Estás seguro?')) return
+      if (!confirm('ÚLTIMA OPORTUNIDAD: Se borrarán todos los datos actuales. ¿Continuar?')) return
+      setImportLoading(true)
+      setBackupMsg('')
+      try {
+        const text = await file.text()
+        const backup = JSON.parse(text)
+        if (!backup.tables) throw new Error('Formato de backup inválido')
+        const res = await api.post('/backup/import', { tables: backup.tables, confirm: true })
+        setBackupMsg(`Restaurado: ${Object.entries(res.data.restored).filter(([,v]) => (v as number) > 0).map(([k,v]) => `${k}(${v})`).join(', ')}`)
+        setTimeout(() => setBackupMsg(''), 8000)
+        loadStatus()
+      } catch (e: any) {
+        setBackupMsg('Error al restaurar: ' + (e.response?.data?.error || e.message))
+        setTimeout(() => setBackupMsg(''), 8000)
+      } finally { setImportLoading(false) }
+    }
+    input.click()
   }
 
   const toggleSection = (key: string) => {
@@ -609,6 +660,50 @@ export default function SystemAdmin() {
             </ol>
           </HelpTopic>
 
+        </div>
+      </Section>
+
+      <Section title="Backup y Restauración" icon={<Download className="w-5 h-5" />} expanded={expandedSections.backup} onToggle={() => toggleSection('backup')}>
+        <div className="space-y-4">
+          <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-start gap-2">
+            <Download className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
+            <div className="text-xs text-green-700">
+              <p className="font-medium mb-1">Descargar Backup Completo</p>
+              <p>Exporta TODA la base de datos (productos, ventas, clientes, vehículos, caja, auditoría, etc.) como un archivo JSON. Guárdalo en tu PC como respaldo.</p>
+            </div>
+          </div>
+          <button onClick={handleExportBackup} disabled={backupLoading} className="flex items-center gap-2 px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 text-sm">
+            <Download className={`w-4 h-4 ${backupLoading ? 'animate-bounce' : ''}`} />
+            {backupLoading ? 'Generando backup...' : 'Descargar Backup'}
+          </button>
+          <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-2">
+            <Upload className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+            <div className="text-xs text-red-700">
+              <p className="font-medium mb-1">Restaurar Backup</p>
+              <p>Importa un archivo de backup JSON para reemplazar TODOS los datos actuales. <strong>Esto no se puede deshacer.</strong></p>
+            </div>
+          </div>
+          <button onClick={handleImportBackup} disabled={importLoading} className="flex items-center gap-2 px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 text-sm">
+            <Upload className={`w-4 h-4 ${importLoading ? 'animate-spin' : ''}`} />
+            {importLoading ? 'Restaurando...' : 'Restaurar Backup'}
+          </button>
+          {backupMsg && (
+            <div className={`text-xs px-3 py-2 rounded-lg ${backupMsg.includes('Error') ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
+              {backupMsg}
+            </div>
+          )}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-start gap-2">
+            <Database className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
+            <div className="text-xs text-blue-700">
+              <p className="font-medium mb-1">Recomendaciones:</p>
+              <ul className="list-disc list-inside space-y-0.5">
+                <li>Descarga un backup <strong>antes de cambios grandes</strong> (migraciones, actualizaciones)</li>
+                <li>Guarda los backups en un lugar seguro (USB, Drive, etc.)</li>
+                <li>Haz backup <strong>al menos una vez por semana</strong></li>
+                <li>Para respaldo automático, considera un plan pago de Neon (~$19/mes)</li>
+              </ul>
+            </div>
+          </div>
         </div>
       </Section>
 
