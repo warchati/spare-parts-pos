@@ -78,6 +78,13 @@ export default function SystemAdmin() {
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState('')
   const [backendChanged, setBackendChanged] = useState(false)
+  const [helpOpen, setHelpOpen] = useState<Record<string, boolean>>({
+    server: false,
+    database: false,
+    config: false,
+    users: false,
+    daily: false,
+  })
 
   useEffect(() => {
     const init = async () => {
@@ -395,30 +402,159 @@ export default function SystemAdmin() {
         )}
       </Section>
 
-      <Section title="Ayuda" icon={<HelpCircle className="w-5 h-5" />} expanded={expandedSections.help} onToggle={() => toggleSection('help')}>
-        <div className="space-y-4">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h3 className="text-sm font-semibold text-blue-800 mb-2">Cambiar servidor (Backend)</h3>
-            <ol className="text-xs text-blue-700 space-y-1.5 list-decimal list-inside">
-              <li>Despliega el nuevo servidor con las mismas variables de entorno (DATABASE_URL, JWT_SECRET, CLOUDINARY_*)</li>
-              <li>En <strong>Enlaces del Sistema</strong>, haz clic en el ícono de engranaje junto a "Backend API"</li>
-              <li>Escribe la nueva URL del servidor (ej: https://mi-nuevo-backend.vercel.app)</li>
+      <Section title="Ayuda / Tutorial" icon={<HelpCircle className="w-5 h-5" />} expanded={expandedSections.help} onToggle={() => toggleSection('help')}>
+        <div className="space-y-3">
+
+          {/* TEMA 1: Cambiar Servidor */}
+          <HelpTopic title="Cambiar Servidor Backend" color="blue" isOpen={helpOpen.server} onToggle={() => setHelpOpen(p => ({ ...p, server: !p.server }))}>
+            <p className="text-xs text-blue-700 mb-2">Si tu servidor actual se cae o vence (ej: free tier de Vercel), puedes cambiarlo desde aquí sin tocar código.</p>
+            <p className="text-xs font-semibold text-blue-800 mb-1">Antes de empezar necesitas:</p>
+            <ul className="text-xs text-blue-700 space-y-0.5 mb-3">
+              <li>• Un servidor nuevo ya desplegado ( Railway, Render, etc.)</li>
+              <li>• Las mismas variables de entorno: DATABASE_URL, JWT_SECRET, CLOUDINARY_*</li>
+            </ul>
+            <p className="text-xs font-semibold text-blue-800 mb-1">Pasos:</p>
+            <ol className="text-xs text-blue-700 space-y-1 list-decimal list-inside">
+              <li>Ve a <strong>Enlaces del Sistema</strong> (arriba en esta página)</li>
+              <li>Haz clic en el ícono de engranaje junto a "Backend API"</li>
+              <li>Escribe la nueva URL (ej: https://mi-nuevo-backend.vercel.app)</li>
               <li>Haz clic en <strong>Guardar</strong></li>
-              <li>Haz clic en <strong>Recargar</strong> cuando aparezca</li>
+              <li>Haz clic en <strong>Recargar</strong> cuando aparezca el botón</li>
               <li>Listo, el sistema ahora apunta al nuevo servidor</li>
             </ol>
-          </div>
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
-            <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
-            <div className="text-xs text-amber-700">
-              <p className="font-medium mb-1">Importante:</p>
-              <ul className="list-disc list-inside space-y-0.5">
-                <li>El nuevo servidor debe tener el mismo JWT_SECRET para que las sesiones sigan funcionando</li>
-                <li>El nuevo servidor debe tener la misma DATABASE_URL de Neon para conservar los datos</li>
-                <li>El CORS del nuevo servidor debe incluir spare-parts-pos.vercel.app</li>
-              </ul>
+            <WarnBox text="El nuevo servidor debe tener el mismo JWT_SECRET para que las sesiones sigan funcionando. Si no lo tiene, los usuarios deberán iniciar sesión de nuevo." />
+          </HelpTopic>
+
+          {/* TEMA 2: Cambiar Base de Datos */}
+          <HelpTopic title="Cambiar Base de Datos" color="green" isOpen={helpOpen.database} onToggle={() => setHelpOpen(p => ({ ...p, database: !p.database }))}>
+            <p className="text-xs text-green-700 mb-2">Si tu base de datos actual se cae o cambias de proveedor (ej: Neon → Supabase), sigue estos pasos.</p>
+            <p className="text-xs font-semibold text-green-800 mb-1">Antes de empezar necesitas:</p>
+            <ul className="text-xs text-green-700 space-y-0.5 mb-3">
+              <li>• Una cuenta en el nuevo proveedor (Supabase, Neon, etc.)</li>
+              <li>• Un proyecto creado con base de datos PostgreSQL</li>
+            </ul>
+            <p className="text-xs font-semibold text-green-800 mb-1">Pasos:</p>
+            <ol className="text-xs text-green-700 space-y-1 list-decimal list-inside">
+              <li>Crea el proyecto en el nuevo proveedor</li>
+              <li>Copia el <strong>DATABASE_URL</strong> (PostgreSQL connection string)</li>
+              <li>Ve a <strong>Vercel → tu proyecto Backend → Settings → Environment Variables</strong></li>
+              <li>Busca <strong>DATABASE_URL</strong>, haz clic en ⋯ → Edit</li>
+              <li>Pega el nuevo URL → Save</li>
+              <li>El backend se reinicia automáticamente (~30 segundos)</li>
+              <li>En tu PC, abre PowerShell y ve a la carpeta del backend:</li>
+            </ol>
+            <div className="bg-green-100 rounded p-2 mt-2 mb-2">
+              <code className="text-xs text-green-800">cd C:\Users\admin\spare-parts-pos\backend</code>
             </div>
-          </div>
+            <ol className="text-xs text-green-700 space-y-1 list-decimal list-inside" start={8}>
+              <li>Corre este comando para crear las tablas en la nueva BD:</li>
+            </ol>
+            <div className="bg-green-100 rounded p-2 mt-2 mb-2">
+              <code className="text-xs text-green-800">npx prisma db push</code>
+            </div>
+            <ol className="text-xs text-green-700 space-y-1 list-decimal list-inside" start={9}>
+              <li>Listo, la nueva BD tiene todas las tablas</li>
+            </ol>
+            <WarnBox text="Los datos NO se migran automáticamente. Si necesitas los datos viejos, exporta de Neon e importa en el nuevo proveedor antes de cambiar el URL." />
+          </HelpTopic>
+
+          {/* TEMA 3: Configurar el Sistema */}
+          <HelpTopic title="Configurar el Sistema" color="purple" isOpen={helpOpen.config} onToggle={() => setHelpOpen(p => ({ ...p, config: !p.config }))}>
+            <p className="text-xs text-purple-700 mb-2">Para cambiar los datos de tu negocio, moneda, logo y datos de factura.</p>
+            <p className="text-xs font-semibold text-purple-800 mb-1">Configuración del Sitio:</p>
+            <ol className="text-xs text-purple-700 space-y-1 list-decimal list-inside mb-3">
+              <li>Ve a <strong>Menú lateral → Config. Sitio</strong> (o haz clic en "Accesos Rápidos" arriba)</li>
+              <li>Cambia el <strong>nombre del negocio</strong></li>
+              <li>Cambia la <strong>moneda</strong> (ej: USD, EUR, Bs)</li>
+              <li>Sube el <strong>logo</strong> (aparecerá en facturas y tickets)</li>
+              <li>Haz clic en <strong>Guardar</strong></li>
+            </ol>
+            <p className="text-xs font-semibold text-purple-800 mb-1">Configuración de Factura:</p>
+            <ol className="text-xs text-purple-700 space-y-1 list-decimal list-inside">
+              <li>Ve a <strong>Menú lateral → Config. Factura</strong></li>
+              <li>Cambia el <strong>RIF</strong> (identificación fiscal)</li>
+              <li>Cambia la <strong>dirección</strong> del negocio</li>
+              <li>Cambia el <strong>mensaje del pie</strong> (aparece al final de la factura)</li>
+              <li>Haz clic en <strong>Guardar</strong></li>
+            </ol>
+          </HelpTopic>
+
+          {/* TEMA 4: Gestionar Usuarios */}
+          <HelpTopic title="Gestionar Usuarios" color="orange" isOpen={helpOpen.users} onToggle={() => setHelpOpen(p => ({ ...p, users: !p.users }))}>
+            <p className="text-xs text-orange-700 mb-2">Para crear cuentas nuevas, cambiar roles o desactivar usuarios.</p>
+            <p className="text-xs font-semibold text-orange-800 mb-1">Crear usuario nuevo:</p>
+            <ol className="text-xs text-orange-700 space-y-1 list-decimal list-inside mb-3">
+              <li>Ve a <strong>Menú lateral → Usuarios</strong></li>
+              <li>Haz clic en <strong>"Nuevo Usuario"</strong></li>
+              <li>Escribe el <strong>nombre</strong>, <strong>usuario</strong> y <strong>contraseña</strong></li>
+              <li>Selecciona el <strong>rol</strong> (ver abajo)</li>
+              <li>Haz clic en <strong>Guardar</strong></li>
+            </ol>
+            <p className="text-xs font-semibold text-orange-800 mb-1">Roles disponibles:</p>
+            <div className="bg-orange-50 rounded-lg p-3 mb-3">
+              <div className="space-y-1.5">
+                <div className="flex items-start gap-2"><span className="text-xs font-bold text-orange-600 w-20">admin</span><span className="text-xs text-orange-700">Control total. Puede cambiar configuración, usuarios, todo.</span></div>
+                <div className="flex items-start gap-2"><span className="text-xs font-bold text-orange-600 w-20">supervisor</span><span className="text-xs text-orange-700">Puede vender, ver reportes, gestionar productos y clientes. No puede cambiar usuarios.</span></div>
+                <div className="flex items-start gap-2"><span className="text-xs font-bold text-orange-600 w-20">cashier</span><span className="text-xs text-orange-700">Solo puede vender y abrir/cerrar caja. No ve reportes ni configura nada.</span></div>
+                <div className="flex items-start gap-2"><span className="text-xs font-bold text-orange-600 w-20">seller</span><span className="text-xs text-orange-700">Puede vender y ver clientes. No puede cerrar caja ni ver reportes.</span></div>
+              </div>
+            </div>
+            <p className="text-xs font-semibold text-orange-800 mb-1">Desactivar usuario:</p>
+            <ol className="text-xs text-orange-700 space-y-1 list-decimal list-inside">
+              <li>Ve a <strong>Usuarios</strong></li>
+              <li>Haz clic en el ícono de <strong>editar</strong> (lápiz) junto al usuario</li>
+              <li>Desmarca <strong>"Activo"</strong></li>
+              <li>Haz clic en <strong>Guardar</strong></li>
+              <li>El usuario ya no puede iniciar sesión</li>
+            </ol>
+          </HelpTopic>
+
+          {/* TEMA 5: Uso Diario */}
+          <HelpTopic title="Uso Diario del Sistema" color="cyan" isOpen={helpOpen.daily} onToggle={() => setHelpOpen(p => ({ ...p, daily: !p.daily }))}>
+            <p className="text-xs text-cyan-700 mb-2">Cómo usar el sistema día a día: vender, caja, reportes y más.</p>
+            <p className="text-xs font-semibold text-cyan-800 mb-1">Abrir Caja:</p>
+            <ol className="text-xs text-cyan-700 space-y-1 list-decimal list-inside mb-3">
+              <li>Ve a <strong>Menú lateral → Caja</strong></li>
+              <li>Haz clic en <strong>"Abrir Caja"</strong></li>
+              <li>Escribe el <strong>monto inicial</strong> (efectivo con el que abres)</li>
+              <li>Haz clic en <strong>Confirmar</strong></li>
+            </ol>
+            <p className="text-xs font-semibold text-cyan-800 mb-1">Hacer una Venta:</p>
+            <ol className="text-xs text-cyan-700 space-y-1 list-decimal list-inside mb-3">
+              <li>Ve a <strong>Menú lateral → POS</strong></li>
+              <li>Busca el producto por <strong>nombre o código</strong></li>
+              <li>Haz clic en el producto o presiona <strong>Enter</strong> para agregarlo</li>
+              <li>Cambia la <strong>cantidad</strong> si es necesario</li>
+              <li>Selecciona el <strong>método de pago</strong> (efectivo, tarjeta, transferencia)</li>
+              <li>Haz clic en <strong>"Cobrar"</strong></li>
+              <li>Confirma la venta</li>
+              <li>Se genera la factura automáticamente</li>
+            </ol>
+            <p className="text-xs font-semibold text-cyan-800 mb-1">Cerrar Caja:</p>
+            <ol className="text-xs text-cyan-700 space-y-1 list-decimal list-inside mb-3">
+              <li>Ve a <strong>Caja</strong></li>
+              <li>Haz clic en <strong>"Cerrar Caja"</strong></li>
+              <li>Cuenta el <strong>efectivo real</strong> y escríbelo</li>
+              <li>El sistema muestra las <strong>diferencias</strong> (si las hay)</li>
+              <li>Haz clic en <strong>Confirmar</strong></li>
+            </ol>
+            <p className="text-xs font-semibold text-cyan-800 mb-1">Ver Reportes:</p>
+            <ol className="text-xs text-cyan-700 space-y-1 list-decimal list-inside mb-3">
+              <li>Ve a <strong>Menú lateral → Reportes</strong></li>
+              <li>Selecciona el <strong>tipo de reporte</strong> (ventas, productos, etc.)</li>
+              <li>Selecciona el <strong>período</strong></li>
+              <li>Puedes <strong>exportar a Excel</strong> haciendo clic en el ícono</li>
+            </ol>
+            <p className="text-xs font-semibold text-cyan-800 mb-1">Agregar Producto:</p>
+            <ol className="text-xs text-cyan-700 space-y-1 list-decimal list-inside">
+              <li>Ve a <strong>Menú lateral → Productos</strong></li>
+              <li>Haz clic en <strong>"Nuevo Producto"</strong></li>
+              <li>Escribe el <strong>nombre</strong>, <strong>código</strong>, <strong>precio</strong> y <strong>stock</strong></li>
+              <li>Selecciona la <strong>categoría</strong></li>
+              <li>Haz clic en <strong>Guardar</strong></li>
+            </ol>
+          </HelpTopic>
+
         </div>
       </Section>
 
@@ -506,6 +642,35 @@ function ConfigRow({ label, value }: { label: string; value: string }) {
     <div className="flex items-start justify-between p-3 bg-gray-50 rounded-lg">
       <span className="text-sm font-medium text-gray-700">{label}</span>
       <span className="text-sm text-gray-500 text-right ml-4">{value}</span>
+    </div>
+  )
+}
+
+function HelpTopic({ title, color, isOpen, onToggle, children }: { title: string; color: string; isOpen: boolean; onToggle: () => void; children: React.ReactNode }) {
+  const colors: Record<string, { border: string; bg: string; text: string; icon: string }> = {
+    blue: { border: 'border-blue-200', bg: 'bg-blue-50', text: 'text-blue-800', icon: 'text-blue-500' },
+    green: { border: 'border-green-200', bg: 'bg-green-50', text: 'text-green-800', icon: 'text-green-500' },
+    purple: { border: 'border-purple-200', bg: 'bg-purple-50', text: 'text-purple-800', icon: 'text-purple-500' },
+    orange: { border: 'border-orange-200', bg: 'bg-orange-50', text: 'text-orange-800', icon: 'text-orange-500' },
+    cyan: { border: 'border-cyan-200', bg: 'bg-cyan-50', text: 'text-cyan-800', icon: 'text-cyan-500' },
+  }
+  const c = colors[color] || colors.blue
+  return (
+    <div className={`rounded-lg border ${c.border} overflow-hidden`}>
+      <button onClick={onToggle} className={`w-full flex items-center justify-between p-3 ${c.bg} hover:opacity-90 transition-opacity`}>
+        <span className={`text-sm font-semibold ${c.text}`}>{title}</span>
+        {isOpen ? <ChevronDown className={`w-4 h-4 ${c.icon}`} /> : <ChevronRight className={`w-4 h-4 ${c.icon}`} />}
+      </button>
+      {isOpen && <div className="p-3 bg-white border-t border-gray-100">{children}</div>}
+    </div>
+  )
+}
+
+function WarnBox({ text }: { text: string }) {
+  return (
+    <div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5 flex items-start gap-2 mt-3">
+      <AlertTriangle className="w-3.5 h-3.5 text-amber-500 mt-0.5 flex-shrink-0" />
+      <p className="text-xs text-amber-700">{text}</p>
     </div>
   )
 }
