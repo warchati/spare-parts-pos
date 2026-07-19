@@ -430,6 +430,19 @@ export default function SystemAdmin() {
           <ConfigRow label="JWT Expiración" value="24 horas" />
           <ConfigRow label="Límite Upload" value="2MB (JSON), 5MB (imágenes Cloudinary)" />
           <ConfigRow label="Permisos" value="4 roles: admin, supervisor, cashier, seller" />
+          <ConfigRow label="Base de Datos" value="Vercel → Variables de Entorno → Backend → DATABASE_URL" />
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-start gap-2">
+            <Database className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
+            <div className="text-xs text-blue-700">
+              <p className="font-medium mb-1">Cambiar de proveedor de BD (ej: Neon → Supabase):</p>
+              <ol className="list-decimal list-inside space-y-0.5">
+                <li>Crea el proyecto en el nuevo proveedor</li>
+                <li>Copia el DATABASE_URL (PostgreSQL connection string)</li>
+                <li>Actualízalo en Vercel → Variables de Entorno → Backend</li>
+                <li>El backend se reiniciará automáticamente</li>
+              </ol>
+            </div>
+          </div>
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
             <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
             <p className="text-xs text-amber-700">Los cambios en CORS, Rate Limiting y permisos requieren modificar el código del backend y redesplegar.</p>
