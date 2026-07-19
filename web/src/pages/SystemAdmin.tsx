@@ -90,19 +90,35 @@ export default function SystemAdmin() {
     const init = async () => {
       try {
         setLoading(true)
-        const res = await api.get('/system/status')
-        const statusData = res.data as SystemStatus
-        setStatus(statusData)
-        setError('')
 
-        const configRes = await api.get('/system/config')
-        const saved = configRes.data as Record<string, string>
+        let statusData: SystemStatus | null = null
+        try {
+          const res = await api.get('/system/status')
+          if (res.data && typeof res.data === 'object' && typeof res.data.status === 'string' && res.data.server && res.data.database) {
+            statusData = res.data as SystemStatus
+            setStatus(statusData)
+            setError('')
+          } else {
+            setError('Respuesta inválida del servidor. Verifica la URL del backend en localStorage.')
+          }
+        } catch {
+          setError('No se pudo conectar al backend. Verifica la URL del backend en localStorage.')
+        }
+
+        let saved: Record<string, string> = {}
+        try {
+          const configRes = await api.get('/system/config')
+          if (configRes.data && typeof configRes.data === 'object' && !Array.isArray(configRes.data)) {
+            saved = configRes.data as Record<string, string>
+          }
+        } catch { }
+
         const merged = DEFAULT_LINKS.map(link => {
           let url = link.id === 'frontend'
             ? window.location.origin
             : saved[link.configKey || ''] || ''
           if (!url && link.configKey) {
-            if (link.id === 'backend' && statusData.server?.apiBaseUrl) {
+            if (link.id === 'backend' && statusData?.server?.apiBaseUrl && statusData.server.apiBaseUrl !== 'unknown') {
               url = statusData.server.apiBaseUrl
             } else if (LINK_DEFAULTS[link.configKey]) {
               url = LINK_DEFAULTS[link.configKey]
@@ -112,8 +128,13 @@ export default function SystemAdmin() {
           return { ...link, url }
         })
         setLinks(merged)
-      } catch (e: any) {
-        setError(e.response?.data?.error || 'Error al cargar estado del sistema')
+      } catch {
+        setError('Error inesperado al cargar el sistema.')
+        const fallback = DEFAULT_LINKS.map(link => ({
+          ...link,
+          url: link.id === 'frontend' ? window.location.origin : (link.configKey ? LINK_DEFAULTS[link.configKey] || '' : ''),
+        }))
+        setLinks(fallback)
       } finally {
         setLoading(false)
       }
@@ -202,10 +223,16 @@ export default function SystemAdmin() {
   }
 
   const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleString('es-VE', {
-      day: '2-digit', month: '2-digit', year: '2-digit',
-      hour: '2-digit', minute: '2-digit',
-    })
+    try {
+      const d = new Date(dateStr)
+      if (isNaN(d.getTime())) return 'Fecha no disponible'
+      return d.toLocaleString('es-VE', {
+        day: '2-digit', month: '2-digit', year: '2-digit',
+        hour: '2-digit', minute: '2-digit',
+      })
+    } catch {
+      return 'Fecha no disponible'
+    }
   }
 
   return (
@@ -240,8 +267,18 @@ export default function SystemAdmin() {
       )}
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center gap-2">
-          <XCircle className="w-4 h-4" /> {error}
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+          <div className="flex items-center gap-2">
+            <XCircle className="w-4 h-4 flex-shrink-0" /> <span>{error}</span>
+          </div>
+          <div className="flex gap-2 mt-3">
+            <button onClick={() => { localStorage.removeItem('api_base_url'); window.location.reload() }} className="text-xs px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+              Restablecer URL backend y recargar
+            </button>
+            <button onClick={() => window.location.reload()} className="text-xs px-3 py-1.5 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors">
+              Recargar página
+            </button>
+          </div>
         </div>
       )}
 
@@ -260,28 +297,28 @@ export default function SystemAdmin() {
               <StatusCard
                 icon={<Database className="w-5 h-5" />}
                 label="Base de Datos"
-                value={status.database.status === 'connected' ? `Conectada (${status.database.latencyMs}ms)` : 'Desconectada'}
-                color={status.database.status === 'connected' ? 'green' : 'red'}
+                value={status.database?.status === 'connected' ? `Conectada (${status.database?.latencyMs ?? 0}ms)` : 'Desconectada'}
+                color={status.database?.status === 'connected' ? 'green' : 'red'}
               />
               <StatusCard
                 icon={<Shield className="w-5 h-5" />}
                 label="Entorno"
-                value={status.server.nodeEnv === 'production' ? 'Producción' : 'Desarrollo'}
-                color={status.server.nodeEnv === 'production' ? 'blue' : 'yellow'}
+                value={status.server?.nodeEnv === 'production' ? 'Producción' : 'Desarrollo'}
+                color={status.server?.nodeEnv === 'production' ? 'blue' : 'yellow'}
               />
               <StatusCard
                 icon={<Globe className="w-5 h-5" />}
                 label="Región"
-                value={status.server.vercel ? status.server.region : 'Local'}
+                value={status.server?.vercel ? (status.server?.region ?? 'N/A') : 'Local'}
                 color="purple"
               />
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-              <StatCard icon={<Users className="w-4 h-4" />} label="Usuarios" value={status.stats.users} />
-              <StatCard icon={<Package className="w-4 h-4" />} label="Productos" value={status.stats.products} />
-              <StatCard icon={<ShoppingCart className="w-4 h-4" />} label="Ventas" value={status.stats.sales} />
-              <StatCard icon={<FileText className="w-4 h-4" />} label="Auditoría" value={status.stats.auditLogs} />
+              <StatCard icon={<Users className="w-4 h-4" />} label="Usuarios" value={status.stats?.users ?? 0} />
+              <StatCard icon={<Package className="w-4 h-4" />} label="Productos" value={status.stats?.products ?? 0} />
+              <StatCard icon={<ShoppingCart className="w-4 h-4" />} label="Ventas" value={status.stats?.sales ?? 0} />
+              <StatCard icon={<FileText className="w-4 h-4" />} label="Auditoría" value={status.stats?.auditLogs ?? 0} />
             </div>
 
             <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-500 flex items-center gap-2">
@@ -643,13 +680,14 @@ function StatusCard({ icon, label, value, color }: { icon: React.ReactNode; labe
 }
 
 function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) {
+  const display = typeof value === 'number' && !isNaN(value) ? value.toLocaleString() : '0'
   return (
     <div className="bg-gray-50 rounded-lg border border-gray-100 p-3">
       <div className="flex items-center gap-2 mb-1 text-gray-400">
         {icon}
         <span className="text-xs">{label}</span>
       </div>
-      <p className="text-lg font-bold text-gray-800">{value.toLocaleString()}</p>
+      <p className="text-lg font-bold text-gray-800">{display}</p>
     </div>
   )
 }

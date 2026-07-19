@@ -1,8 +1,10 @@
 import axios from 'axios'
 
 function getApiBaseURL(): string {
-  const stored = localStorage.getItem('api_base_url')
-  if (stored) return stored
+  try {
+    const stored = localStorage.getItem('api_base_url')
+    if (stored && stored !== 'undefined' && stored !== 'null' && stored.startsWith('http')) return stored
+  } catch { }
   return import.meta.env.VITE_API_URL || ''
 }
 
