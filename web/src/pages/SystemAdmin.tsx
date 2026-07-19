@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import api from '../lib/api'
 import { useNavigate } from 'react-router-dom'
-import { Server, Database, Activity, Settings, RefreshCw, CheckCircle, XCircle, Clock, ExternalLink, Shield, Globe, HardDrive, Users, Package, FileText, ChevronDown, ChevronRight, Save, AlertTriangle, Image, LayoutDashboard, Receipt, FileCog, HelpCircle } from 'lucide-react'
+import { Server, Database, Activity, Settings, RefreshCw, CheckCircle, XCircle, Clock, ExternalLink, Shield, Globe, HardDrive, Users, Package, FileText, ChevronDown, ChevronRight, Save, AlertTriangle, Image, LayoutDashboard, Receipt, FileCog, HelpCircle, ShoppingCart } from 'lucide-react'
 
 interface SystemStatus {
   status: string
