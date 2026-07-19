@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import api from '../lib/api'
 import { useNavigate } from 'react-router-dom'
-import { Server, Database, Activity, Settings, RefreshCw, CheckCircle, XCircle, Clock, ExternalLink, Shield, Globe, HardDrive, BarChart3, Users, Package, ShoppingCart, FileText, ChevronDown, ChevronRight, Save, AlertTriangle, Image, LayoutDashboard, Receipt, FileCog, HelpCircle } from 'lucide-react'
+import { Server, Database, Activity, Settings, RefreshCw, CheckCircle, XCircle, Clock, ExternalLink, Shield, Globe, HardDrive, Users, Package, FileText, ChevronDown, ChevronRight, Save, AlertTriangle, Image, LayoutDashboard, Receipt, FileCog, HelpCircle } from 'lucide-react'
 
 interface SystemStatus {
   status: string
@@ -190,6 +190,13 @@ export default function SystemAdmin() {
     setEditValue(link.url)
   }
 
+  const resetBackendUrl = () => {
+    localStorage.removeItem('api_base_url')
+    setBackendChanged(true)
+    setSaveMsg('URL restaurada al valor original. Recarga para aplicar.')
+    setTimeout(() => setSaveMsg(''), 5000)
+  }
+
   const toggleSection = (key: string) => {
     setExpandedSections(prev => ({ ...prev, [key]: !prev[key] }))
   }
@@ -215,15 +222,20 @@ export default function SystemAdmin() {
       </div>
 
       {saveMsg && (
-        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <CheckCircle className="w-4 h-4" /> {saveMsg}
+        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg flex items-center gap-2">
+          <CheckCircle className="w-4 h-4" /> {saveMsg}
+        </div>
+      )}
+
+      {backendChanged && (
+        <div className="bg-amber-50 border border-amber-200 px-4 py-3 rounded-lg flex items-center justify-between">
+          <div className="flex items-center gap-2 text-amber-700">
+            <AlertTriangle className="w-4 h-4" />
+            <span className="text-sm font-medium">Cambiaste el servidor backend. Recarga la página para aplicar los cambios.</span>
           </div>
-          {backendChanged && (
-            <button onClick={() => window.location.reload()} className="flex items-center gap-1 px-3 py-1 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors">
-              <RefreshCw className="w-3 h-3" /> Recargar
-            </button>
-          )}
+          <button onClick={() => window.location.reload()} className="flex items-center gap-1 px-4 py-2 bg-amber-600 text-white text-sm rounded-lg hover:bg-amber-700 transition-colors">
+            <RefreshCw className="w-3 h-3" /> Recargar página
+          </button>
         </div>
       )}
 
@@ -320,6 +332,11 @@ export default function SystemAdmin() {
                 {link.editable && editingLink !== link.id && (
                   <button onClick={() => startEdit(link)} className="p-1.5 hover:bg-gray-200 rounded-lg text-gray-400 hover:text-purple-600 transition-colors">
                     <Settings className="w-4 h-4" />
+                  </button>
+                )}
+                {link.id === 'backend' && localStorage.getItem('api_base_url') && editingLink !== link.id && (
+                  <button onClick={resetBackendUrl} title="Restablecer URL original" className="p-1.5 hover:bg-red-100 rounded-lg text-gray-400 hover:text-red-500 transition-colors">
+                    <XCircle className="w-4 h-4" />
                   </button>
                 )}
               </div>
