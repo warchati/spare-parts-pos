@@ -21,7 +21,7 @@ export function backupRoutes(prisma: PrismaClient) {
         loyaltyConfig, loyaltyTransactions,
         storeConfig, systemConfig,
       ] = await Promise.all([
-        prisma.user.findMany({ select: { id: true, username: true, name: true, role: true, active: true, createdAt: true } }),
+        prisma.user.findMany(),
         prisma.rolePermission.findMany(),
         prisma.userPermission.findMany(),
         prisma.product.findMany(),
@@ -104,49 +104,102 @@ export function backupRoutes(prisma: PrismaClient) {
       const results: Record<string, number> = {}
 
       await prisma.$transaction(async (tx) => {
-        const order: [string, any][] = [
-          ['taxes', tx.tax],
-          ['currencies', tx.currency],
-          ['users', tx.user],
-          ['rolePermissions', tx.rolePermission],
-          ['userPermissions', tx.userPermission],
-          ['products', tx.product],
-          ['productImages', tx.productImage],
-          ['clients', tx.client],
-          ['suppliers', tx.supplier],
-          ['vehicles', tx.vehicle],
-          ['productVehicles', tx.productVehicle],
-          ['warehouses', tx.warehouse],
-          ['locations', tx.location],
-          ['productLocations', tx.productLocation],
-          ['cashRegisters', tx.cashRegister],
-          ['cashMovements', tx.cashMovement],
-          ['sales', tx.sale],
-          ['saleItems', tx.saleItem],
-          ['saleReturns', tx.saleReturn],
-          ['saleReturnItems', tx.saleReturnItem],
-          ['purchaseOrders', tx.purchaseOrder],
-          ['purchaseItems', tx.purchaseItem],
-          ['creditPayments', tx.creditPayment],
-          ['expenses', tx.expense],
-          ['stockMovements', tx.stockMovement],
-          ['inventoryAdjustments', tx.inventoryAdjustment],
-          ['inventoryAdjustmentItems', tx.inventoryAdjustmentItem],
-          ['auditLogs', tx.auditLog],
-          ['priceHistory', tx.priceHistory],
-          ['loyaltyConfig', tx.loyaltyConfig],
-          ['loyaltyTransactions', tx.loyaltyTransaction],
-          ['storeConfig', tx.storeConfig],
-          ['systemConfig', tx.systemConfig],
-        ]
+        const del = async (m: { count: () => Promise<number>; deleteMany: () => Promise<{ count: number }> }) => {
+          if (await m.count() > 0) await m.deleteMany()
+        }
 
-        for (const [tableName, model] of order) {
-          const data = tables[tableName]
-          if (!Array.isArray(data)) continue
-          const count = await model.count()
-          if (count > 0) await model.deleteMany()
-          if (data.length > 0) await model.createMany({ data, skipDuplicates: true })
-          results[tableName] = data.length
+        // 1. Delete children FIRST (tables with FK references to parents)
+        await del(tx.saleItem)
+        await del(tx.saleReturnItem)
+        await del(tx.saleReturn)
+        await del(tx.creditPayment)
+        await del(tx.purchaseItem)
+        await del(tx.cashMovement)
+        await del(tx.productImage)
+        await del(tx.productVehicle)
+        await del(tx.productLocation)
+        await del(tx.stockMovement)
+        await del(tx.inventoryAdjustmentItem)
+        await del(tx.priceHistory)
+        await del(tx.inventoryAdjustment)
+        await del(tx.userPermission)
+        await del(tx.loyaltyTransaction)
+        await del(tx.expense)
+        await del(tx.auditLog)
+        // Now parents are safe to delete
+        await del(tx.sale)
+        await del(tx.purchaseOrder)
+        await del(tx.cashRegister)
+        await del(tx.product)
+        await del(tx.client)
+        await del(tx.supplier)
+        await del(tx.vehicle)
+        await del(tx.location)
+        await del(tx.warehouse)
+        await del(tx.user)
+        await del(tx.rolePermission)
+        await del(tx.tax)
+        await del(tx.currency)
+        await del(tx.loyaltyConfig)
+        await del(tx.storeConfig)
+        await del(tx.systemConfig)
+
+        // 2. Insert in dependency order (parents first)
+        const ins = async (name: string, m: { createMany: (args: any) => Promise<any> }) => {
+          const data = tables[name]
+          if (!Array.isArray(data) || data.length === 0) { results[name] = 0; return }
+          await m.createMany({ data, skipDuplicates: true })
+          results[name] = data.length
+        }
+
+        await ins('rolePermissions', tx.rolePermission)
+        await ins('taxes', tx.tax)
+        await ins('currencies', tx.currency)
+        await ins('users', tx.user)
+        await ins('userPermissions', tx.userPermission)
+        await ins('products', tx.product)
+        await ins('clients', tx.client)
+        await ins('suppliers', tx.supplier)
+        await ins('vehicles', tx.vehicle)
+        await ins('warehouses', tx.warehouse)
+        await ins('locations', tx.location)
+        await ins('productImages', tx.productImage)
+        await ins('productVehicles', tx.productVehicle)
+        await ins('productLocations', tx.productLocation)
+        await ins('cashRegisters', tx.cashRegister)
+        await ins('cashMovements', tx.cashMovement)
+        await ins('sales', tx.sale)
+        await ins('saleItems', tx.saleItem)
+        await ins('saleReturns', tx.saleReturn)
+        await ins('saleReturnItems', tx.saleReturnItem)
+        await ins('purchaseOrders', tx.purchaseOrder)
+        await ins('purchaseItems', tx.purchaseItem)
+        await ins('creditPayments', tx.creditPayment)
+        await ins('expenses', tx.expense)
+        await ins('stockMovements', tx.stockMovement)
+        await ins('inventoryAdjustments', tx.inventoryAdjustment)
+        await ins('inventoryAdjustmentItems', tx.inventoryAdjustmentItem)
+        await ins('auditLogs', tx.auditLog)
+        await ins('priceHistory', tx.priceHistory)
+        await ins('loyaltyConfig', tx.loyaltyConfig)
+        await ins('loyaltyTransactions', tx.loyaltyTransaction)
+        await ins('storeConfig', tx.storeConfig)
+        await ins('systemConfig', tx.systemConfig)
+        // 3. Reset auto-increment sequences inside transaction
+        const sequenceResets = await tx.$queryRawUnsafe<{relname: string}[]>(`
+          SELECT c.relname
+          FROM pg_class c
+          JOIN pg_namespace n ON n.oid = c.relnamespace
+          WHERE c.relkind = 'i'
+            AND n.nspname = 'public'
+            AND c.relname LIKE '%_id_seq'
+        `)
+
+        for (const seq of sequenceResets) {
+          const tableName = seq.relname.replace('_id_seq', '')
+          try {
+            await tx.$executeRawUnsafe(`SELECT setval('${seq.relname}', COALESCE((SELECT MAX(id) FROM "${tableName}"), 0) + 1, false)`)
+          } catch { /* table might not have id column */ }
         }
       })
 
