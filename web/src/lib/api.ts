@@ -1,7 +1,13 @@
 import axios from 'axios'
 
+function getApiBaseURL(): string {
+  const stored = localStorage.getItem('api_base_url')
+  if (stored) return stored
+  return import.meta.env.VITE_API_URL || ''
+}
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api',
+  baseURL: `${getApiBaseURL()}/api`,
   headers: { 'Content-Type': 'application/json' },
 })
 

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import api from '../lib/api'
 import { useNavigate } from 'react-router-dom'
-import { Server, Database, Activity, Settings, RefreshCw, CheckCircle, XCircle, Clock, ExternalLink, Shield, Globe, HardDrive, BarChart3, Users, Package, ShoppingCart, FileText, ChevronDown, ChevronRight, Save, AlertTriangle, Image, LayoutDashboard, Receipt, FileCog } from 'lucide-react'
+import { Server, Database, Activity, Settings, RefreshCw, CheckCircle, XCircle, Clock, ExternalLink, Shield, Globe, HardDrive, BarChart3, Users, Package, ShoppingCart, FileText, ChevronDown, ChevronRight, Save, AlertTriangle, Image, LayoutDashboard, Receipt, FileCog, HelpCircle } from 'lucide-react'
 
 interface SystemStatus {
   status: string
@@ -70,12 +70,14 @@ export default function SystemAdmin() {
     version: true,
     shortcuts: true,
     logs: false,
+    help: false,
     config: false,
   })
   const [editingLink, setEditingLink] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState('')
+  const [backendChanged, setBackendChanged] = useState(false)
 
   useEffect(() => {
     const init = async () => {
@@ -152,12 +154,25 @@ export default function SystemAdmin() {
     try {
       await api.put('/system/config', { key: link.configKey, value: editValue })
       setLinks(prev => prev.map(l => l.id === id ? { ...l, url: editValue } : l))
+      if (id === 'backend') {
+        localStorage.setItem('api_base_url', editValue)
+        setBackendChanged(true)
+        setSaveMsg('Servidor actualizado. Haz clic en "Recargar" para aplicar cambios.')
+      } else {
+        setSaveMsg('Guardado correctamente en la base de datos')
+      }
       setEditingLink(null)
-      setSaveMsg('Guardado correctamente en la base de datos')
-      setTimeout(() => setSaveMsg(''), 3000)
+      setTimeout(() => setSaveMsg(''), 5000)
     } catch {
-      setSaveMsg('Error al guardar')
-      setTimeout(() => setSaveMsg(''), 3000)
+      if (id === 'backend') {
+        localStorage.setItem('api_base_url', editValue)
+        setBackendChanged(true)
+        setSaveMsg('URL guardada localmente. Haz clic en "Recargar" para aplicar.')
+        setEditingLink(null)
+      } else {
+        setSaveMsg('Error al guardar')
+      }
+      setTimeout(() => setSaveMsg(''), 5000)
     } finally {
       setSaving(false)
     }
@@ -193,8 +208,15 @@ export default function SystemAdmin() {
       </div>
 
       {saveMsg && (
-        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg flex items-center gap-2">
-          <CheckCircle className="w-4 h-4" /> {saveMsg}
+        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CheckCircle className="w-4 h-4" /> {saveMsg}
+          </div>
+          {backendChanged && (
+            <button onClick={() => window.location.reload()} className="flex items-center gap-1 px-3 py-1 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors">
+              <RefreshCw className="w-3 h-3" /> Recargar
+            </button>
+          )}
         </div>
       )}
 
@@ -371,6 +393,33 @@ export default function SystemAdmin() {
         ) : (
           <p className="text-gray-400 text-sm text-center py-4">Sin registros de auditoría</p>
         )}
+      </Section>
+
+      <Section title="Ayuda" icon={<HelpCircle className="w-5 h-5" />} expanded={expandedSections.help} onToggle={() => toggleSection('help')}>
+        <div className="space-y-4">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h3 className="text-sm font-semibold text-blue-800 mb-2">Cambiar servidor (Backend)</h3>
+            <ol className="text-xs text-blue-700 space-y-1.5 list-decimal list-inside">
+              <li>Despliega el nuevo servidor con las mismas variables de entorno (DATABASE_URL, JWT_SECRET, CLOUDINARY_*)</li>
+              <li>En <strong>Enlaces del Sistema</strong>, haz clic en el ícono de engranaje junto a "Backend API"</li>
+              <li>Escribe la nueva URL del servidor (ej: https://mi-nuevo-backend.vercel.app)</li>
+              <li>Haz clic en <strong>Guardar</strong></li>
+              <li>Haz clic en <strong>Recargar</strong> cuando aparezca</li>
+              <li>Listo, el sistema ahora apunta al nuevo servidor</li>
+            </ol>
+          </div>
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
+            <div className="text-xs text-amber-700">
+              <p className="font-medium mb-1">Importante:</p>
+              <ul className="list-disc list-inside space-y-0.5">
+                <li>El nuevo servidor debe tener el mismo JWT_SECRET para que las sesiones sigan funcionando</li>
+                <li>El nuevo servidor debe tener la misma DATABASE_URL de Neon para conservar los datos</li>
+                <li>El CORS del nuevo servidor debe incluir spare-parts-pos.vercel.app</li>
+              </ul>
+            </div>
+          </div>
+        </div>
       </Section>
 
       <Section title="Configuración Avanzada" icon={<Settings className="w-5 h-5" />} expanded={expandedSections.config} onToggle={() => toggleSection('config')}>
