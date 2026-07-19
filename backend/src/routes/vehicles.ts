@@ -7,7 +7,7 @@ export function vehicleRoutes(prisma: PrismaClient) {
 
   router.get('/', requirePermission(prisma, 'vehicles', 'view'), async (req, res, next) => {
     try {
-      const { q } = req.query
+      const { q, brand } = req.query
       const where: any = {}
 
       if (q) {
@@ -16,10 +16,18 @@ export function vehicleRoutes(prisma: PrismaClient) {
           { model: { contains: q as string, mode: 'insensitive' } },
         ]
       }
+      if (brand) {
+        where.brand = { equals: brand as string, mode: 'insensitive' }
+      }
 
       const vehicles = await prisma.vehicle.findMany({
         where,
         orderBy: [{ brand: 'asc' }, { model: 'asc' }],
+        include: {
+          products: {
+            include: { product: { select: { id: true, name: true, code: true } } },
+          },
+        },
       })
       res.json(vehicles)
     } catch (e) { next(e) }
@@ -81,8 +89,18 @@ export function vehicleRoutes(prisma: PrismaClient) {
   router.post('/:id/products', requirePermission(prisma, 'vehicles', 'edit'), async (req, res, next) => {
     try {
       const { productId } = req.body
+      if (!productId) return res.status(400).json({ error: 'productId es requerido' })
+      const vehicleId = Number(req.params.id)
+      const vehicle = await prisma.vehicle.findUnique({ where: { id: vehicleId } })
+      if (!vehicle) return res.status(404).json({ error: 'Vehículo no encontrado' })
+      const product = await prisma.product.findUnique({ where: { id: Number(productId) } })
+      if (!product) return res.status(404).json({ error: 'Producto no encontrado' })
+      const existing = await prisma.productVehicle.findUnique({
+        where: { productId_vehicleId: { productId: Number(productId), vehicleId } },
+      })
+      if (existing) return res.status(409).json({ error: 'Este producto ya está vinculado a este vehículo' })
       const link = await prisma.productVehicle.create({
-        data: { productId, vehicleId: Number(req.params.id) },
+        data: { productId: Number(productId), vehicleId },
         include: { product: true, vehicle: true },
       })
       res.status(201).json(link)
